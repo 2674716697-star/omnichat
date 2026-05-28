@@ -76,6 +76,12 @@
     preciseMode: false,
   };
 
+  const REQUEST_CHAR_SOFT_LIMIT = 52000;
+  const REQUEST_RECENT_MSG_LIMIT = 18;
+  const REQUEST_RECENT_CHAR_LIMIT = 28000;
+  const REQUEST_DIGEST_CHAR_LIMIT = 9000;
+  const REQUEST_DIGEST_LINE_LIMIT = 720;
+
   const SYSTEM_PROMPT_PRECISE = 'You are a precise, factual AI assistant. Ground every answer in verifiable knowledge. If unsure, explicitly state your uncertainty and confidence level. Never fabricate data, citations, dates, URLs, or technical details. Prefer saying "I don\'t know" over speculation. Use clear, structured responses. Cite reasoning steps when helpful.';
 
   const SYSTEM_PROMPT_DEFAULT = 'You are a helpful, accurate AI assistant. Answer based on facts and knowledge. Use clear, concise language. Avoid speculation and hallucination. If unsure, say so honestly.';
@@ -475,6 +481,74 @@
     return total;
   }
 
+  function clipText(text, max) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    return clean.slice(0, max - 1).trimEnd() + '…';
+  }
+
+  function cloneRequestMessage(m) {
+    return {
+      role: m.role,
+      content: String(m.content || ''),
+    };
+  }
+
+  function createOlderContextDigest(messages) {
+    if (!messages.length) return '';
+    const head = messages.slice(0, 4);
+    const tail = messages.slice(Math.max(4, messages.length - 12));
+    const selected = head.concat(tail);
+    const omitted = Math.max(0, messages.length - selected.length);
+    const lines = selected.map((m) => {
+      const role = m.role === 'user' ? '用户' : 'AI';
+      return role + ': ' + clipText(m.content, REQUEST_DIGEST_LINE_LIMIT);
+    });
+    if (omitted > 0) {
+      lines.splice(head.length, 0, `…中间 ${omitted} 条较早消息已省略，优先保留最近上下文和场景记忆。`);
+    }
+    return clipText(lines.join('\n'), REQUEST_DIGEST_CHAR_LIMIT);
+  }
+
+  function buildConversationRequestMessages(conv, supportsCaching) {
+    const rawMessages = conv.messages
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .map(cloneRequestMessage);
+
+    let requestMessages = rawMessages;
+    const shouldCompact = conv.autoCompress || countApproxChars(conv) > REQUEST_CHAR_SOFT_LIMIT;
+
+    if (shouldCompact && rawMessages.length > REQUEST_RECENT_MSG_LIMIT) {
+      let recentStart = rawMessages.length;
+      let recentChars = 0;
+      while (recentStart > 0 && rawMessages.length - recentStart < REQUEST_RECENT_MSG_LIMIT) {
+        const next = rawMessages[recentStart - 1];
+        const nextChars = next.content.length;
+        if (recentChars + nextChars > REQUEST_RECENT_CHAR_LIMIT && rawMessages.length - recentStart >= 8) break;
+        recentChars += nextChars;
+        recentStart--;
+      }
+
+      const olderDigest = createOlderContextDigest(rawMessages.slice(0, recentStart));
+      requestMessages = rawMessages.slice(recentStart);
+      if (olderDigest) {
+        requestMessages.unshift({
+          role: 'system',
+          content: '[较早对话压缩摘要]\n' + olderDigest + '\n\n请把这段摘要当作背景，不要逐字复述；优先保持最近原文消息、写作场景记忆和用户最新要求。',
+        });
+      }
+    }
+
+    if (supportsCaching) {
+      const lastAssistantIndex = requestMessages.map((m) => m.role).lastIndexOf('assistant');
+      if (lastAssistantIndex >= 0) {
+        requestMessages[lastAssistantIndex].cache_control = { type: 'ephemeral' };
+      }
+    }
+
+    return requestMessages;
+  }
+
   function getApiKey(provider) {
     return state.apiKeys[provider] || '';
   }
@@ -747,6 +821,11 @@
     return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
   }
 
+  function getVisibleAssistantContent(text, isStreaming) {
+    const value = String(text || '');
+    return isStreaming ? value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd() : value;
+  }
+
   function renderBubbleHTML(msg) {
     // Build inner HTML for an assistant message bubble
     let html = '';
@@ -764,9 +843,10 @@
     }
 
     // Main content - fast path during streaming, full markdown when done
+    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
     const contentHTML = msg._streaming
-      ? renderContentFast(msg.content || '')
-      : renderMarkdown(String(msg.content || ''));
+      ? renderContentFast(visibleContent)
+      : renderMarkdown(visibleContent);
     html += '<div class="message-content">' + contentHTML + '</div>';
 
     if (msg.sceneSnapshot && !msg._streaming) {
@@ -1474,16 +1554,7 @@
       messages.push(sysMsg);
     }
 
-    // Conversation messages - add cache breakpoint on the last assistant message before current turn
-    for (let i = 0; i < conv.messages.length; i++) {
-      const m = conv.messages[i];
-      const msg = { role: m.role, content: m.content };
-      // Cache the last assistant message to create a cache breakpoint for the prefix
-      if (supportsCaching && m.role === 'assistant' && i === conv.messages.length - 1) {
-        msg.cache_control = { type: 'ephemeral' };
-      }
-      messages.push(msg);
-    }
+    messages.push(...buildConversationRequestMessages(conv, supportsCaching));
 
     // Add placeholder assistant message for streaming
     const assistantMsg = { role: 'assistant', content: '', _streaming: true };
@@ -1504,6 +1575,7 @@
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          Accept: conv.stream ? 'text/event-stream' : 'application/json',
         },
         body: JSON.stringify({
           model: model,
@@ -1609,15 +1681,20 @@
     let buffer = '';
 
     let renderScheduled = false;
+    let lastRenderAt = 0;
+    const minRenderGap = 45;
     const scheduleRender = () => {
-      if (!renderScheduled) {
-        renderScheduled = true;
+      if (renderScheduled) return;
+      renderScheduled = true;
+      const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
+      setTimeout(() => {
         requestAnimationFrame(() => {
           renderMessages();
           scrollToBottom(false);
+          lastRenderAt = performance.now();
           renderScheduled = false;
         });
-      }
+      }, delay);
     };
 
     try {
@@ -1673,6 +1750,7 @@
       }
 
       // Process remaining buffer (may contain last chunk with usage)
+      buffer += decoder.decode();
       if (buffer.trim()) {
         const trimmed = buffer.trim();
         if (trimmed.startsWith('data:') && trimmed !== 'data:[DONE]') {
