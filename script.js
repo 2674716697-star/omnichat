@@ -140,11 +140,14 @@
     dom.historyOverlay = $('#historyOverlay');
     dom.historyDrawer = $('#historyDrawer');
     dom.btnCloseHistory = $('#btnCloseHistory');
+    dom.btnToggleArchived = $('#btnToggleArchived');
+    dom.archivedCount = $('#archivedCount');
     dom.searchInput = $('#searchInput');
     dom.convList = $('#convList');
     dom.btnExportAll = $('#btnExportAll');
     dom.btnImport = $('#btnImport');
     dom.btnClearAll = $('#btnClearAll');
+    dom.btnClearArchived = $('#btnClearArchived');
     dom.importFileInput = $('#importFileInput');
 
     dom.settingsOverlay = $('#settingsOverlay');
@@ -342,6 +345,7 @@
       toolCallLimitMode: DEFAULTS.toolCallLimitMode,
       enableCaching: DEFAULTS.enableCaching,
       preciseMode: DEFAULTS.preciseMode,
+      archived: false,
       messages: [],
     };
   }
@@ -383,6 +387,45 @@
     if (!modelId) return false;
     const lower = modelId.toLowerCase();
     return lower.includes('claude') || lower.startsWith('anthropic/');
+  }
+
+  function autoArchiveCheck() {
+    const now = Date.now();
+    const threshold = 60 * 60 * 1000; // 1 hour idle
+    const minMessages = 2; // ≤ 2 messages = barely used
+    let archivedCount = 0;
+
+    for (const conv of state.conversations) {
+      if (conv.archived) continue;
+      if (conv.messages.length > minMessages) continue;
+      const updated = new Date(conv.updatedAt).getTime();
+      if (now - updated < threshold) continue;
+      // Only archive if it's not the currently active conversation
+      if (conv.id === state.currentConversationId) continue;
+      conv.archived = true;
+      archivedCount++;
+    }
+
+    if (archivedCount > 0) {
+      saveToStorage();
+      renderConvList();
+    }
+  }
+
+  function toggleConversationArchive(id) {
+    const conv = state.conversations.find((c) => c.id === id);
+    if (!conv) return;
+    conv.archived = !conv.archived;
+    updateTimestamp(conv);
+    saveToStorage();
+    renderConvList();
+    const label = conv.archived ? '已归档' : '已取消归档';
+    showToast(label, 'info');
+  }
+
+  function toggleShowArchived() {
+    state.showArchived = !state.showArchived;
+    renderConvList();
   }
 
   // =========================================================================
@@ -427,8 +470,15 @@
 
   function renderConvList() {
     const query = (dom.searchInput.value || '').toLowerCase().trim();
+    const showArchived = state.showArchived || query;
     let list = state.conversations;
 
+    // Filter by archive status (unless searching); always show active conv
+    if (!query) {
+      list = list.filter((c) => c.id === state.currentConversationId || showArchived || !c.archived);
+    }
+
+    // Search filter
     if (query) {
       list = list.filter((c) => {
         if (c.title.toLowerCase().includes(query)) return true;
@@ -443,33 +493,62 @@
       return;
     }
 
-    dom.convList.innerHTML = list
-      .map((c) => {
-        const isActive = c.id === state.currentConversationId;
-        const msgCount = c.messages.length;
-        const dateStr = formatDate(c.updatedAt);
-        const providerName = (PROVIDERS[c.provider] || PROVIDERS.xai).name;
-        return `
-        <div class="conv-item${isActive ? ' active' : ''}" data-id="${c.id}">
-          <div class="conv-item-content">
-            <div class="conv-item-title">${escapeHtml(c.title)}</div>
-            <div class="conv-item-meta">
-              <span>${providerName}</span>
-              <span>${msgCount} 条</span>
-              <span>${dateStr}</span>
-            </div>
-          </div>
-          <div class="conv-item-actions">
-            <button class="conv-item-btn" data-action="rename" data-id="${c.id}" aria-label="重命名">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            </button>
-            <button class="conv-item-btn danger" data-action="delete" data-id="${c.id}" aria-label="删除">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
-          </div>
-        </div>`;
-      })
-      .join('');
+    // Split into active and archived for display
+    const activeList = list.filter((c) => !c.archived);
+    const archivedList = list.filter((c) => c.archived);
+
+    function renderItem(c) {
+      const isActive = c.id === state.currentConversationId;
+      const msgCount = c.messages.length;
+      const dateStr = formatDate(c.updatedAt);
+      const providerName = (PROVIDERS[c.provider] || PROVIDERS.openai).name;
+      const archiveAction = c.archived ? 'unarchive' : 'archive';
+      const archiveIcon = c.archived
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>';
+      return (
+        '<div class="conv-item' + (isActive ? ' active' : '') + (c.archived ? ' archived' : '') + '" data-id="' + c.id + '">' +
+        '<div class="conv-item-content">' +
+        '<div class="conv-item-title">' + escapeHtml(c.title) + (c.archived ? ' <span class="archive-badge">归档</span>' : '') + '</div>' +
+        '<div class="conv-item-meta">' +
+        '<span>' + providerName + '</span>' +
+        '<span>' + msgCount + ' 条</span>' +
+        '<span>' + dateStr + '</span>' +
+        '</div></div>' +
+        '<div class="conv-item-actions">' +
+        '<button class="conv-item-btn" data-action="archive" data-id="' + c.id + '" aria-label="归档">' + archiveIcon + '</button>' +
+        '<button class="conv-item-btn" data-action="rename" data-id="' + c.id + '" aria-label="重命名">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>' +
+        '</button>' +
+        '<button class="conv-item-btn danger" data-action="delete" data-id="' + c.id + '" aria-label="删除">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
+        '</button></div></div>'
+      );
+    }
+
+    let html = '';
+    for (const c of activeList) {
+      html += renderItem(c);
+    }
+
+    if (archivedList.length > 0) {
+      html += '<div class="archive-section-header">归档 · ' + archivedList.length + ' 个会话</div>';
+      for (const c of archivedList) {
+        html += renderItem(c);
+      }
+    }
+
+    dom.convList.innerHTML = html;
+
+    // Update archive toggle state
+    const totalArchived = state.conversations.filter((c) => c.archived).length;
+    dom.archivedCount.textContent = totalArchived > 0 ? totalArchived : '';
+    dom.btnToggleArchived.classList.toggle('active', state.showArchived);
+    if (totalArchived === 0) {
+      dom.btnToggleArchived.style.opacity = '0.4';
+    } else {
+      dom.btnToggleArchived.style.opacity = '';
+    }
   }
 
   function formatDate(isoStr) {
@@ -1327,6 +1406,21 @@
     });
   }
 
+  function clearArchivedConversations() {
+    const archived = state.conversations.filter((c) => c.archived);
+    if (archived.length === 0) {
+      showToast('没有已归档的会话', 'info');
+      return;
+    }
+    showConfirm(`确认删除全部 ${archived.length} 个已归档会话？此操作不可恢复。`, () => {
+      state.conversations = state.conversations.filter((c) => !c.archived);
+      hideConfirm();
+      renderAll();
+      saveToStorage();
+      showToast(`已删除 ${archived.length} 个归档会话`, 'success');
+    });
+  }
+
   function renameConversation(id) {
     const conv = state.conversations.find((c) => c.id === id);
     if (!conv) return;
@@ -1436,6 +1530,7 @@
           c.toolCallLimitMode = c.toolCallLimitMode || 'disabled';
           c.enableCaching = c.enableCaching !== undefined ? c.enableCaching : DEFAULTS.enableCaching;
           c.preciseMode = c.preciseMode || false;
+          c.archived = c.archived || false;
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
           state.conversations.push(c);
@@ -1505,6 +1600,7 @@
     dom.btnToggleHistory.addEventListener('click', () => openDrawer('history'));
     dom.btnCloseHistory.addEventListener('click', () => closeDrawer('history'));
     dom.historyOverlay.addEventListener('click', () => closeDrawer('history'));
+    dom.btnToggleArchived.addEventListener('click', () => toggleShowArchived());
 
     // Settings drawer
     dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
@@ -1527,6 +1623,7 @@
         const id = btn.dataset.id;
         if (action === 'rename') renameConversation(id);
         if (action === 'delete') deleteConversation(id);
+        if (action === 'archive') toggleConversationArchive(id);
         return;
       }
 
@@ -1675,6 +1772,7 @@
     dom.btnExportAll.addEventListener('click', () => exportAllJSON());
     dom.btnImport.addEventListener('click', () => dom.importFileInput.click());
     dom.btnClearAll.addEventListener('click', () => clearAllConversations());
+    dom.btnClearArchived.addEventListener('click', () => clearArchivedConversations());
     dom.importFileInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         importJSON(e.target.files[0]);
@@ -1749,6 +1847,9 @@
       setTimeout(() => dom.splash.classList.add('dismissed'), 2200);
       sessionStorage.setItem('omnichat_splash', '1');
     }
+
+    // Auto-archive stale barely-used conversations
+    setTimeout(() => autoArchiveCheck(), 3000);
 
     saveToStorage();
   }

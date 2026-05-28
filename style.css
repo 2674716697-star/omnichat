@@ -460,6 +460,49 @@ a {
   color: var(--danger-bright);
 }
 
+.conv-item.archived {
+  opacity: 0.55;
+}
+
+.conv-item.archived .conv-item-title {
+  font-style: italic;
+}
+
+.archive-badge {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.archive-section-header {
+  padding: 12px 12px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
+}
+
+.btn-archive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+}
+
+.btn-archive-toggle.active {
+  background: var(--bg-elevated);
+  color: var(--accent-bright);
+  border-color: var(--accent);
+}
+
 .drawer-footer {
   padding: 10px 16px;
   padding-bottom: calc(10px + var(--safe-bottom));
