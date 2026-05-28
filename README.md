@@ -1,4 +1,4 @@
-# AI Chat Pro
+# OmniChat
 
 iOS 移动端优先的多模型 AI 聊天网页客户端。支持 xAI / Grok 与 DeepSeek，流式输出，完整多轮上下文，历史会话管理。
 
@@ -18,9 +18,9 @@ iOS 移动端优先的多模型 AI 聊天网页客户端。支持 xAI / Grok 与
 ## 文件结构
 
 ```
-ios-ai-chat-pro/
+omnichat/
   index.html              — 开发版（引用外部 CSS/JS）
-  ios-ai-chat-pro.html    — 独立版（全部内联，可直接部署）
+  omnichat.html    — 独立版（全部内联，可直接部署）
   style.css               — 全部样式
   script.js               — 全部业务逻辑
   manifest.json           — PWA 清单（添加到主屏幕）
@@ -36,16 +36,16 @@ ios-ai-chat-pro/
 
 1. 创建 GitHub 仓库，推送所有文件
 2. 启用 Settings → Pages → 选 `main` 分支 → Save
-3. 获取 URL（如 `https://你的用户名.github.io/ios-ai-chat-pro`）
+3. 获取 URL（如 `https://你的用户名.github.io/omnichat`）
 4. iPhone Safari 打开该 URL
 5. 点击 Safari 底部「分享」→「添加到主屏幕」
-6. 主屏幕出现 AI Chat Pro 图标，点击即可作为独立 App 运行
+6. 主屏幕出现 OmniChat 图标，点击即可作为独立 App 运行
 
-推荐使用 `ios-ai-chat-pro.html`（独立版），也可使用 `index.html`（需同时部署 CSS/JS）。
+推荐使用 `omnichat.html`（独立版），也可使用 `index.html`（需同时部署 CSS/JS）。
 
 ### 方式二：本地文件打开
 
-直接将 `ios-ai-chat-pro.html` 保存到 iPhone「文件」App：
+直接将 `omnichat.html` 保存到 iPhone「文件」App：
 - AirDrop 传输到 iPhone
 - 或通过 iCloud Drive / 邮件 / 微信发送
 - 在「文件」中找到该文件，长按 →「共享」→ Safari 打开

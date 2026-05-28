@@ -1,13 +1,13 @@
 /* ============================================================
-   AI Chat Pro — Service Worker
+   OmniChat — Service Worker
    Caches the app shell for offline access.
    API calls still require network.
    ============================================================ */
 
-const CACHE_NAME = 'ai-chat-pro-v1';
+const CACHE_NAME = 'omnichat-v1';
 const APP_SHELL = [
   './',
-  './ios-ai-chat-pro.html',
+  './omnichat.html',
   './index.html',
   './style.css',
   './script.js',

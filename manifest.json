@@ -1,5 +1,5 @@
 {
-  "name": "AI Chat Pro",
+  "name": "OmniChat",
   "short_name": "AI Chat",
   "description": "iOS multi-model AI chat client supporting xAI/Grok and DeepSeek",
   "start_url": ".",
