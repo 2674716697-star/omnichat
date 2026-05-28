@@ -3,7 +3,7 @@
    Caches app shell, controlled update flow with restart prompt.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-v1';
+const CACHE_NAME = 'omnichat-v2';
 const APP_SHELL = [
   './',
   './omnichat.html',
@@ -49,21 +49,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
+  // HTML: network-first (always get latest). Assets: cache-first.
+  const isHTML = event.request.destination === 'document' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/omnichat/');
+
+  if (isHTML) {
+    event.respondWith(
+      fetch(event.request)
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone);
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
         })
-        .catch(() => {});
-
-      return cached || fetchPromise;
-    })
-  );
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            }
+            return response;
+          })
+          .catch(() => {});
+        return cached || fetchPromise;
+      })
+    );
+  }
 });
