@@ -1018,8 +1018,6 @@ a {
   max-width: 90%;
   margin-bottom: 16px;
   animation: msgIn 200ms ease;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 60px;
 }
 
 @keyframes msgIn {

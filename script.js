@@ -311,8 +311,12 @@
   // =========================================================================
 
   function showConfirm(msg, onConfirm) {
+    // Reset button state to defaults
+    dom.dialogConfirm.textContent = '确认';
+    dom.dialogConfirm.className = 'btn btn-danger';
+    dom.dialogCancel.textContent = '取消';
     state.pendingConfirmAction = onConfirm;
-    dom.dialogBody.textContent = msg;
+    dom.dialogBody.innerHTML = msg;
     dom.dialogOverlay.style.display = 'flex';
   }
 
@@ -342,16 +346,11 @@
 
     state.pendingConfirmAction = function () {
       hideConfirm();
-      dom.dialogConfirm.textContent = '确认';
-      dom.dialogConfirm.className = 'btn btn-danger';
-      dom.dialogCancel.textContent = '取消';
-      // Tell SW to skip waiting
       if (window.__pendingWorker) {
         window.__pendingWorker.postMessage({ type: 'SKIP_WAITING' });
       } else if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
       }
-      // Fallback: reload after short delay
       setTimeout(function () {
         window.location.reload();
       }, 1500);
@@ -1119,17 +1118,17 @@
 
     switch (action) {
       case 'regenerate':
+        // Remove last assistant response first
+        if (lastMsg && lastMsg.role === 'assistant') conv.messages.pop();
         if (prompts.regenerate) {
           sendText = prompts.regenerate;
-          conv.messages.push({ role: 'user', content: sendText });
         } else {
-          // Default: remove last assistant and resend last user message
-          if (lastMsg && lastMsg.role === 'assistant') conv.messages.pop();
+          // Default: resend last user message
           const lastUser = [...conv.messages].reverse().find((m) => m.role === 'user');
           if (!lastUser) return;
           sendText = lastUser.content;
-          conv.messages.push({ role: 'user', content: sendText });
         }
+        conv.messages.push({ role: 'user', content: sendText });
         break;
 
       case 'continue':
