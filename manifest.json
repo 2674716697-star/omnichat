@@ -1,0 +1,18 @@
+{
+  "name": "AI Chat Pro",
+  "short_name": "AI Chat",
+  "description": "iOS multi-model AI chat client supporting xAI/Grok and DeepSeek",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3Cpath d='M64 124l8 16h48l8-16' fill='none' stroke='%234a9eff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

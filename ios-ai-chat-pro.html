@@ -1,0 +1,2880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27192%27 height=%27192%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%230f0f0f%27/%3E%3Cpath d=%27M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z%27 fill=%27%234a9eff%27/%3E%3Ccircle cx=%2796%27 cy=%2796%27 r=%2716%27 fill=%27%236ab4ff%27/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json">
+  <title>AI Chat Pro</title>
+  <style>
+/* ============================================================
+   AI Chat Pro — iOS Mobile-First AI Chat Client
+   Dark mode, clean, production-grade styles
+   ============================================================ */
+
+/* --- CSS Variables --- */
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #242424;
+  --bg-elevated: #2a2a2a;
+  --bg-input: #1e1e1e;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #707070;
+  --border-color: #333;
+  --border-light: #2a2a2a;
+  --accent: #4a9eff;
+  --accent-bright: #6ab4ff;
+  --accent-dim: rgba(74, 158, 255, 0.15);
+  --danger: #e05555;
+  --danger-bright: #ff6b6b;
+  --success: #4caf84;
+  --warning: #e0a040;
+  --user-bubble: #1a3a5c;
+  --ai-bubble: #1e1e1e;
+  --code-bg: #141414;
+  --code-border: #2a2a2a;
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.6);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --top-bar-h: 52px;
+  --bottom-bar-min-h: 80px;
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* --- App Container --- */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- Top Bar --- */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  padding-top: calc(8px + var(--safe-top));
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  min-height: var(--top-bar-h);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.top-bar-info {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.conv-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.top-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.badge-provider {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
+
+.badge-model {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.context-stats {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* --- Icon Button --- */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-icon:active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* --- Drawer --- */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 85%;
+  max-width: 360px;
+  background: var(--bg-secondary);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(0);
+  transition: transform var(--transition-slow);
+  box-shadow: var(--shadow-lg);
+}
+
+.drawer-left {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.drawer-left.open {
+  transform: translateX(0);
+}
+
+.drawer-right {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.drawer-right.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  padding-top: calc(14px + var(--safe-top));
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.drawer-header h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.search-wrap {
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.conv-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px;
+}
+
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  margin-bottom: 2px;
+}
+
+.conv-item:active {
+  background: var(--bg-elevated);
+}
+
+.conv-item.active {
+  background: var(--accent-dim);
+}
+
+.conv-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-item-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+}
+
+.conv-item-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.conv-item:hover .conv-item-actions,
+.conv-item:active .conv-item-actions {
+  opacity: 1;
+}
+
+.conv-item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.conv-item-btn:active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.conv-item-btn.danger:active {
+  color: var(--danger-bright);
+}
+
+.drawer-footer {
+  padding: 10px 16px;
+  padding-bottom: calc(10px + var(--safe-bottom));
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* --- Settings Content --- */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+}
+
+.setting-group {
+  margin-bottom: 16px;
+}
+
+.setting-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.setting-range-val {
+  color: var(--accent-bright);
+  font-weight: 600;
+}
+
+.setting-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.tool-warning {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(224, 160, 64, 0.1);
+  border: 1px solid rgba(224, 160, 64, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--warning);
+  line-height: 1.5;
+}
+
+/* --- Form Elements --- */
+.input, .select, .textarea {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  -webkit-appearance: none;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--accent);
+}
+
+.input::placeholder, .textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.input-with-toggle {
+  position: relative;
+}
+
+.input-with-toggle .input {
+  padding-right: 44px;
+}
+
+.btn-toggle-vis {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+}
+
+.range {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Toggle Switch --- */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  width: 46px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.toggle input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-elevated);
+  border-radius: 13px;
+  transition: background var(--transition-fast);
+  position: relative;
+  border: 1px solid var(--border-color);
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  top: 2px;
+  left: 2px;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.toggle input:checked + .toggle-slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle input:checked + .toggle-slider::after {
+  background: #fff;
+  transform: translateX(20px);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  opacity: 0.8;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-sm {
+  font-size: 12px;
+  padding: 6px 12px;
+  margin-top: 6px;
+}
+
+/* --- Main Content --- */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0;
+}
+
+.messages-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 12px;
+  padding-bottom: 12px;
+}
+
+/* --- Welcome Screen --- */
+.welcome-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.welcome-icon {
+  margin-bottom: 16px;
+  color: var(--text-tertiary);
+}
+
+.welcome-screen h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.welcome-screen p {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.welcome-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* --- Messages --- */
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 90%;
+  margin-bottom: 16px;
+  animation: msgIn 200ms ease;
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.message.assistant {
+  align-items: flex-start;
+  margin-right: auto;
+}
+
+.message.system-info {
+  align-items: center;
+  margin: 8px auto;
+  max-width: 95%;
+}
+
+.message-role {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 3px;
+  padding: 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.message-bubble {
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 14.5px;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.message.user .message-bubble {
+  background: var(--user-bubble);
+  border-bottom-right-radius: 6px;
+  color: #d0e4ff;
+}
+
+.message.assistant .message-bubble {
+  background: var(--ai-bubble);
+  border: 1px solid var(--border-light);
+  border-bottom-left-radius: 6px;
+}
+
+.message.system-info .message-bubble {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 4px 8px;
+  text-align: center;
+}
+
+.message-bubble p {
+  margin-bottom: 6px;
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Markdown in Bubbles --- */
+.message-bubble code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--code-bg);
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #e0a060;
+}
+
+.message-bubble pre {
+  margin: 8px 0;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.message-bubble pre code {
+  display: block;
+  padding: 12px 14px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre;
+  border-radius: 0;
+}
+
+.message-bubble blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+.message-bubble ul, .message-bubble ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.message-bubble li {
+  margin-bottom: 2px;
+}
+
+.message-bubble strong {
+  font-weight: 600;
+}
+
+.message-bubble hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 10px 0;
+}
+
+.message-bubble a {
+  color: var(--accent-bright);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message-bubble table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+
+.message-bubble th, .message-bubble td {
+  border: 1px solid var(--border-color);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.message-bubble th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+}
+
+/* --- Streaming Cursor --- */
+.streaming-cursor::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--accent-bright);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* --- Bottom Bar --- */
+.bottom-bar {
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 8px 12px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+  z-index: 10;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.quick-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.btn-quick {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-quick:active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.input-message {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 15px;
+  resize: none;
+  outline: none;
+  max-height: 120px;
+  min-height: 40px;
+  line-height: 1.4;
+  transition: border-color var(--transition-fast);
+}
+
+.input-message:focus {
+  border-color: var(--accent);
+}
+
+.input-message::placeholder {
+  color: var(--text-tertiary);
+}
+
+.btn-send, .btn-stop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-send {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-send:active {
+  transform: scale(0.92);
+}
+
+.btn-stop {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-stop:active {
+  transform: scale(0.92);
+}
+
+.security-notice {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* --- Toast --- */
+.toast-container {
+  position: fixed;
+  top: calc(12px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  width: calc(100% - 32px);
+  max-width: 400px;
+}
+
+.toast {
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: toastIn 250ms ease;
+  pointer-events: auto;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast.error {
+  background: #4a1a1a;
+  color: var(--danger-bright);
+  border: 1px solid rgba(224, 85, 85, 0.3);
+}
+
+.toast.warning {
+  background: #3a2a10;
+  color: var(--warning);
+  border: 1px solid rgba(224, 160, 64, 0.3);
+}
+
+.toast.success {
+  background: #1a3a2a;
+  color: var(--success);
+  border: 1px solid rgba(76, 175, 132, 0.3);
+}
+
+.toast.info {
+  background: #1a2a3a;
+  color: var(--accent-bright);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+/* --- Dialog --- */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialog {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: var(--shadow-lg);
+  animation: dialogIn 200ms ease;
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.dialog-body {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* --- Loading Dots --- */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: typingBounce 1.2s infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+/* --- Empty State --- */
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* --- Utility --- */
+.hidden {
+  display: none !important;
+}
+
+/* --- Responsive --- */
+@media (min-width: 600px) {
+  .message {
+    max-width: 75%;
+  }
+}
+
+@media (min-width: 800px) {
+  .drawer {
+    width: 340px;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="app-container" id="appContainer">
+
+    <!-- Top Bar -->
+    <header class="top-bar" id="topBar">
+      <button class="btn-icon" id="btnToggleHistory" aria-label="历史会话" title="历史会话">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="top-bar-info" id="topBarInfo">
+        <div class="conv-title" id="convTitle">新对话</div>
+        <div class="top-bar-meta" id="topBarMeta">
+          <span class="badge badge-provider" id="badgeProvider">--</span>
+          <span class="badge badge-model" id="badgeModel">--</span>
+          <span class="context-stats" id="contextStats"></span>
+        </div>
+      </div>
+      <button class="btn-icon" id="btnToggleSettings" aria-label="设置" title="设置">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- History Drawer -->
+    <div class="drawer-overlay" id="historyOverlay"></div>
+    <aside class="drawer drawer-left" id="historyDrawer">
+      <div class="drawer-header">
+        <h2>历史会话</h2>
+        <button class="btn-icon" id="btnCloseHistory" aria-label="关闭">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="search-wrap">
+        <input type="search" class="search-input" id="searchInput" placeholder="搜索会话标题或内容…" autocomplete="off">
+      </div>
+      <div class="conv-list" id="convList"></div>
+      <div class="drawer-footer">
+        <button class="btn btn-secondary btn-full" id="btnExportAll">导出全部 JSON</button>
+        <button class="btn btn-secondary btn-full" id="btnImport">导入 JSON</button>
+        <button class="btn btn-danger btn-full" id="btnClearAll">清空全部历史</button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none">
+      </div>
+    </aside>
+
+    <!-- Settings Drawer -->
+    <div class="drawer-overlay" id="settingsOverlay"></div>
+    <aside class="drawer drawer-right" id="settingsDrawer">
+      <div class="drawer-header">
+        <h2>设置</h2>
+        <button class="btn-icon" id="btnCloseSettings" aria-label="关闭">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="settings-content" id="settingsContent">
+        <!-- Provider -->
+        <div class="setting-group">
+          <label class="setting-label">服务商</label>
+          <select class="select" id="selectProvider">
+            <option value="xai">xAI / Grok</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </div>
+
+        <!-- xAI API Key -->
+        <div class="setting-group" id="groupXaiKey">
+          <label class="setting-label">xAI API Key</label>
+          <div class="input-with-toggle">
+            <input type="password" class="input" id="inputXaiKey" placeholder="xai-..." autocomplete="off">
+            <button class="btn-icon btn-toggle-vis" data-target="inputXaiKey" aria-label="显示/隐藏">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- DeepSeek API Key -->
+        <div class="setting-group" id="groupDeepseekKey">
+          <label class="setting-label">DeepSeek API Key</label>
+          <div class="input-with-toggle">
+            <input type="password" class="input" id="inputDeepseekKey" placeholder="sk-..." autocomplete="off">
+            <button class="btn-icon btn-toggle-vis" data-target="inputDeepseekKey" aria-label="显示/隐藏">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Model -->
+        <div class="setting-group">
+          <label class="setting-label">模型</label>
+          <select class="select" id="selectModel"></select>
+          <div class="setting-hint" id="modelHint"></div>
+          <button class="btn btn-secondary btn-sm" id="btnRefreshModels">刷新模型列表</button>
+        </div>
+
+        <!-- Custom Model -->
+        <div class="setting-group">
+          <label class="setting-label">自定义模型名（可选）</label>
+          <input type="text" class="input" id="inputCustomModel" placeholder="留空使用上方选择的模型">
+        </div>
+
+        <!-- System Prompt -->
+        <div class="setting-group">
+          <label class="setting-label">System Prompt</label>
+          <textarea class="textarea" id="inputSystemPrompt" rows="3" placeholder="设置 AI 的行为和角色…"></textarea>
+        </div>
+
+        <!-- Parameters -->
+        <div class="setting-group">
+          <label class="setting-label">Temperature <span class="setting-range-val" id="tempVal">0.7</span></label>
+          <input type="range" class="range" id="inputTemperature" min="0" max="2" step="0.05" value="0.7">
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">Top P <span class="setting-range-val" id="topPVal">1</span></label>
+          <input type="range" class="range" id="inputTopP" min="0" max="1" step="0.05" value="1">
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">Max Tokens</label>
+          <input type="number" class="input" id="inputMaxTokens" value="2000" min="1" step="1">
+        </div>
+
+        <!-- Stream Toggle -->
+        <div class="setting-group setting-row">
+          <label class="setting-label">流式输出 (Stream)</label>
+          <label class="toggle">
+            <input type="checkbox" id="inputStream" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Tool Call Limit -->
+        <div class="setting-group">
+          <label class="setting-label">工具最大调用次数</label>
+          <select class="select" id="selectToolCallLimit">
+            <option value="0">0 - 关闭</option>
+            <option value="1">1</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="-1">无限</option>
+          </select>
+          <div class="tool-warning" id="toolWarning" style="display:none">
+            无限工具调用可能导致循环执行、长时间运行或产生大量 API 费用，请谨慎使用。
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="main-content" id="mainContent">
+      <div class="messages-container" id="messagesContainer">
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <h3>AI Chat Pro</h3>
+          <p>支持 xAI / Grok 与 DeepSeek 多模型聊天</p>
+          <p class="welcome-hint">请在设置中填写 API Key 并选择模型后开始对话</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Bar -->
+    <footer class="bottom-bar" id="bottomBar">
+      <div class="quick-actions" id="quickActions">
+        <button class="btn-quick" id="btnQuickNew" title="新建对话">+ 新建</button>
+        <button class="btn-quick" id="btnQuickClear" title="清空当前">清空</button>
+        <button class="btn-quick" id="btnQuickDeleteLast" title="删除最后一轮">删轮</button>
+        <button class="btn-quick" id="btnQuickCopy" title="复制最后回复">复制</button>
+        <button class="btn-quick" id="btnQuickExport" title="导出 Markdown">导出</button>
+      </div>
+      <div class="input-row">
+        <textarea class="input-message" id="inputMessage" rows="1" placeholder="输入消息…" autocomplete="off"></textarea>
+        <button class="btn-send" id="btnSend" aria-label="发送">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+          </svg>
+        </button>
+        <button class="btn-stop" id="btnStop" aria-label="停止" style="display:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="1"></rect>
+          </svg>
+        </button>
+      </div>
+      <div class="security-notice">
+        API Key 保存在当前浏览器 localStorage。请勿在公共设备上使用。如需更高安全性，可升级为本地代理版本。
+      </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Confirm Dialog -->
+    <div class="dialog-overlay" id="dialogOverlay" style="display:none">
+      <div class="dialog">
+        <div class="dialog-body" id="dialogBody"></div>
+        <div class="dialog-actions">
+          <button class="btn btn-secondary" id="dialogCancel">取消</button>
+          <button class="btn btn-danger" id="dialogConfirm">确认</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Rename Dialog -->
+  <div class="dialog-overlay" id="renameDialogOverlay" style="display:none">
+    <div class="dialog">
+      <div class="dialog-body">
+        <label class="setting-label">重命名会话</label>
+        <input type="text" class="input" id="renameInput" placeholder="输入新标题">
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" id="renameCancel">取消</button>
+        <button class="btn btn-primary" id="renameConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* ============================================================
+   AI Chat Pro — iOS Multi-Model AI Chat Client
+   Pure JS, modular, production-grade
+   ============================================================ */
+
+(function () {
+  'use strict';
+
+  // =========================================================================
+  // CONSTANTS
+  // =========================================================================
+
+  const STORAGE_KEY = 'ai_chat_pro_data';
+  const STORAGE_VERSION = 1;
+
+  const PROVIDERS = {
+    xai: {
+      name: 'xAI / Grok',
+      apiUrl: 'https://api.x.ai/v1/chat/completions',
+      modelsUrl: 'https://api.x.ai/v1/models',
+      keyHint: 'xai-...',
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      apiUrl: 'https://api.deepseek.com/chat/completions',
+      modelsUrl: 'https://api.deepseek.com/models',
+      keyHint: 'sk-...',
+    },
+  };
+
+  const DEFAULTS = {
+    temperature: 0.7,
+    topP: 1,
+    maxTokens: 2000,
+    stream: true,
+    toolCallLimit: 0,
+    toolCallLimitMode: 'disabled',
+    systemPrompt: '',
+  };
+
+  const ERR_MSGS = {
+    noApiKey: '请先在设置中填写 API Key。',
+    noModel: '请先选择或输入模型名称。',
+    network: '网络请求失败，请检查网络连接。',
+    unauthorized: 'API Key 无效或无权限 (401)。',
+    insufficientBalance: '余额不足，请充值后重试。',
+    rateLimited: '请求过于频繁，请稍后重试 (429)。',
+    modelNotFound: '模型不存在，请检查模型名称。',
+    cors: '浏览器跨域限制，无法直接请求 API。可尝试本地代理方式。',
+    contextTooLong: '上下文过长，请手动清理部分历史消息后重试。',
+    userAborted: '请求已被停止。',
+    storageFailed: 'localStorage 保存失败，请导出数据备份。',
+    importFailed: 'JSON 导入失败，请检查文件格式。',
+    serverError: '服务商接口异常，请稍后重试。',
+    streamParseError: '流式响应解析失败。',
+    toolNotImplemented: '当前版本仅预留工具调用配置，尚未执行外部工具。',
+  };
+
+  // =========================================================================
+  // STATE
+  // =========================================================================
+
+  const state = {
+    conversations: [],
+    currentConversationId: null,
+    xaiApiKey: '',
+    deepseekApiKey: '',
+    models: { xai: [], deepseek: [] },
+    abortController: null,
+    isStreaming: false,
+    pendingRenameId: null,
+    pendingConfirmAction: null,
+    ui: {
+      isHistoryOpen: false,
+      isSettingsOpen: false,
+    },
+  };
+
+  // =========================================================================
+  // DOM REFS
+  // =========================================================================
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  const dom = {};
+  function cacheDom() {
+    dom.appContainer = $('#appContainer');
+    dom.topBar = $('#topBar');
+    dom.btnToggleHistory = $('#btnToggleHistory');
+    dom.btnToggleSettings = $('#btnToggleSettings');
+    dom.topBarInfo = $('#topBarInfo');
+    dom.convTitle = $('#convTitle');
+    dom.badgeProvider = $('#badgeProvider');
+    dom.badgeModel = $('#badgeModel');
+    dom.contextStats = $('#contextStats');
+
+    dom.historyOverlay = $('#historyOverlay');
+    dom.historyDrawer = $('#historyDrawer');
+    dom.btnCloseHistory = $('#btnCloseHistory');
+    dom.searchInput = $('#searchInput');
+    dom.convList = $('#convList');
+    dom.btnExportAll = $('#btnExportAll');
+    dom.btnImport = $('#btnImport');
+    dom.btnClearAll = $('#btnClearAll');
+    dom.importFileInput = $('#importFileInput');
+
+    dom.settingsOverlay = $('#settingsOverlay');
+    dom.settingsDrawer = $('#settingsDrawer');
+    dom.btnCloseSettings = $('#btnCloseSettings');
+    dom.selectProvider = $('#selectProvider');
+    dom.inputXaiKey = $('#inputXaiKey');
+    dom.inputDeepseekKey = $('#inputDeepseekKey');
+    dom.selectModel = $('#selectModel');
+    dom.modelHint = $('#modelHint');
+    dom.btnRefreshModels = $('#btnRefreshModels');
+    dom.inputCustomModel = $('#inputCustomModel');
+    dom.inputSystemPrompt = $('#inputSystemPrompt');
+    dom.inputTemperature = $('#inputTemperature');
+    dom.tempVal = $('#tempVal');
+    dom.inputTopP = $('#inputTopP');
+    dom.topPVal = $('#topPVal');
+    dom.inputMaxTokens = $('#inputMaxTokens');
+    dom.inputStream = $('#inputStream');
+    dom.selectToolCallLimit = $('#selectToolCallLimit');
+    dom.toolWarning = $('#toolWarning');
+
+    dom.mainContent = $('#mainContent');
+    dom.messagesContainer = $('#messagesContainer');
+    dom.welcomeScreen = $('#welcomeScreen');
+
+    dom.bottomBar = $('#bottomBar');
+    dom.inputMessage = $('#inputMessage');
+    dom.btnSend = $('#btnSend');
+    dom.btnStop = $('#btnStop');
+
+    dom.toastContainer = $('#toastContainer');
+    dom.dialogOverlay = $('#dialogOverlay');
+    dom.dialogBody = $('#dialogBody');
+    dom.dialogConfirm = $('#dialogConfirm');
+    dom.dialogCancel = $('#dialogCancel');
+    dom.renameDialogOverlay = $('#renameDialogOverlay');
+    dom.renameInput = $('#renameInput');
+    dom.renameConfirm = $('#renameConfirm');
+    dom.renameCancel = $('#renameCancel');
+  }
+
+  // =========================================================================
+  // UTILITIES
+  // =========================================================================
+
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function nowISO() {
+    return new Date().toISOString();
+  }
+
+  function escapeHtml(str) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(str).replace(/[&<>"']/g, (c) => map[c]);
+  }
+
+  function debounce(fn, ms) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  function throttle(fn, ms) {
+    let last = 0;
+    return function (...args) {
+      const now = Date.now();
+      if (now - last >= ms) {
+        last = now;
+        fn.apply(this, args);
+      }
+    };
+  }
+
+  // =========================================================================
+  // STORAGE
+  // =========================================================================
+
+  function saveToStorage() {
+    try {
+      const data = {
+        version: STORAGE_VERSION,
+        conversations: state.conversations,
+        currentConversationId: state.currentConversationId,
+        xaiApiKey: state.xaiApiKey,
+        deepseekApiKey: state.deepseekApiKey,
+        models: state.models,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        showToast(ERR_MSGS.storageFailed, 'error');
+      }
+    }
+  }
+
+  const debouncedSave = debounce(saveToStorage, 500);
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      state.conversations = data.conversations || [];
+      state.currentConversationId = data.currentConversationId || null;
+      state.xaiApiKey = data.xaiApiKey || '';
+      state.deepseekApiKey = data.deepseekApiKey || '';
+      state.models = data.models || { xai: [], deepseek: [] };
+      return true;
+    } catch (e) {
+      showToast('数据加载失败，将使用全新状态。', 'warning');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // TOAST
+  // =========================================================================
+
+  function showToast(msg, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    dom.toastContainer.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 200ms ease';
+      setTimeout(() => toast.remove(), 200);
+    }, duration);
+  }
+
+  // =========================================================================
+  // DIALOG
+  // =========================================================================
+
+  function showConfirm(msg, onConfirm) {
+    state.pendingConfirmAction = onConfirm;
+    dom.dialogBody.textContent = msg;
+    dom.dialogOverlay.style.display = 'flex';
+  }
+
+  function hideConfirm() {
+    state.pendingConfirmAction = null;
+    dom.dialogOverlay.style.display = 'none';
+  }
+
+  function showRenameDialog(id, currentTitle) {
+    state.pendingRenameId = id;
+    dom.renameInput.value = currentTitle || '';
+    dom.renameDialogOverlay.style.display = 'flex';
+    setTimeout(() => dom.renameInput.focus(), 100);
+  }
+
+  function hideRenameDialog() {
+    state.pendingRenameId = null;
+    dom.renameDialogOverlay.style.display = 'none';
+  }
+
+  // =========================================================================
+  // CONVERSATION HELPERS
+  // =========================================================================
+
+  function getCurrentConv() {
+    return state.conversations.find((c) => c.id === state.currentConversationId) || null;
+  }
+
+  function createConversation(provider) {
+    const p = provider || 'xai';
+    return {
+      id: generateId(),
+      title: '新对话',
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+      provider: p,
+      model: '',
+      customModel: '',
+      systemPrompt: DEFAULTS.systemPrompt,
+      temperature: DEFAULTS.temperature,
+      topP: DEFAULTS.topP,
+      maxTokens: DEFAULTS.maxTokens,
+      stream: DEFAULTS.stream,
+      toolCallLimit: DEFAULTS.toolCallLimit,
+      toolCallLimitMode: DEFAULTS.toolCallLimitMode,
+      messages: [],
+    };
+  }
+
+  function autoTitle(conv) {
+    const firstUser = conv.messages.find((m) => m.role === 'user');
+    if (firstUser) {
+      const text = String(firstUser.content || '').replace(/\s+/g, ' ').trim();
+      conv.title = text.length > 24 ? text.slice(0, 24) + '…' : text;
+    }
+  }
+
+  function updateTimestamp(conv) {
+    conv.updatedAt = nowISO();
+  }
+
+  function countApproxChars(conv) {
+    let total = 0;
+    if (conv.systemPrompt) total += conv.systemPrompt.length;
+    for (const m of conv.messages) {
+      total += String(m.content || '').length;
+    }
+    return total;
+  }
+
+  function getApiKey(provider) {
+    return provider === 'xai' ? state.xaiApiKey : state.deepseekApiKey;
+  }
+
+  function getProviderConfig(provider) {
+    return PROVIDERS[provider] || PROVIDERS.xai;
+  }
+
+  function resolveModel(conv) {
+    return conv.customModel || conv.model || '';
+  }
+
+  // =========================================================================
+  // DRAWER MANAGEMENT
+  // =========================================================================
+
+  function openDrawer(side) {
+    if (side === 'history') {
+      dom.historyDrawer.classList.add('open');
+      dom.historyOverlay.classList.add('open');
+      state.ui.isHistoryOpen = true;
+      renderConvList();
+      setTimeout(() => dom.searchInput.focus(), 300);
+    } else {
+      dom.settingsDrawer.classList.add('open');
+      dom.settingsOverlay.classList.add('open');
+      state.ui.isSettingsOpen = true;
+      syncSettingsToUI();
+    }
+  }
+
+  function closeDrawer(side) {
+    if (side === 'history') {
+      dom.historyDrawer.classList.remove('open');
+      dom.historyOverlay.classList.remove('open');
+      state.ui.isHistoryOpen = false;
+    } else {
+      dom.settingsDrawer.classList.remove('open');
+      dom.settingsOverlay.classList.remove('open');
+      state.ui.isSettingsOpen = false;
+    }
+  }
+
+  function closeAllDrawers() {
+    if (state.ui.isHistoryOpen) closeDrawer('history');
+    if (state.ui.isSettingsOpen) closeDrawer('settings');
+  }
+
+  // =========================================================================
+  // RENDER: CONVERSATION LIST
+  // =========================================================================
+
+  function renderConvList() {
+    const query = (dom.searchInput.value || '').toLowerCase().trim();
+    let list = state.conversations;
+
+    if (query) {
+      list = list.filter((c) => {
+        if (c.title.toLowerCase().includes(query)) return true;
+        return c.messages.some((m) => String(m.content || '').toLowerCase().includes(query));
+      });
+    }
+
+    list.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    if (list.length === 0) {
+      dom.convList.innerHTML = '<div class="empty-state">' + (query ? '无匹配会话' : '暂无历史会话') + '</div>';
+      return;
+    }
+
+    dom.convList.innerHTML = list
+      .map((c) => {
+        const isActive = c.id === state.currentConversationId;
+        const msgCount = c.messages.length;
+        const dateStr = formatDate(c.updatedAt);
+        const providerName = (PROVIDERS[c.provider] || PROVIDERS.xai).name;
+        return `
+        <div class="conv-item${isActive ? ' active' : ''}" data-id="${c.id}">
+          <div class="conv-item-content">
+            <div class="conv-item-title">${escapeHtml(c.title)}</div>
+            <div class="conv-item-meta">
+              <span>${providerName}</span>
+              <span>${msgCount} 条</span>
+              <span>${dateStr}</span>
+            </div>
+          </div>
+          <div class="conv-item-actions">
+            <button class="conv-item-btn" data-action="rename" data-id="${c.id}" aria-label="重命名">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+            <button class="conv-item-btn danger" data-action="delete" data-id="${c.id}" aria-label="删除">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>`;
+      })
+      .join('');
+  }
+
+  function formatDate(isoStr) {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+
+    if (diffMin < 1) return '刚刚';
+    if (diffMin < 60) return `${diffMin} 分钟前`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} 小时前`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay} 天前`;
+
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${m}/${day}`;
+  }
+
+  // =========================================================================
+  // RENDER: MESSAGES
+  // =========================================================================
+
+  function renderMessages() {
+    const conv = getCurrentConv();
+    if (!conv) {
+      dom.messagesContainer.innerHTML = '';
+      dom.welcomeScreen.classList.remove('hidden');
+      dom.messagesContainer.appendChild(dom.welcomeScreen);
+      return;
+    }
+
+    const messages = conv.messages;
+    if (messages.length === 0) {
+      dom.welcomeScreen.classList.remove('hidden');
+      dom.messagesContainer.innerHTML = '';
+      dom.messagesContainer.appendChild(dom.welcomeScreen);
+      return;
+    }
+
+    dom.welcomeScreen.classList.add('hidden');
+
+    // Diff-based update: compare existing DOM with needed messages
+    const existingItems = dom.messagesContainer.querySelectorAll('.message');
+    const existingCount = existingItems.length;
+
+    // If counts differ dramatically, full render
+    if (Math.abs(existingCount - messages.length) > 1) {
+      fullRenderMessages(messages);
+      return;
+    }
+
+    // If last message is/was streaming, update it (handles both adding and removing cursor)
+    const lastMsg = messages[messages.length - 1];
+    const lastExisting = dom.messagesContainer.querySelector('.message:last-child');
+    const hasCursor = lastExisting && lastExisting.querySelector('.streaming-cursor');
+    if (lastMsg && (lastMsg._streaming || hasCursor) && existingCount === messages.length) {
+      updateLastBubble(lastMsg);
+      return;
+    }
+
+    // Add new messages not yet rendered
+    if (messages.length > existingCount) {
+      dom.welcomeScreen.classList.add('hidden');
+      for (let i = existingCount; i < messages.length; i++) {
+        const el = createMessageElement(messages[i], i);
+        dom.messagesContainer.appendChild(el);
+      }
+    }
+  }
+
+  function fullRenderMessages(messages) {
+    // Remove only message elements, keep welcome screen
+    dom.messagesContainer.querySelectorAll('.message').forEach((el) => el.remove());
+    dom.welcomeScreen.classList.add('hidden');
+    for (let i = 0; i < messages.length; i++) {
+      const el = createMessageElement(messages[i], i);
+      dom.messagesContainer.appendChild(el);
+    }
+  }
+
+  function createMessageElement(msg, index) {
+    const div = document.createElement('div');
+    div.className = `message ${msg.role}`;
+    div.setAttribute('data-index', index);
+
+    if (msg.role === 'system-info') {
+      div.innerHTML = `<div class="message-bubble">${escapeHtml(msg.content)}</div>`;
+    } else {
+      const roleLabel = msg.role === 'user' ? 'You' : 'AI';
+      const bubbleClass = msg._streaming ? 'message-bubble streaming-cursor' : 'message-bubble';
+      div.innerHTML = `
+        <div class="message-role">${roleLabel}</div>
+        <div class="${bubbleClass}">${renderMarkdown(String(msg.content || ''))}</div>
+      `;
+    }
+
+    return div;
+  }
+
+  function updateLastBubble(msg) {
+    const items = dom.messagesContainer.querySelectorAll('.message');
+    const lastItem = items[items.length - 1];
+    if (!lastItem) return;
+    const bubble = lastItem.querySelector('.message-bubble');
+    if (!bubble) return;
+    bubble.innerHTML = renderMarkdown(String(msg.content || ''));
+    if (msg._streaming) {
+      bubble.classList.add('streaming-cursor');
+    } else {
+      bubble.classList.remove('streaming-cursor');
+    }
+  }
+
+  // =========================================================================
+  // MARKDOWN RENDERER (no external libs)
+  // =========================================================================
+
+  function renderMarkdown(text) {
+    let html = escapeHtml(text);
+
+    // Code blocks: ```lang\ncode\n```
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      const langTag = lang ? `<div style="font-size:10px;color:var(--text-tertiary);padding:4px 14px 0;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(lang)}</div>` : '';
+      return `${langTag}<pre><code>${code.trimEnd()}</code></pre>`;
+    });
+
+    // Inline code: `code`
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Bold: **text**
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+    // Italic: *text*
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // Images: ![alt](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:4px 0">');
+
+    // Links: [text](url)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // Auto-link bare URLs
+    html = html.replace(/(?<!["'>])(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+    // Headers: ### text (at line start)
+    html = html.replace(/^### (.+)$/gm, '<h4 style="font-size:15px;margin:10px 0 4px">$1</h4>');
+    html = html.replace(/^## (.+)$/gm, '<h3 style="font-size:16px;margin:12px 0 4px">$1</h3>');
+    html = html.replace(/^# (.+)$/gm, '<h2 style="font-size:17px;margin:14px 0 6px">$1</h2>');
+
+    // Blockquote: > text
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Horizontal rule: ---
+    html = html.replace(/^---$/gm, '<hr>');
+
+    // Unordered list items
+    html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+    // Ordered list items
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Wrap consecutive <li> in <ul>
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+    // Line breaks: preserve newlines as <br> except before block elements
+    html = html.replace(/\n/g, '<br>');
+
+    // Clean up: remove <br> before block elements
+    html = html.replace(/<br>\s*(<(?:pre|ul|ol|blockquote|hr|h[2-4]|li))/g, '$1');
+    html = html.replace(/(<\/(?:pre|ul|ol|blockquote|h[2-4])>)\s*<br>/g, '$1');
+
+    return html;
+  }
+
+  // =========================================================================
+  // RENDER: TOP BAR / CONTEXT
+  // =========================================================================
+
+  function updateTopBar() {
+    const conv = getCurrentConv();
+    if (!conv) {
+      dom.convTitle.textContent = '新对话';
+      dom.badgeProvider.textContent = '--';
+      dom.badgeModel.textContent = '--';
+      dom.contextStats.textContent = '';
+      return;
+    }
+
+    dom.convTitle.textContent = conv.title;
+    const pConf = getProviderConfig(conv.provider);
+    dom.badgeProvider.textContent = pConf.name;
+    dom.badgeModel.textContent = resolveModel(conv) || '未选择';
+
+    const charCount = countApproxChars(conv);
+    const msgCount = conv.messages.length;
+    dom.contextStats.textContent = `${msgCount} 条消息 · ~${charCount.toLocaleString()} 字符`;
+  }
+
+  // =========================================================================
+  // RENDER: SCROLL
+  // =========================================================================
+
+  let userScrolledUp = false;
+
+  function scrollToBottom(force) {
+    if (!force && userScrolledUp) return;
+    dom.mainContent.scrollTop = dom.mainContent.scrollHeight;
+  }
+
+  function checkUserScroll() {
+    const el = dom.mainContent;
+    const threshold = 60;
+    userScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
+  }
+
+  // =========================================================================
+  // SETTINGS SYNC
+  // =========================================================================
+
+  function syncSettingsToUI() {
+    const conv = getCurrentConv();
+    if (!conv) return;
+
+    dom.selectProvider.value = conv.provider;
+    dom.inputXaiKey.value = state.xaiApiKey;
+    dom.inputDeepseekKey.value = state.deepseekApiKey;
+    dom.inputCustomModel.value = conv.customModel || '';
+    dom.inputSystemPrompt.value = conv.systemPrompt || '';
+    dom.inputTemperature.value = conv.temperature;
+    dom.tempVal.textContent = conv.temperature;
+    dom.inputTopP.value = conv.topP;
+    dom.topPVal.textContent = conv.topP;
+    dom.inputMaxTokens.value = conv.maxTokens;
+    dom.inputStream.checked = conv.stream;
+    dom.selectToolCallLimit.value = String(conv.toolCallLimit);
+    updateToolWarning();
+
+    populateModelSelect();
+    updateProviderVisibility();
+  }
+
+  function syncSettingsFromUI() {
+    const conv = getCurrentConv();
+    if (!conv) return;
+
+    const newProvider = dom.selectProvider.value;
+    const providerChanged = newProvider !== conv.provider;
+
+    conv.provider = newProvider;
+    conv.customModel = dom.inputCustomModel.value.trim();
+    conv.systemPrompt = dom.inputSystemPrompt.value;
+    conv.temperature = parseFloat(dom.inputTemperature.value) || DEFAULTS.temperature;
+    conv.topP = parseFloat(dom.inputTopP.value) || DEFAULTS.topP;
+    conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
+    conv.stream = dom.inputStream.checked;
+    conv.toolCallLimit = parseInt(dom.selectToolCallLimit.value, 10);
+    conv.toolCallLimitMode =
+      conv.toolCallLimit === 0 ? 'disabled' : conv.toolCallLimit === -1 ? 'unlimited' : 'limited';
+
+    state.xaiApiKey = dom.inputXaiKey.value.trim();
+    state.deepseekApiKey = dom.inputDeepseekKey.value.trim();
+
+    // If provider changed, reset model
+    if (providerChanged) {
+      conv.model = '';
+      conv.customModel = '';
+      dom.selectModel.value = '';
+      dom.inputCustomModel.value = '';
+    }
+
+    updateTimestamp(conv);
+    updateToolWarning();
+    updateProviderVisibility();
+    updateTopBar();
+    debouncedSave();
+  }
+
+  function updateProviderVisibility() {
+    const provider = dom.selectProvider.value;
+    document.getElementById('groupXaiKey').style.display = provider === 'xai' ? '' : 'none';
+    document.getElementById('groupDeepseekKey').style.display = provider === 'deepseek' ? '' : 'none';
+  }
+
+  function updateToolWarning() {
+    const val = parseInt(dom.selectToolCallLimit.value, 10);
+    dom.toolWarning.style.display = val === -1 ? '' : 'none';
+  }
+
+  // =========================================================================
+  // MODEL MANAGEMENT
+  // =========================================================================
+
+  function populateModelSelect() {
+    const conv = getCurrentConv();
+    const provider = conv ? conv.provider : 'xai';
+    const models = state.models[provider] || [];
+
+    dom.selectModel.innerHTML = '';
+
+    if (models.length === 0) {
+      dom.selectModel.innerHTML = '<option value="">-- 点击刷新获取模型 --</option>';
+      dom.modelHint.textContent = '尚未获取模型列表';
+      return;
+    }
+
+    dom.selectModel.innerHTML =
+      '<option value="">-- 选择模型 --</option>' +
+      models
+        .map((m) => {
+          const selected = conv && conv.model === m.id ? ' selected' : '';
+          return `<option value="${escapeHtml(m.id)}"${selected}>${escapeHtml(m.id)}</option>`;
+        })
+        .join('');
+
+    dom.modelHint.textContent = `共 ${models.length} 个可用模型，最后更新：${new Date().toLocaleTimeString()}`;
+  }
+
+  async function refreshModels() {
+    const provider = dom.selectProvider.value;
+    const apiKey = getApiKey(provider);
+
+    if (!apiKey) {
+      showToast('请先填写 API Key。', 'error');
+      return;
+    }
+
+    const pConf = getProviderConfig(provider);
+    dom.btnRefreshModels.textContent = '获取中…';
+    dom.btnRefreshModels.disabled = true;
+
+    try {
+      const resp = await fetch(pConf.modelsUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!resp.ok) {
+        if (resp.status === 401) throw new Error(ERR_MSGS.unauthorized);
+        if (resp.status === 429) throw new Error(ERR_MSGS.rateLimited);
+        throw new Error(`获取模型失败 (${resp.status})`);
+      }
+
+      const data = await resp.json();
+      const rawModels = data.data || data.models || [];
+
+      state.models[provider] = rawModels.map((m) => ({
+        id: m.id || m.name || String(m),
+        object: m.object || 'model',
+      }));
+
+      saveToStorage();
+      populateModelSelect();
+      showToast(`成功获取 ${state.models[provider].length} 个模型`, 'success');
+    } catch (e) {
+      showToast(e.message || '获取模型列表失败', 'error');
+    } finally {
+      dom.btnRefreshModels.textContent = '刷新模型列表';
+      dom.btnRefreshModels.disabled = false;
+    }
+  }
+
+  // =========================================================================
+  // CHAT: SEND MESSAGE
+  // =========================================================================
+
+  async function sendMessage() {
+    const text = dom.inputMessage.value.trim();
+    if (!text) return;
+
+    let conv = getCurrentConv();
+    if (!conv) {
+      conv = createConversation();
+      state.conversations.push(conv);
+      state.currentConversationId = conv.id;
+    }
+
+    // Validate
+    const apiKey = getApiKey(conv.provider);
+    if (!apiKey) {
+      showToast(ERR_MSGS.noApiKey, 'error');
+      openDrawer('settings');
+      return;
+    }
+
+    const model = resolveModel(conv);
+    if (!model) {
+      showToast(ERR_MSGS.noModel, 'error');
+      openDrawer('settings');
+      return;
+    }
+
+    // Validate params
+    if (conv.temperature < 0 || conv.temperature > 2) {
+      showToast('Temperature 必须在 0 到 2 之间。', 'error');
+      return;
+    }
+    if (conv.topP < 0 || conv.topP > 1) {
+      showToast('Top P 必须在 0 到 1 之间。', 'error');
+      return;
+    }
+    if (!Number.isInteger(conv.maxTokens) || conv.maxTokens <= 0) {
+      showToast('Max Tokens 必须为正整数。', 'error');
+      return;
+    }
+
+    // Tool call check
+    if (conv.toolCallLimit > 0 || conv.toolCallLimit === -1) {
+      showToast(ERR_MSGS.toolNotImplemented, 'warning');
+    }
+
+    // Add user message
+    conv.messages.push({ role: 'user', content: text });
+    updateTimestamp(conv);
+    autoTitle(conv);
+
+    dom.inputMessage.value = '';
+    dom.inputMessage.style.height = 'auto';
+
+    renderMessages();
+    updateTopBar();
+    scrollToBottom(true);
+    updateSendUI();
+
+    // Build messages array
+    const messages = [];
+    if (conv.systemPrompt) {
+      messages.push({ role: 'system', content: conv.systemPrompt });
+    }
+    for (const m of conv.messages) {
+      messages.push({ role: m.role, content: m.content });
+    }
+
+    // Add placeholder assistant message for streaming
+    const assistantMsg = { role: 'assistant', content: '', _streaming: true };
+    conv.messages.push(assistantMsg);
+    renderMessages();
+    scrollToBottom(true);
+
+    // Create abort controller
+    state.abortController = new AbortController();
+    state.isStreaming = true;
+    updateSendUI();
+
+    const pConf = getProviderConfig(conv.provider);
+
+    try {
+      const resp = await fetch(pConf.apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          temperature: conv.temperature,
+          top_p: conv.topP,
+          max_tokens: conv.maxTokens,
+          stream: conv.stream,
+        }),
+        signal: state.abortController.signal,
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        if (resp.status === 401) throw new Error(ERR_MSGS.unauthorized);
+        if (resp.status === 429) throw new Error(ERR_MSGS.rateLimited);
+        if (resp.status === 400 && errText.includes('model')) throw new Error(ERR_MSGS.modelNotFound);
+        if (resp.status === 402) throw new Error(ERR_MSGS.insufficientBalance);
+        if (resp.status === 413) throw new Error(ERR_MSGS.contextTooLong);
+        throw new Error(`${ERR_MSGS.serverError} (${resp.status})`);
+      }
+
+      if (conv.stream) {
+        await processStream(resp, assistantMsg, conv);
+      } else {
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        assistantMsg.content = content;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        assistantMsg.content += '\n\n[已停止]';
+        showToast(ERR_MSGS.userAborted, 'info');
+      } else if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
+        conv.messages.pop();
+        showToast(ERR_MSGS.cors, 'error', 6000);
+      } else {
+        conv.messages.pop();
+        showToast(e.message || ERR_MSGS.network, 'error');
+      }
+      renderMessages();
+    } finally {
+      assistantMsg._streaming = false;
+      state.isStreaming = false;
+      state.abortController = null;
+      updateSendUI();
+
+      // Remove empty assistant messages (no content and no error appended)
+      if (assistantMsg.content === '' && conv.messages.includes(assistantMsg)) {
+        conv.messages.pop();
+      }
+
+      updateTimestamp(conv);
+      updateTopBar();
+      renderMessages();
+      scrollToBottom(true);
+      debouncedSave();
+    }
+  }
+
+  // =========================================================================
+  // STREAM PROCESSING
+  // =========================================================================
+
+  async function processStream(resp, assistantMsg, conv) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const throttledRender = throttle(() => {
+      renderMessages();
+      scrollToBottom(false);
+    }, 50);
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+          const dataStr = trimmed.slice(5).trim();
+          if (dataStr === '[DONE]') {
+            assistantMsg._streaming = false;
+            throttledRender();
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              assistantMsg.content += delta;
+              throttledRender();
+            }
+          } catch (_) {
+            // Skip unparseable chunks
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data:') && trimmed !== 'data:[DONE]') {
+          try {
+            const parsed = JSON.parse(trimmed.slice(5).trim());
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) assistantMsg.content += delta;
+          } catch (_) { /* skip */ }
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        throw new Error(ERR_MSGS.streamParseError);
+      }
+      throw e;
+    } finally {
+      reader.releaseLock();
+      assistantMsg._streaming = false;
+    }
+  }
+
+  // =========================================================================
+  // STOP REQUEST
+  // =========================================================================
+
+  function stopCurrentRequest() {
+    if (state.abortController) {
+      state.abortController.abort();
+      state.abortController = null;
+      state.isStreaming = false;
+      updateSendUI();
+    }
+  }
+
+  function isAbortRequested() {
+    return state.abortController ? state.abortController.signal.aborted : false;
+  }
+
+  // =========================================================================
+  // TOOL CALL STUB
+  // =========================================================================
+
+  function getToolCallSettings() {
+    const conv = getCurrentConv();
+    if (!conv) return { limit: 0, mode: 'disabled' };
+    return {
+      limit: conv.toolCallLimit,
+      mode: conv.toolCallLimitMode,
+    };
+  }
+
+  async function runToolLoop(messages, assistantMsg) {
+    // TODO: 实现工具调用循环
+    // 1. 检查 assistant 消息中的 tool_calls
+    // 2. 根据 toolCallLimitMode 和 toolCallLimit 控制循环次数
+    // 3. 执行工具并将结果追加到消息数组
+    // 4. 将工具结果发送回 API 并接收新回复
+    // 5. 循环直到无更多 tool_calls 或达到上限
+    throw new Error(ERR_MSGS.toolNotImplemented);
+  }
+
+  // =========================================================================
+  // CONVERSATION ACTIONS
+  // =========================================================================
+
+  function newConversation() {
+    const conv = createConversation();
+    state.conversations.push(conv);
+    state.currentConversationId = conv.id;
+    renderAll();
+    saveToStorage();
+    dom.inputMessage.focus();
+  }
+
+  function switchConversation(id) {
+    const conv = state.conversations.find((c) => c.id === id);
+    if (!conv) return;
+    state.currentConversationId = id;
+    closeDrawer('history');
+    renderAll();
+    scrollToBottom(true);
+    debouncedSave();
+  }
+
+  function clearCurrentConversation() {
+    const conv = getCurrentConv();
+    if (!conv) return;
+    showConfirm('确认清空当前会话的所有消息？（会话参数保留）', () => {
+      conv.messages = [];
+      conv.title = '新对话';
+      updateTimestamp(conv);
+      hideConfirm();
+      renderAll();
+      saveToStorage();
+      showToast('会话已清空', 'success');
+    });
+  }
+
+  function deleteLastRound() {
+    const conv = getCurrentConv();
+    if (!conv || conv.messages.length === 0) return;
+
+    // Find last user message and remove it + everything after
+    let lastUserIdx = -1;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+
+    if (lastUserIdx === -1) return;
+
+    conv.messages.splice(lastUserIdx);
+    if (conv.messages.length === 0) conv.title = '新对话';
+    updateTimestamp(conv);
+    renderAll();
+    saveToStorage();
+    showToast('已删除最后一轮问答', 'success');
+  }
+
+  function copyLastAssistantReply() {
+    const conv = getCurrentConv();
+    if (!conv) return;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'assistant') {
+        const text = conv.messages[i].content;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板', 'success'));
+        }
+        return;
+      }
+    }
+    showToast('没有可复制的 AI 回复', 'warning');
+  }
+
+  function deleteConversation(id) {
+    showConfirm('确认删除该会话？此操作不可恢复。', () => {
+      state.conversations = state.conversations.filter((c) => c.id !== id);
+      if (state.currentConversationId === id) {
+        state.currentConversationId = state.conversations.length > 0 ? state.conversations[0].id : null;
+      }
+      hideConfirm();
+      renderAll();
+      saveToStorage();
+      showToast('会话已删除', 'success');
+    });
+  }
+
+  function clearAllConversations() {
+    if (state.conversations.length === 0) return;
+    showConfirm(`确认删除全部 ${state.conversations.length} 个会话？此操作不可恢复。`, () => {
+      state.conversations = [];
+      state.currentConversationId = null;
+      hideConfirm();
+      renderAll();
+      saveToStorage();
+      showToast('全部会话已清空', 'success');
+    });
+  }
+
+  function renameConversation(id) {
+    const conv = state.conversations.find((c) => c.id === id);
+    if (!conv) return;
+    showRenameDialog(id, conv.title);
+  }
+
+  function doRename() {
+    const id = state.pendingRenameId;
+    const newTitle = dom.renameInput.value.trim();
+    if (!id || !newTitle) {
+      hideRenameDialog();
+      return;
+    }
+    const conv = state.conversations.find((c) => c.id === id);
+    if (conv) {
+      conv.title = newTitle;
+      updateTimestamp(conv);
+      renderAll();
+      saveToStorage();
+    }
+    hideRenameDialog();
+  }
+
+  // =========================================================================
+  // IMPORT / EXPORT
+  // =========================================================================
+
+  function exportConversationMarkdown() {
+    const conv = getCurrentConv();
+    if (!conv) {
+      showToast('无当前会话可导出', 'warning');
+      return;
+    }
+
+    const pConf = getProviderConfig(conv.provider);
+    const model = resolveModel(conv);
+    let md = `# ${conv.title}\n\n`;
+    md += `- 服务商：${pConf.name}\n`;
+    md += `- 模型：${model || '未选择'}\n`;
+    md += `- 时间：${conv.createdAt}\n`;
+    if (conv.systemPrompt) {
+      md += `- System Prompt：${conv.systemPrompt}\n`;
+    }
+    md += `\n---\n\n`;
+
+    for (const m of conv.messages) {
+      const role = m.role === 'user' ? '**You**' : '**AI**';
+      md += `### ${role}\n\n${m.content}\n\n`;
+    }
+
+    downloadFile(`${conv.title}.md`, md, 'text/markdown');
+    showToast('Markdown 导出成功', 'success');
+  }
+
+  function exportAllJSON() {
+    if (state.conversations.length === 0) {
+      showToast('无会话可导出', 'warning');
+      return;
+    }
+
+    // Strip API keys from export
+    const data = {
+      version: STORAGE_VERSION,
+      exportedAt: nowISO(),
+      conversations: state.conversations.map((c) => ({ ...c })),
+    };
+
+    downloadFile(`ai-chat-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
+    showToast('全部会话 JSON 导出成功', 'success');
+  }
+
+  function importJSON(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        if (!data.conversations || !Array.isArray(data.conversations)) {
+          throw new Error('格式无效：缺少 conversations 数组');
+        }
+
+        let imported = 0;
+        const existingIds = new Set(state.conversations.map((c) => c.id));
+
+        for (const c of data.conversations) {
+          if (!c.id || !c.messages || !Array.isArray(c.messages)) continue;
+
+          // Avoid overwriting existing IDs
+          if (existingIds.has(c.id)) {
+            c.id = generateId();
+          }
+          existingIds.add(c.id);
+
+          // Ensure all fields exist
+          c.title = c.title || '导入的对话';
+          c.createdAt = c.createdAt || nowISO();
+          c.updatedAt = c.updatedAt || nowISO();
+          c.provider = c.provider || 'xai';
+          c.model = c.model || '';
+          c.customModel = c.customModel || '';
+          c.systemPrompt = c.systemPrompt || '';
+          c.temperature = c.temperature ?? DEFAULTS.temperature;
+          c.topP = c.topP ?? DEFAULTS.topP;
+          c.maxTokens = c.maxTokens ?? DEFAULTS.maxTokens;
+          c.stream = c.stream ?? DEFAULTS.stream;
+          c.toolCallLimit = c.toolCallLimit ?? DEFAULTS.toolCallLimit;
+          c.toolCallLimitMode = c.toolCallLimitMode || 'disabled';
+          c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
+
+          state.conversations.push(c);
+          imported++;
+        }
+
+        if (imported === 0) {
+          throw new Error('未找到有效会话数据');
+        }
+
+        saveToStorage();
+        renderAll();
+        showToast(`成功导入 ${imported} 个会话`, 'success');
+      } catch (e) {
+        showToast(e.message || ERR_MSGS.importFailed, 'error');
+      }
+    };
+    reader.onerror = function () {
+      showToast(ERR_MSGS.importFailed, 'error');
+    };
+    reader.readAsText(file);
+  }
+
+  function downloadFile(filename, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // =========================================================================
+  // UPDATE UI
+  // =========================================================================
+
+  function updateSendUI() {
+    if (state.isStreaming) {
+      dom.btnSend.style.display = 'none';
+      dom.btnStop.style.display = 'flex';
+      dom.inputMessage.disabled = true;
+    } else {
+      dom.btnSend.style.display = 'flex';
+      dom.btnStop.style.display = 'none';
+      dom.inputMessage.disabled = false;
+    }
+  }
+
+  function renderAll() {
+    renderMessages();
+    updateTopBar();
+    renderConvList();
+    if (state.ui.isSettingsOpen) {
+      syncSettingsToUI();
+    }
+  }
+
+  // =========================================================================
+  // EVENT HANDLERS
+  // =========================================================================
+
+  function setupEvents() {
+    // History drawer
+    dom.btnToggleHistory.addEventListener('click', () => openDrawer('history'));
+    dom.btnCloseHistory.addEventListener('click', () => closeDrawer('history'));
+    dom.historyOverlay.addEventListener('click', () => closeDrawer('history'));
+
+    // Settings drawer
+    dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
+    dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
+    dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
+
+    // Top bar title click → rename
+    dom.topBarInfo.addEventListener('click', () => {
+      const conv = getCurrentConv();
+      if (conv) renameConversation(conv.id);
+    });
+
+    // Conversation list clicks
+    dom.convList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      const item = e.target.closest('.conv-item');
+
+      if (btn) {
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+        if (action === 'rename') renameConversation(id);
+        if (action === 'delete') deleteConversation(id);
+        return;
+      }
+
+      if (item) {
+        switchConversation(item.dataset.id);
+      }
+    });
+
+    // Search
+    dom.searchInput.addEventListener('input', () => renderConvList());
+
+    // Settings changes - auto save
+    dom.selectProvider.addEventListener('change', () => syncSettingsFromUI());
+    dom.inputXaiKey.addEventListener('input', () => { state.xaiApiKey = dom.inputXaiKey.value.trim(); debouncedSave(); });
+    dom.inputDeepseekKey.addEventListener('input', () => { state.deepseekApiKey = dom.inputDeepseekKey.value.trim(); debouncedSave(); });
+    dom.selectModel.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.model = dom.selectModel.value;
+        updateTimestamp(conv);
+        updateTopBar();
+        debouncedSave();
+      }
+    });
+    dom.inputCustomModel.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.customModel = dom.inputCustomModel.value.trim();
+        updateTimestamp(conv);
+        updateTopBar();
+        debouncedSave();
+      }
+    });
+    dom.inputSystemPrompt.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.systemPrompt = dom.inputSystemPrompt.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.inputTemperature.addEventListener('input', () => {
+      dom.tempVal.textContent = dom.inputTemperature.value;
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.temperature = parseFloat(dom.inputTemperature.value);
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.inputTopP.addEventListener('input', () => {
+      dom.topPVal.textContent = dom.inputTopP.value;
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.topP = parseFloat(dom.inputTopP.value);
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.inputMaxTokens.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.inputStream.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.stream = dom.inputStream.checked;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.selectToolCallLimit.addEventListener('change', () => {
+      updateToolWarning();
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.toolCallLimit = parseInt(dom.selectToolCallLimit.value, 10);
+        conv.toolCallLimitMode =
+          conv.toolCallLimit === 0 ? 'disabled' : conv.toolCallLimit === -1 ? 'unlimited' : 'limited';
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+
+    dom.btnRefreshModels.addEventListener('click', () => refreshModels());
+
+    // Send / Stop
+    dom.btnSend.addEventListener('click', () => sendMessage());
+    dom.btnStop.addEventListener('click', () => stopCurrentRequest());
+    dom.inputMessage.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!state.isStreaming) sendMessage();
+      }
+    });
+
+    // Auto-resize textarea
+    dom.inputMessage.addEventListener('input', () => {
+      dom.inputMessage.style.height = 'auto';
+      dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
+    });
+
+    // Scroll tracking
+    dom.mainContent.addEventListener('scroll', () => checkUserScroll(), { passive: true });
+
+    // Quick actions
+    $('#btnQuickNew').addEventListener('click', () => newConversation());
+    $('#btnQuickClear').addEventListener('click', () => clearCurrentConversation());
+    $('#btnQuickDeleteLast').addEventListener('click', () => deleteLastRound());
+    $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
+    $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
+
+    // Export / Import / Clear all
+    dom.btnExportAll.addEventListener('click', () => exportAllJSON());
+    dom.btnImport.addEventListener('click', () => dom.importFileInput.click());
+    dom.btnClearAll.addEventListener('click', () => clearAllConversations());
+    dom.importFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importJSON(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
+    // Dialog
+    dom.dialogConfirm.addEventListener('click', () => {
+      if (state.pendingConfirmAction) state.pendingConfirmAction();
+    });
+    dom.dialogCancel.addEventListener('click', () => hideConfirm());
+
+    // Rename dialog
+    dom.renameConfirm.addEventListener('click', () => doRename());
+    dom.renameCancel.addEventListener('click', () => hideRenameDialog());
+    dom.renameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doRename();
+      }
+    });
+
+    // Password visibility toggle
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-toggle-vis');
+      if (!btn) return;
+      const targetId = btn.dataset.target;
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    // Close drawers on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllDrawers();
+    });
+  }
+
+  // =========================================================================
+  // INIT
+  // =========================================================================
+
+  function init() {
+    cacheDom();
+    loadFromStorage();
+
+    // Ensure at least one conversation exists
+    if (state.conversations.length === 0) {
+      const conv = createConversation();
+      state.conversations.push(conv);
+      state.currentConversationId = conv.id;
+    } else if (!state.currentConversationId || !state.conversations.find((c) => c.id === state.currentConversationId)) {
+      state.currentConversationId = state.conversations[0].id;
+    }
+
+    setupEvents();
+    renderAll();
+    updateSendUI();
+
+    // Focus input on load
+    setTimeout(() => dom.inputMessage.focus(), 300);
+
+    // Restore API key inputs
+    dom.inputXaiKey.value = state.xaiApiKey;
+    dom.inputDeepseekKey.value = state.deepseekApiKey;
+
+    saveToStorage();
+  }
+
+  // Boot
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Expose for debugging / external use
+  window.__aiChat = {
+    state,
+    getToolCallSettings,
+    runToolLoop,
+    stopCurrentRequest,
+    isAbortRequested,
+    showToast,
+    refreshModels,
+    newConversation,
+    exportConversationMarkdown,
+    exportAllJSON,
+    importJSON,
+  };
+})();
+
+  </script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}</script>
+
+  <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){})}</script>
+</body>
+</html>
