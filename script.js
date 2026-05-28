@@ -1118,7 +1118,7 @@
 
     switch (action) {
       case 'regenerate':
-        // Remove last assistant response first
+        // Remove last assistant response
         if (lastMsg && lastMsg.role === 'assistant') conv.messages.pop();
         if (prompts.regenerate) {
           sendText = prompts.regenerate;
@@ -1128,27 +1128,24 @@
           if (!lastUser) return;
           sendText = lastUser.content;
         }
-        conv.messages.push({ role: 'user', content: sendText });
         break;
 
       case 'continue':
         sendText = prompts.continue;
-        conv.messages.push({ role: 'user', content: sendText });
         break;
 
       case 'summarize':
         sendText = prompts.summarize;
-        conv.messages.push({ role: 'user', content: sendText });
         break;
 
       case 'elaborate':
         sendText = prompts.elaborate;
-        conv.messages.push({ role: 'user', content: sendText });
         break;
     }
 
     updateTimestamp(conv);
     renderAll();
+    // sendMessageContent -> sendMessage handles pushing the user message
     sendMessageContent(sendText);
   }
 
