@@ -287,10 +287,17 @@
           </svg>
         </button>
       </div>
-      <div class="security-notice">
-        API Key 保存在当前浏览器 localStorage。请勿在公共设备上使用。如需更高安全性，可升级为本地代理版本。
+      <div class="security-pull" id="securityPull">
+        <div class="pull-indicator"></div>
       </div>
     </footer>
+
+    <!-- Swipe-reveal security panel -->
+    <div class="security-panel" id="securityPanel">
+      <div class="security-panel-text">
+        API Key 保存在当前浏览器 localStorage。请勿在公共设备上使用。如需更高安全性，可升级为本地代理版本。
+      </div>
+    </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
