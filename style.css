@@ -915,12 +915,61 @@ a {
   z-index: 1;
 }
 
+.welcome-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 340px);
+  margin: 20px 0 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-step {
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.welcome-step.done {
+  border-color: rgba(48, 209, 88, 0.38);
+  background: rgba(48, 209, 88, 0.08);
+  color: var(--success);
+}
+
+.welcome-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
 .welcome-hint {
-  margin-top: 16px;
+  margin-top: 4px;
   font-size: 12px;
   color: var(--text-tertiary);
   position: relative;
   z-index: 1;
+}
+
+.welcome-security {
+  width: min(100%, 360px);
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 214, 10, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 214, 10, 0.06);
+  color: rgba(255, 232, 120, 0.78);
+  font-size: 11px !important;
+  line-height: 1.5;
 }
 
 /* --- Scene State Panel --- */

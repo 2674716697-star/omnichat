@@ -318,8 +318,17 @@
             </svg>
           </div>
           <h3>OmniChat</h3>
-          <p>支持 xAI / Grok 与 DeepSeek 多模型聊天</p>
-          <p class="welcome-hint">请在设置中填写 API Key 并选择模型后开始对话</p>
+          <p>支持 OpenAI、xAI / Grok、DeepSeek、OpenRouter 等多服务商聊天</p>
+          <div class="welcome-status" id="welcomeStatus">
+            <div class="welcome-step" id="welcomeApiStep">1. 填写 API Key</div>
+            <div class="welcome-step" id="welcomeModelStep">2. 选择或输入模型</div>
+          </div>
+          <div class="welcome-actions">
+            <button class="btn btn-primary" id="btnWelcomeSetup">开始配置</button>
+            <button class="btn btn-secondary" id="btnWelcomeHistory">查看历史</button>
+          </div>
+          <p class="welcome-hint" id="welcomeHint">完成配置后就可以直接输入消息开始对话</p>
+          <p class="welcome-security">API Key 只保存在当前浏览器 localStorage。请勿在公共设备上使用。</p>
         </div>
       </div>
     </main>
@@ -393,7 +402,7 @@
   <script>
   if ('serviceWorker' in navigator) {
     var restartPending = false;
-    navigator.serviceWorker.register('sw.js?v=3').then(function(reg) {
+    navigator.serviceWorker.register('sw.js?v=4').then(function(reg) {
       // Check for updates on navigation
       reg.addEventListener('updatefound', function() {
         var newWorker = reg.installing;

@@ -3,7 +3,7 @@
    Network-first HTML, cache-first assets, NEVER caches sw.js.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-v3';
+const CACHE_NAME = 'omnichat-v4';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());

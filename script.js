@@ -198,6 +198,12 @@
     dom.mainContent = $('#mainContent');
     dom.messagesContainer = $('#messagesContainer');
     dom.welcomeScreen = $('#welcomeScreen');
+    dom.welcomeStatus = $('#welcomeStatus');
+    dom.welcomeApiStep = $('#welcomeApiStep');
+    dom.welcomeModelStep = $('#welcomeModelStep');
+    dom.welcomeHint = $('#welcomeHint');
+    dom.btnWelcomeSetup = $('#btnWelcomeSetup');
+    dom.btnWelcomeHistory = $('#btnWelcomeHistory');
 
     dom.bottomBar = $('#bottomBar');
     dom.inputMessage = $('#inputMessage');
@@ -883,6 +889,34 @@
     dom.contextStats.textContent = `${msgCount} 条消息 · ~${charCount.toLocaleString()} 字符`;
   }
 
+  function updateWelcomeUI() {
+    const conv = getCurrentConv();
+    if (!conv || !dom.welcomeStatus) return;
+
+    const hasApiKey = !!getApiKey(conv.provider);
+    const hasModel = !!resolveModel(conv);
+    const pConf = getProviderConfig(conv.provider);
+
+    dom.welcomeApiStep.classList.toggle('done', hasApiKey);
+    dom.welcomeModelStep.classList.toggle('done', hasModel);
+    dom.welcomeApiStep.textContent = hasApiKey
+      ? `1. ${pConf.name} API Key 已就绪`
+      : `1. 填写 ${pConf.name} API Key`;
+    dom.welcomeModelStep.textContent = hasModel
+      ? `2. 模型已选择：${resolveModel(conv)}`
+      : '2. 选择或输入模型';
+
+    if (hasApiKey && hasModel) {
+      dom.welcomeHint.textContent = '配置已完成，直接在下方输入消息开始对话';
+      dom.btnWelcomeSetup.textContent = '调整设置';
+      dom.inputMessage.placeholder = '输入消息...';
+    } else {
+      dom.welcomeHint.textContent = '完成配置后就可以直接输入消息开始对话';
+      dom.btnWelcomeSetup.textContent = hasApiKey ? '选择模型' : '开始配置';
+      dom.inputMessage.placeholder = '先完成模型配置，再输入消息...';
+    }
+  }
+
   // =========================================================================
   // RENDER: SCROLL
   // =========================================================================
@@ -978,6 +1012,7 @@
     updateTimestamp(conv);
     updateToolWarning();
     updateTopBar();
+    updateWelcomeUI();
     debouncedSave();
   }
 
@@ -1714,7 +1749,7 @@
 
   function clearAllConversations() {
     if (state.conversations.length === 0) return;
-    showConfirm(`确认删除全部 ${state.conversations.length} 个会话？此操作不可恢复。`, () => {
+    showConfirm(`确认删除全部 ${state.conversations.length} 个会话？<br><br>此操作不可恢复。建议先导出全部 JSON 备份。`, () => {
       state.conversations = [];
       state.currentConversationId = null;
       hideConfirm();
@@ -1730,7 +1765,7 @@
       showToast('没有已归档的会话', 'info');
       return;
     }
-    showConfirm(`确认删除全部 ${archived.length} 个已归档会话？此操作不可恢复。`, () => {
+    showConfirm(`确认删除全部 ${archived.length} 个已归档会话？<br><br>此操作不可恢复。建议先导出全部 JSON 备份。`, () => {
       state.conversations = state.conversations.filter((c) => !c.archived);
       hideConfirm();
       renderAll();
@@ -1906,6 +1941,7 @@
   function renderAll() {
     renderMessages();
     updateTopBar();
+    updateWelcomeUI();
     renderConvList();
     updateScenePanelUI();
     if (state.ui.isSettingsOpen) {
@@ -1935,6 +1971,14 @@
     });
     dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
+
+    // Welcome actions
+    if (dom.btnWelcomeSetup) {
+      dom.btnWelcomeSetup.addEventListener('click', () => openDrawer('settings'));
+    }
+    if (dom.btnWelcomeHistory) {
+      dom.btnWelcomeHistory.addEventListener('click', () => openDrawer('history'));
+    }
 
     // Top bar title click → rename
     dom.topBarInfo.addEventListener('click', () => {
@@ -1969,6 +2013,7 @@
     dom.inputApiKey.addEventListener('input', () => {
       const provider = dom.selectProvider.value;
       state.apiKeys[provider] = dom.inputApiKey.value.trim();
+      updateWelcomeUI();
       debouncedSave();
     });
     dom.selectModel.addEventListener('change', () => {
@@ -1977,6 +2022,7 @@
         conv.model = dom.selectModel.value;
         updateTimestamp(conv);
         updateTopBar();
+        updateWelcomeUI();
         debouncedSave();
       }
     });
@@ -1986,6 +2032,7 @@
         conv.customModel = dom.inputCustomModel.value.trim();
         updateTimestamp(conv);
         updateTopBar();
+        updateWelcomeUI();
         debouncedSave();
       }
     });
