@@ -229,6 +229,30 @@
           </label>
         </div>
 
+        <!-- Writing Scene Mode -->
+        <div class="setting-group setting-row">
+          <label class="setting-label">
+            写作场景模式
+            <span class="setting-hint" style="display:block;font-weight:400">追踪人物精神/身体状态和情节，独立存储于上下文记忆</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="inputSceneMode">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Auto Compress -->
+        <div class="setting-group setting-row">
+          <label class="setting-label">
+            自动压缩上下文
+            <span class="setting-hint" style="display:block;font-weight:400">对话过长时自动总结旧消息，保持上下文窗口可控</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="inputAutoCompress">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
         <!-- Message Actions -->
         <div class="setting-group">
           <label class="setting-label">消息操作按钮（可自定义提示词）</label>
@@ -262,6 +286,30 @@
 
     <!-- Main Chat Area -->
     <main class="main-content" id="mainContent">
+      <!-- Scene State Panel -->
+      <div class="scene-panel" id="scenePanel" style="display:none">
+        <div class="scene-panel-header" id="scenePanelToggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span>场景记忆</span>
+          <span class="scene-panel-arrow">▾</span>
+        </div>
+        <div class="scene-panel-body" id="scenePanelBody">
+          <div class="scene-field">
+            <label>精神状态</label>
+            <textarea class="input scene-input" id="sceneMental" rows="2" placeholder="人物当前的精神状态…"></textarea>
+          </div>
+          <div class="scene-field">
+            <label>身体状态</label>
+            <textarea class="input scene-input" id="scenePhysical" rows="2" placeholder="人物当前的身体状态…"></textarea>
+          </div>
+          <div class="scene-field">
+            <label>故事情节</label>
+            <textarea class="input scene-input" id="scenePlot" rows="2" placeholder="当前的情节进展…"></textarea>
+          </div>
+          <div class="scene-panel-hint">AI 会自动更新场景状态。也可手动编辑。独立于聊天上下文存储。</div>
+        </div>
+      </div>
+
       <div class="messages-container" id="messagesContainer">
         <div class="welcome-screen" id="welcomeScreen">
           <div class="welcome-icon">

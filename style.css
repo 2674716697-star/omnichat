@@ -880,6 +880,92 @@ a {
   color: var(--text-tertiary);
 }
 
+/* --- Scene State Panel --- */
+.scene-panel {
+  margin: 8px 12px;
+  border: 0.5px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(255, 215, 0, 0.04);
+  overflow: hidden;
+  animation: sceneIn 300ms var(--spring);
+}
+
+@keyframes sceneIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scene-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #c0a050;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.scene-panel-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 200ms var(--spring);
+}
+
+.scene-panel.collapsed .scene-panel-arrow {
+  transform: rotate(-90deg);
+}
+
+.scene-panel-body {
+  padding: 0 14px 12px;
+  transition: max-height 300ms var(--spring), opacity 200ms ease;
+  max-height: 500px;
+  opacity: 1;
+}
+
+.scene-panel.collapsed .scene-panel-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.scene-field {
+  margin-bottom: 8px;
+}
+
+.scene-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #a08840;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scene-input {
+  font-size: 13px !important;
+  padding: 7px 10px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  resize: vertical;
+}
+
+.scene-input:focus {
+  border-color: rgba(255, 215, 0, 0.3) !important;
+}
+
+.scene-panel-hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* --- Messages --- */
 .message {
   display: flex;

@@ -186,6 +186,14 @@
     dom.inputActionContinue = $('#inputActionContinue');
     dom.inputActionSummarize = $('#inputActionSummarize');
     dom.inputActionElaborate = $('#inputActionElaborate');
+    dom.inputSceneMode = $('#inputSceneMode');
+    dom.inputAutoCompress = $('#inputAutoCompress');
+    dom.scenePanel = $('#scenePanel');
+    dom.scenePanelToggle = $('#scenePanelToggle');
+    dom.scenePanelBody = $('#scenePanelBody');
+    dom.sceneMental = $('#sceneMental');
+    dom.scenePhysical = $('#scenePhysical');
+    dom.scenePlot = $('#scenePlot');
     dom.toolWarning = $('#toolWarning');
 
     dom.mainContent = $('#mainContent');
@@ -354,6 +362,9 @@
       enableCaching: DEFAULTS.enableCaching,
       preciseMode: DEFAULTS.preciseMode,
       archived: false,
+      sceneMode: false,
+      sceneState: { mental: '', physical: '', plot: '' },
+      autoCompress: false,
       messages: [],
     };
   }
@@ -883,6 +894,8 @@
     dom.inputStream.checked = conv.stream;
     dom.inputCaching.checked = conv.enableCaching !== false;
     dom.inputPreciseMode.checked = !!conv.preciseMode;
+    dom.inputSceneMode.checked = !!conv.sceneMode;
+    dom.inputAutoCompress.checked = !!conv.autoCompress;
     dom.selectToolCallLimit.value = String(conv.toolCallLimit);
     updateToolWarning();
     updateApiKeyField();
@@ -910,6 +923,8 @@
     conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
     conv.stream = dom.inputStream.checked;
     conv.enableCaching = dom.inputCaching.checked;
+    conv.sceneMode = dom.inputSceneMode.checked;
+    conv.autoCompress = dom.inputAutoCompress.checked;
     const prevPrecise = conv.preciseMode;
     conv.preciseMode = dom.inputPreciseMode.checked;
     if (conv.preciseMode && !prevPrecise) {
@@ -1041,6 +1056,22 @@
   function removeBgImage() {
     setChatBackground('none', '');
     showToast('背景已移除', 'info');
+  }
+
+  function updateScenePanelUI() {
+    const conv = getCurrentConv();
+    if (!conv) {
+      dom.scenePanel.style.display = 'none';
+      return;
+    }
+    const show = conv.sceneMode;
+    dom.scenePanel.style.display = show ? '' : 'none';
+    if (show) {
+      const ss = conv.sceneState || {};
+      dom.sceneMental.value = ss.mental || '';
+      dom.scenePhysical.value = ss.physical || '';
+      dom.scenePlot.value = ss.plot || '';
+    }
   }
 
   function handleMessageAction(action, msgIndex) {
@@ -1259,8 +1290,27 @@
       effectiveSystemPrompt = SYSTEM_PROMPT_DEFAULT;
     }
 
-    if (effectiveSystemPrompt) {
-      const sysMsg = { role: 'system', content: effectiveSystemPrompt };
+    // Build full system prompt with scene state if enabled
+    let fullSystemPrompt = effectiveSystemPrompt;
+    if (conv.sceneMode) {
+      const ss = conv.sceneState || {};
+      const sceneBlock = [
+        '\n\n[写作场景记忆 — 独立存储，不随上下文压缩]',
+        ss.mental ? '当前精神状态：' + ss.mental : '',
+        ss.physical ? '当前身体状态：' + ss.physical : '',
+        ss.plot ? '当前故事情节：' + ss.plot : '',
+        '\n请在每次回复末尾用以下格式更新场景状态（不展示给用户）：',
+        '@@SCENE',
+        '精神: <更新后的精神状态>',
+        '身体: <更新后的身体状态>',
+        '情节: <更新后的情节摘要>',
+        '@@END',
+      ].filter(Boolean).join('\n');
+      fullSystemPrompt = (effectiveSystemPrompt || '') + sceneBlock;
+    }
+
+    if (fullSystemPrompt) {
+      const sysMsg = { role: 'system', content: fullSystemPrompt };
       if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
       messages.push(sysMsg);
     }
@@ -1349,6 +1399,25 @@
       // Remove empty assistant messages (no content and no error appended)
       if (assistantMsg.content === '' && conv.messages.includes(assistantMsg)) {
         conv.messages.pop();
+      }
+
+      // Extract scene state from response
+      if (conv.sceneMode && assistantMsg.content) {
+        const sceneMatch = assistantMsg.content.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
+        if (sceneMatch) {
+          const block = sceneMatch[1];
+          const mental = (block.match(/精神[:：]\s*(.+)/) || [])[1] || '';
+          const physical = (block.match(/身体[:：]\s*(.+)/) || [])[1] || '';
+          const plot = (block.match(/情节[:：]\s*(.+)/) || [])[1] || '';
+          conv.sceneState = {
+            mental: mental.trim(),
+            physical: physical.trim(),
+            plot: plot.trim(),
+          };
+          // Strip the scene block from displayed content
+          assistantMsg.content = assistantMsg.content.replace(/@@SCENE\s*[\s\S]*?\s*@@END/, '').trim();
+          updateScenePanelUI();
+        }
       }
 
       // Show action buttons on completed response
@@ -1758,6 +1827,9 @@
           c.enableCaching = c.enableCaching !== undefined ? c.enableCaching : DEFAULTS.enableCaching;
           c.preciseMode = c.preciseMode || false;
           c.archived = c.archived || false;
+          c.sceneMode = c.sceneMode || false;
+          c.sceneState = c.sceneState || { mental: '', physical: '', plot: '' };
+          c.autoCompress = c.autoCompress || false;
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
           state.conversations.push(c);
@@ -1813,6 +1885,7 @@
     renderMessages();
     updateTopBar();
     renderConvList();
+    updateScenePanelUI();
     if (state.ui.isSettingsOpen) {
       syncSettingsToUI();
     }
@@ -1944,6 +2017,25 @@
         debouncedSave();
       }
     });
+    dom.inputSceneMode.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.sceneMode = dom.inputSceneMode.checked;
+        updateTimestamp(conv);
+        updateScenePanelUI();
+        renderMessages();
+        debouncedSave();
+      }
+    });
+    dom.inputAutoCompress.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.autoCompress = dom.inputAutoCompress.checked;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+
     dom.inputPreciseMode.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
@@ -1989,6 +2081,35 @@
     });
     dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
     dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
+
+    // Scene panel
+    dom.scenePanelToggle.addEventListener('click', () => {
+      dom.scenePanel.classList.toggle('collapsed');
+    });
+    dom.sceneMental.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv && conv.sceneState) {
+        conv.sceneState.mental = dom.sceneMental.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.scenePhysical.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv && conv.sceneState) {
+        conv.sceneState.physical = dom.scenePhysical.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.scenePlot.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv && conv.sceneState) {
+        conv.sceneState.plot = dom.scenePlot.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
 
     // Message action buttons (event delegation)
     dom.messagesContainer.addEventListener('click', (e) => {
