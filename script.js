@@ -72,7 +72,13 @@
     toolCallLimit: 0,
     toolCallLimitMode: 'disabled',
     systemPrompt: '',
+    enableCaching: true,
+    preciseMode: false,
   };
+
+  const SYSTEM_PROMPT_PRECISE = 'You are a precise, factual AI assistant. Ground every answer in verifiable knowledge. If unsure, explicitly state your uncertainty and confidence level. Never fabricate data, citations, dates, URLs, or technical details. Prefer saying "I don\'t know" over speculation. Use clear, structured responses. Cite reasoning steps when helpful.';
+
+  const SYSTEM_PROMPT_DEFAULT = 'You are a helpful, accurate AI assistant. Answer based on facts and knowledge. Use clear, concise language. Avoid speculation and hallucination. If unsure, say so honestly.';
 
   const ERR_MSGS = {
     noApiKey: '请先在设置中填写 API Key。',
@@ -159,6 +165,8 @@
     dom.topPVal = $('#topPVal');
     dom.inputMaxTokens = $('#inputMaxTokens');
     dom.inputStream = $('#inputStream');
+    dom.inputCaching = $('#inputCaching');
+    dom.inputPreciseMode = $('#inputPreciseMode');
     dom.selectToolCallLimit = $('#selectToolCallLimit');
     dom.toolWarning = $('#toolWarning');
 
@@ -316,7 +324,7 @@
   }
 
   function createConversation(provider) {
-    const p = provider || 'xai';
+    const p = provider || 'openai';
     return {
       id: generateId(),
       title: '新对话',
@@ -332,6 +340,8 @@
       stream: DEFAULTS.stream,
       toolCallLimit: DEFAULTS.toolCallLimit,
       toolCallLimitMode: DEFAULTS.toolCallLimitMode,
+      enableCaching: DEFAULTS.enableCaching,
+      preciseMode: DEFAULTS.preciseMode,
       messages: [],
     };
   }
@@ -367,6 +377,12 @@
 
   function resolveModel(conv) {
     return conv.customModel || conv.model || '';
+  }
+
+  function isAnthropicModel(modelId) {
+    if (!modelId) return false;
+    const lower = modelId.toLowerCase();
+    return lower.includes('claude') || lower.startsWith('anthropic/');
   }
 
   // =========================================================================
@@ -558,10 +574,17 @@
     if (msg.usage && !msg._streaming) {
       const u = msg.usage;
       html += '<div class="token-usage">';
-      html += 'Tokens: ' + (u.prompt_tokens || 0).toLocaleString() + ' 输入';
-      html += ' + ' + (u.completion_tokens || 0).toLocaleString() + ' 输出';
+      html += 'Tokens: ' + (u.prompt_tokens || 0).toLocaleString() + ' 入';
+      html += ' + ' + (u.completion_tokens || 0).toLocaleString() + ' 出';
       if (u.total_tokens) {
-        html += ' = ' + u.total_tokens.toLocaleString() + ' 总计';
+        html += ' = ' + u.total_tokens.toLocaleString() + ' 总';
+      }
+      // Cache tokens (Anthropic)
+      if (u.cache_read_input_tokens) {
+        html += ' · <span class="cache-hit">缓存命中 ' + u.cache_read_input_tokens.toLocaleString() + '</span>';
+      }
+      if (u.cache_creation_input_tokens) {
+        html += ' · <span class="cache-new">新建缓存 ' + u.cache_creation_input_tokens.toLocaleString() + '</span>';
       }
       if (u.completion_tokens_details && u.completion_tokens_details.reasoning_tokens) {
         html += ' (含 ' + u.completion_tokens_details.reasoning_tokens.toLocaleString() + ' 思考)';
@@ -723,6 +746,8 @@
     dom.topPVal.textContent = conv.topP;
     dom.inputMaxTokens.value = conv.maxTokens;
     dom.inputStream.checked = conv.stream;
+    dom.inputCaching.checked = conv.enableCaching !== false;
+    dom.inputPreciseMode.checked = !!conv.preciseMode;
     dom.selectToolCallLimit.value = String(conv.toolCallLimit);
     updateToolWarning();
     updateApiKeyField();
@@ -744,6 +769,18 @@
     conv.topP = parseFloat(dom.inputTopP.value) || DEFAULTS.topP;
     conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
     conv.stream = dom.inputStream.checked;
+    conv.enableCaching = dom.inputCaching.checked;
+    const prevPrecise = conv.preciseMode;
+    conv.preciseMode = dom.inputPreciseMode.checked;
+    if (conv.preciseMode && !prevPrecise) {
+      conv._savedTemperature = conv.temperature;
+      conv.temperature = 0.2;
+    } else if (!conv.preciseMode && prevPrecise) {
+      conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+      conv._savedTemperature = undefined;
+    }
+    dom.inputTemperature.value = String(conv.temperature);
+    dom.tempVal.textContent = conv.temperature;
     conv.toolCallLimit = parseInt(dom.selectToolCallLimit.value, 10);
     conv.toolCallLimitMode =
       conv.toolCallLimit === 0 ? 'disabled' : conv.toolCallLimit === -1 ? 'unlimited' : 'limited';
@@ -915,13 +952,35 @@
     scrollToBottom(true);
     updateSendUI();
 
-    // Build messages array
+    // Build messages array with caching support
+    const supportsCaching = conv.enableCaching && isAnthropicModel(model);
     const messages = [];
-    if (conv.systemPrompt) {
-      messages.push({ role: 'system', content: conv.systemPrompt });
+
+    // System prompt
+    let effectiveSystemPrompt = conv.systemPrompt;
+    if (conv.preciseMode) {
+      effectiveSystemPrompt = effectiveSystemPrompt
+        ? SYSTEM_PROMPT_PRECISE + '\n\n' + effectiveSystemPrompt
+        : SYSTEM_PROMPT_PRECISE;
+    } else if (!effectiveSystemPrompt) {
+      effectiveSystemPrompt = SYSTEM_PROMPT_DEFAULT;
     }
-    for (const m of conv.messages) {
-      messages.push({ role: m.role, content: m.content });
+
+    if (effectiveSystemPrompt) {
+      const sysMsg = { role: 'system', content: effectiveSystemPrompt };
+      if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
+      messages.push(sysMsg);
+    }
+
+    // Conversation messages - add cache breakpoint on the last assistant message before current turn
+    for (let i = 0; i < conv.messages.length; i++) {
+      const m = conv.messages[i];
+      const msg = { role: m.role, content: m.content };
+      // Cache the last assistant message to create a cache breakpoint for the prefix
+      if (supportsCaching && m.role === 'assistant' && i === conv.messages.length - 1) {
+        msg.cache_control = { type: 'ephemeral' };
+      }
+      messages.push(msg);
     }
 
     // Add placeholder assistant message for streaming
@@ -1220,6 +1279,29 @@
     showToast('没有可复制的 AI 回复', 'warning');
   }
 
+  function togglePreciseMode() {
+    const conv = getCurrentConv();
+    if (!conv) return;
+    conv.preciseMode = !conv.preciseMode;
+    if (conv.preciseMode) {
+      conv._savedTemperature = conv.temperature;
+      conv.temperature = 0.2;
+      showToast('精确模式已开启：低温输出 + 防幻觉 Prompt', 'success');
+    } else {
+      conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+      conv._savedTemperature = undefined;
+      showToast('精确模式已关闭', 'info');
+    }
+    updateTimestamp(conv);
+    debouncedSave();
+    if (state.ui.isSettingsOpen) {
+      dom.inputPreciseMode.checked = conv.preciseMode;
+      dom.inputTemperature.value = conv.temperature;
+      dom.tempVal.textContent = conv.temperature;
+    }
+    updateTopBar();
+  }
+
   function deleteConversation(id) {
     showConfirm('确认删除该会话？此操作不可恢复。', () => {
       state.conversations = state.conversations.filter((c) => c.id !== id);
@@ -1352,6 +1434,8 @@
           c.stream = c.stream ?? DEFAULTS.stream;
           c.toolCallLimit = c.toolCallLimit ?? DEFAULTS.toolCallLimit;
           c.toolCallLimitMode = c.toolCallLimitMode || 'disabled';
+          c.enableCaching = c.enableCaching !== undefined ? c.enableCaching : DEFAULTS.enableCaching;
+          c.preciseMode = c.preciseMode || false;
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
           state.conversations.push(c);
@@ -1521,6 +1605,31 @@
         debouncedSave();
       }
     });
+    dom.inputCaching.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.enableCaching = dom.inputCaching.checked;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.inputPreciseMode.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.preciseMode = dom.inputPreciseMode.checked;
+        if (conv.preciseMode) {
+          conv._savedTemperature = conv.temperature;
+          conv.temperature = 0.2;
+        } else {
+          conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+          conv._savedTemperature = undefined;
+        }
+        dom.inputTemperature.value = String(conv.temperature);
+        dom.tempVal.textContent = conv.temperature;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
     dom.selectToolCallLimit.addEventListener('change', () => {
       updateToolWarning();
       const conv = getCurrentConv();
@@ -1559,6 +1668,7 @@
     $('#btnQuickClear').addEventListener('click', () => clearCurrentConversation());
     $('#btnQuickDeleteLast').addEventListener('click', () => deleteLastRound());
     $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
+    $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
     $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
 
     // Export / Import / Clear all

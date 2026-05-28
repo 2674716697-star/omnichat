@@ -1280,6 +1280,16 @@ a {
   line-height: 1.4;
 }
 
+.cache-hit {
+  color: #4caf84;
+  font-weight: 500;
+}
+
+.cache-new {
+  color: #e0a040;
+  font-weight: 500;
+}
+
 /* --- Utility --- */
 .hidden {
   display: none !important;

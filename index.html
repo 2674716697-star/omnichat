@@ -164,6 +164,30 @@
           </label>
         </div>
 
+        <!-- Prompt Caching -->
+        <div class="setting-group setting-row">
+          <label class="setting-label">
+            提示缓存 (Caching)
+            <span class="setting-hint" style="display:block;font-weight:400">Claude 模型缓存系统提示和对话前缀，大幅降低费用</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="inputCaching" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Precise Mode -->
+        <div class="setting-group setting-row">
+          <label class="setting-label">
+            精确模式 (Anti-Hallucination)
+            <span class="setting-hint" style="display:block;font-weight:400">低温 + 严谨 System Prompt，减少幻觉</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="inputPreciseMode">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
         <!-- Tool Call Limit -->
         <div class="setting-group">
           <label class="setting-label">工具最大调用次数</label>
@@ -206,6 +230,7 @@
         <button class="btn-quick" id="btnQuickClear" title="清空当前">清空</button>
         <button class="btn-quick" id="btnQuickDeleteLast" title="删除最后一轮">删轮</button>
         <button class="btn-quick" id="btnQuickCopy" title="复制最后回复">复制</button>
+        <button class="btn-quick" id="btnQuickPrecise" title="精确模式">精确</button>
         <button class="btn-quick" id="btnQuickExport" title="导出 Markdown">导出</button>
       </div>
       <div class="input-row">
