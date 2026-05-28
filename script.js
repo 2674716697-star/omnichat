@@ -709,10 +709,31 @@
     if (!lastItem) return;
     const bubble = lastItem.querySelector('.message-bubble');
     if (!bubble) return;
-    bubble.innerHTML = renderBubbleHTML(msg);
+
     if (msg._streaming) {
+      // Fast path: only update text content, skip full DOM rebuild
+      let contentDiv = bubble.querySelector('.message-content');
+      if (contentDiv) {
+        contentDiv.innerHTML = renderContentFast(msg.content || '');
+      }
+      // Update thinking section if reasoning is streaming
+      const reasoning = msg.reasoning || '';
+      if (reasoning) {
+        let thinkDiv = bubble.querySelector('.thinking-content');
+        if (!thinkDiv) {
+          // Thinking section doesn't exist yet, need full rebuild
+          bubble.innerHTML = renderBubbleHTML(msg);
+        } else {
+          thinkDiv.innerHTML = renderContentFast(reasoning);
+          // Ensure details is open during reasoning
+          const details = bubble.querySelector('.thinking-section');
+          if (details && !msg.content) details.open = true;
+        }
+      }
       bubble.classList.add('streaming-cursor');
     } else {
+      // Full render when streaming ends — proper markdown everywhere
+      bubble.innerHTML = renderBubbleHTML(msg);
       bubble.classList.remove('streaming-cursor');
     }
   }
@@ -1901,8 +1922,17 @@
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
     });
 
-    // Scroll tracking
-    dom.mainContent.addEventListener('scroll', () => checkUserScroll(), { passive: true });
+    // Scroll tracking (rAF-throttled)
+    let scrollTick = false;
+    dom.mainContent.addEventListener('scroll', () => {
+      if (!scrollTick) {
+        scrollTick = true;
+        requestAnimationFrame(() => {
+          checkUserScroll();
+          scrollTick = false;
+        });
+      }
+    }, { passive: true });
 
     // Quick actions
     $('#btnQuickNew').addEventListener('click', () => newConversation());

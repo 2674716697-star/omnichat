@@ -28,7 +28,7 @@
   --code-border: rgba(255, 255, 255, 0.08);
   --overlay-bg: rgba(0, 0, 0, 0.55);
   --glass-bg: rgba(28, 28, 30, 0.72);
-  --glass-blur: saturate(180%) blur(20px);
+  --glass-blur: saturate(150%) blur(12px);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
@@ -218,10 +218,9 @@ a {
   transform: translateZ(0);
 }
 
-/* GPU-accelerated static elements only — NOT on .main-content (preserves iOS rubber-band) */
-.top-bar, .bottom-bar, .drawer, .splash, .security-panel {
+/* GPU-accelerated composited layers (no will-change — avoids excessive memory) */
+.top-bar, .bottom-bar, .drawer, .splash {
   transform: translateZ(0);
-  will-change: transform;
 }
 
 /* --- Top Bar --- */
@@ -1215,14 +1214,13 @@ a {
   width: 100%;
   max-width: 800px;
   background: rgba(28, 28, 30, 0.88);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 0.5px solid var(--border-color);
   padding: 10px 20px;
   padding-bottom: calc(10px + var(--safe-bottom));
   z-index: 5;
-  transition: transform 400ms cubic-bezier(0.25, 0.1, 0.25, 1.15);
-  will-change: transform;
+  transition: transform 400ms var(--spring);
 }
 
 .security-panel.visible {
