@@ -12,9 +12,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map((k) => caches.delete(k)));
-    }).then(() => self.clients.claim())
+    Promise.all([
+      caches.keys().then((keys) => {
+        return Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      }),
+      self.registration.navigationPreload ? self.registration.navigationPreload.enable() : Promise.resolve(),
+    ]).then(() => self.clients.claim())
   );
 });
 
@@ -28,6 +31,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
   // NEVER cache sw.js — this is how SW update deadlock happens
   if (url.pathname.endsWith('sw.js')) return;
@@ -45,7 +49,9 @@ self.addEventListener('fetch', (event) => {
   // service worker version bumps. Cached fallback is only for offline use.
   if (isCoreAsset) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' }).then((response) => {
+      Promise.resolve(event.preloadResponse).then((preload) => {
+        return preload || fetch(event.request);
+      }).then((response) => {
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));

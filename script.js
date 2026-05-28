@@ -924,6 +924,21 @@
     }
   }
 
+  function setupViewportInsets() {
+    if (!window.visualViewport) return;
+
+    const updateInsets = () => {
+      const vv = window.visualViewport;
+      const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--keyboard-inset', Math.round(keyboardInset) + 'px');
+    };
+
+    window.visualViewport.addEventListener('resize', updateInsets);
+    window.visualViewport.addEventListener('scroll', updateInsets);
+    window.addEventListener('orientationchange', () => setTimeout(updateInsets, 250));
+    updateInsets();
+  }
+
   // =========================================================================
   // RENDER: SCROLL
   // =========================================================================
@@ -2359,6 +2374,7 @@
   function init() {
     cacheDom();
     loadFromStorage();
+    setupViewportInsets();
 
     // Ensure at least one conversation exists
     if (state.conversations.length === 0) {

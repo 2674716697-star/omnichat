@@ -1,11 +1,14 @@
 {
   "name": "OmniChat",
   "short_name": "AI Chat",
-  "description": "iOS multi-model AI chat client supporting xAI/Grok and DeepSeek",
-  "start_url": ".",
+  "description": "OmniChat multi-model AI chat client",
+  "id": "/omnichat/",
+  "start_url": "/omnichat/",
+  "scope": "/omnichat/",
   "display": "standalone",
-  "background_color": "#0f0f0f",
-  "theme_color": "#0f0f0f",
+  "display_override": ["standalone", "fullscreen", "browser"],
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {
