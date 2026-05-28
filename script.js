@@ -409,6 +409,24 @@
     return lines.join('\n');
   }
 
+  function renderSceneStatusTable(sceneState) {
+    const ss = createSceneState(sceneState);
+    if (!ss.mentalScore && !ss.physical) return '';
+    const score = ss.mentalScore ? ss.mentalScore + '/10' : '未评分';
+    const physical = ss.physical || '未记录';
+    return [
+      '<div class="scene-status-card">',
+      '<div class="scene-status-title">写文状态</div>',
+      '<table class="scene-status-table">',
+      '<tbody>',
+      '<tr><th>精神评分</th><td>' + escapeHtml(score) + '</td></tr>',
+      '<tr><th>身体细节</th><td>' + escapeHtml(physical) + '</td></tr>',
+      '</tbody>',
+      '</table>',
+      '</div>',
+    ].join('');
+  }
+
   function createConversation(provider) {
     const p = provider || 'openai';
     return {
@@ -750,6 +768,10 @@
       ? renderContentFast(msg.content || '')
       : renderMarkdown(String(msg.content || ''));
     html += '<div class="message-content">' + contentHTML + '</div>';
+
+    if (msg.sceneSnapshot && !msg._streaming) {
+      html += renderSceneStatusTable(msg.sceneSnapshot);
+    }
 
     // Token usage
     if (msg.usage && !msg._streaming) {
@@ -1429,6 +1451,7 @@
         '4. 剧情走向必须给 2-4 个，彼此要有实际差异，并尽量避开上次已经生成过的走向。',
         '5. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
         '6. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
+        '7. 应用会自动把精神评分和身体细节渲染成表格；正文里不要重复输出这个表格。',
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '精神: <更新后的精神状态>',
@@ -1555,6 +1578,7 @@
             plot: plot || previousScene.plot,
             directions: directions || previousScene.directions,
           };
+          assistantMsg.sceneSnapshot = createSceneState(conv.sceneState);
           // Strip the scene block from displayed content
           assistantMsg.content = assistantMsg.content.replace(/@@SCENE\s*[\s\S]*?\s*@@END/, '').trim();
           updateScenePanelUI();

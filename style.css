@@ -1087,6 +1087,49 @@ a {
   line-height: 1.4;
 }
 
+.scene-status-card {
+  margin-top: 12px;
+  border: 0.5px solid rgba(255, 215, 0, 0.18);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 215, 0, 0.035);
+  overflow: hidden;
+}
+
+.scene-status-title {
+  padding: 8px 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c0a050;
+}
+
+.scene-status-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.scene-status-table th,
+.scene-status-table td {
+  padding: 8px 10px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.scene-status-table th {
+  width: 84px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.scene-status-table td {
+  color: var(--text-primary);
+}
+
 /* --- Messages --- */
 .message {
   display: flex;
