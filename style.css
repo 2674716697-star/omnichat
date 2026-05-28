@@ -66,7 +66,10 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-primary);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(10,132,255,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(255,69,58,0.02) 0%, transparent 50%),
+    var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
   height: 100%;
@@ -233,6 +236,7 @@ a {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 0.5px solid var(--border-color);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.3), inset 0 0.5px 0 rgba(255,255,255,0.03);
   min-height: var(--top-bar-h);
   flex-shrink: 0;
   z-index: 10;
@@ -273,7 +277,18 @@ a {
 .badge-provider {
   background: var(--accent-dim);
   color: var(--accent-bright);
+  letter-spacing: 0.2px;
 }
+
+/* Provider color accents */
+.badge-provider[data-provider="openai"] { background: rgba(16,163,127,0.15); color: #10a37f; }
+.badge-provider[data-provider="xai"] { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
+.badge-provider[data-provider="deepseek"] { background: rgba(77,107,254,0.15); color: #4d6bfe; }
+.badge-provider[data-provider="openrouter"] { background: rgba(168,85,247,0.12); color: #a855f7; }
+.badge-provider[data-provider="groq"] { background: rgba(249,115,22,0.12); color: #f97316; }
+.badge-provider[data-provider="moonshot"] { background: rgba(99,102,241,0.12); color: #6366f1; }
+.badge-provider[data-provider="zhipu"] { background: rgba(20,184,166,0.12); color: #14b8a6; }
+.badge-provider[data-provider="siliconflow"] { background: rgba(236,72,153,0.12); color: #ec4899; }
 
 .badge-model {
   background: var(--bg-elevated);
@@ -851,32 +866,68 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 60px 24px;
   text-align: center;
   color: var(--text-secondary);
+  position: relative;
+}
+
+.welcome-screen::before {
+  content: '';
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10,132,255,0.06) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  animation: welcomeGlow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes welcomeGlow {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -60%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
 }
 
 .welcome-icon {
-  margin-bottom: 16px;
-  color: var(--text-tertiary);
+  margin-bottom: 20px;
+  color: var(--accent);
+  opacity: 0.8;
+  position: relative;
+  z-index: 1;
+  animation: welcomeFloat 2.5s ease-in-out infinite;
+}
+
+@keyframes welcomeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .welcome-screen h3 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  letter-spacing: -0.3px;
+  position: relative;
+  z-index: 1;
 }
 
 .welcome-screen p {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .welcome-hint {
-  margin-top: 12px;
+  margin-top: 16px;
   font-size: 12px;
   color: var(--text-tertiary);
+  position: relative;
+  z-index: 1;
 }
 
 /* --- Scene State Panel --- */
@@ -1016,17 +1067,17 @@ a {
 }
 
 .message.user .message-bubble {
-  background: var(--user-bubble);
+  background: linear-gradient(135deg, #0A84FF 0%, #0070E0 100%);
   border-bottom-right-radius: 6px;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
+  box-shadow: 0 2px 12px rgba(10,132,255,0.3), inset 0 0.5px 0 rgba(255,255,255,0.15);
 }
 
 .message.assistant .message-bubble {
-  background: var(--ai-bubble);
-  border: 0.5px solid var(--border-color);
+  background: linear-gradient(180deg, rgba(44,44,46,0.7) 0%, rgba(28,28,30,0.9) 100%);
+  border: 0.5px solid rgba(255,255,255,0.08);
   border-bottom-left-radius: 6px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2), inset 0 0.5px 0 rgba(255,255,255,0.02);
 }
 
 .message.system-info .message-bubble {
@@ -1148,10 +1199,11 @@ a {
 /* --- Bottom Bar --- */
 .bottom-bar {
   flex-shrink: 0;
-  background: var(--glass-bg);
+  background: linear-gradient(180deg, rgba(28,28,30,0.65) 0%, rgba(28,28,30,0.82) 100%);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-top: 0.5px solid var(--border-color);
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.3);
   padding: 6px 14px;
   padding-bottom: calc(6px + var(--safe-bottom));
   z-index: 10;

@@ -867,6 +867,7 @@
     if (!conv) {
       dom.convTitle.textContent = '新对话';
       dom.badgeProvider.textContent = '--';
+      dom.badgeProvider.removeAttribute('data-provider');
       dom.badgeModel.textContent = '--';
       dom.contextStats.textContent = '';
       return;
@@ -875,6 +876,7 @@
     dom.convTitle.textContent = conv.title;
     const pConf = getProviderConfig(conv.provider);
     dom.badgeProvider.textContent = pConf.name;
+    dom.badgeProvider.setAttribute('data-provider', conv.provider);
     dom.badgeModel.textContent = resolveModel(conv) || '未选择';
 
     const charCount = countApproxChars(conv);
