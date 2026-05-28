@@ -2319,6 +2319,23 @@
     renderAll();
     updateSendUI();
 
+    // Self-healing: if ?update param, force clean reset
+    if (window.location.search.includes('update')) {
+      (async function() {
+        try {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function(r) { return r.unregister(); }));
+        } catch(e) {}
+        try {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+        } catch(e) {}
+        try { sessionStorage.clear(); } catch(e) {}
+        window.location.href = window.location.origin + window.location.pathname;
+      })();
+      return; // Stop further init until redirect
+    }
+
     // Check for pending PWA update
     if (window.__updateReady) {
       setTimeout(() => {
