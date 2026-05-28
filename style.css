@@ -806,7 +806,7 @@ a {
 }
 
 /* Glass bars on top of background */
-.top-bar, .bottom-bar, .drawer {
+.top-bar, .bottom-bar {
   position: relative;
   z-index: 10;
 }
