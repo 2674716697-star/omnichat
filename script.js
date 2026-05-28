@@ -132,6 +132,7 @@
     dom.topBar = $('#topBar');
     dom.btnToggleHistory = $('#btnToggleHistory');
     dom.btnToggleSettings = $('#btnToggleSettings');
+    dom.btnToggleBg = $('#btnToggleBg');
     dom.topBarInfo = $('#topBarInfo');
     dom.convTitle = $('#convTitle');
     dom.badgeProvider = $('#badgeProvider');
@@ -640,6 +641,11 @@
     }
   }
 
+  function renderContentFast(text) {
+    // Fast path for streaming: just escape + newlines, skip full markdown parse
+    return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+  }
+
   function renderBubbleHTML(msg) {
     // Build inner HTML for an assistant message bubble
     let html = '';
@@ -649,14 +655,18 @@
     if (reasoning) {
       const isStreamingReasoning = msg._streaming && !msg.content;
       const openAttr = isStreamingReasoning ? ' open' : '';
+      const reasonHTML = msg._streaming ? renderContentFast(reasoning) : renderMarkdown(reasoning);
       html += '<details class="thinking-section"' + openAttr + '>';
       html += '<summary class="thinking-header">思考过程</summary>';
-      html += '<div class="thinking-content">' + renderMarkdown(reasoning) + '</div>';
+      html += '<div class="thinking-content">' + reasonHTML + '</div>';
       html += '</details>';
     }
 
-    // Main content
-    html += '<div class="message-content">' + renderMarkdown(String(msg.content || '')) + '</div>';
+    // Main content - fast path during streaming, full markdown when done
+    const contentHTML = msg._streaming
+      ? renderContentFast(msg.content || '')
+      : renderMarkdown(String(msg.content || ''));
+    html += '<div class="message-content">' + contentHTML + '</div>';
 
     // Token usage
     if (msg.usage && !msg._streaming) {
@@ -943,6 +953,10 @@
     const hasCustomImage = bg.type === 'image' && bg.value;
     dom.btnRemoveBgImage.style.display = hasCustomImage ? '' : 'none';
     dom.btnPickBgImage.textContent = hasCustomImage ? '更换图片' : '从相册选择';
+    // Highlight top bar bg button when a background is active
+    const hasBg = bg.type !== 'none';
+    dom.btnToggleBg.classList.toggle('bg-active', hasBg);
+    dom.btnToggleBg.style.color = hasBg ? 'var(--accent-bright)' : '';
   }
 
   function handleBgImagePick(file) {
@@ -1252,10 +1266,17 @@
     const decoder = new TextDecoder();
     let buffer = '';
 
-    const throttledRender = throttle(() => {
-      renderMessages();
-      scrollToBottom(false);
-    }, 50);
+    let renderScheduled = false;
+    const scheduleRender = () => {
+      if (!renderScheduled) {
+        renderScheduled = true;
+        requestAnimationFrame(() => {
+          renderMessages();
+          scrollToBottom(false);
+          renderScheduled = false;
+        });
+      }
+    };
 
     try {
       while (true) {
@@ -1273,7 +1294,7 @@
           const dataStr = trimmed.slice(5).trim();
           if (dataStr === '[DONE]') {
             assistantMsg._streaming = false;
-            throttledRender();
+            scheduleRender();
             return;
           }
 
@@ -1295,7 +1316,7 @@
               }
 
               if (reasoning || content) {
-                throttledRender();
+                scheduleRender();
               }
             }
 
@@ -1702,6 +1723,13 @@
 
     // Settings drawer
     dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
+    dom.btnToggleBg.addEventListener('click', () => {
+      openDrawer('settings');
+      setTimeout(() => {
+        const bgSection = dom.bgPresets;
+        if (bgSection) bgSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    });
     dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
 

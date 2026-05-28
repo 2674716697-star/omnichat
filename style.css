@@ -306,6 +306,22 @@ a {
   color: var(--text-primary);
 }
 
+.btn-icon.bg-active {
+  position: relative;
+}
+
+.btn-icon.bg-active::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid var(--bg-secondary);
+}
+
 /* --- Drawer --- */
 .drawer-overlay {
   position: fixed;
