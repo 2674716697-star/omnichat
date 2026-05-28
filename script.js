@@ -191,8 +191,10 @@
     dom.scenePanelToggle = $('#scenePanelToggle');
     dom.scenePanelBody = $('#scenePanelBody');
     dom.sceneMental = $('#sceneMental');
+    dom.sceneMentalScore = $('#sceneMentalScore');
     dom.scenePhysical = $('#scenePhysical');
     dom.scenePlot = $('#scenePlot');
+    dom.sceneDirections = $('#sceneDirections');
     dom.toolWarning = $('#toolWarning');
 
     dom.mainContent = $('#mainContent');
@@ -277,6 +279,9 @@
       if (!raw) return false;
       const data = JSON.parse(raw);
       state.conversations = data.conversations || [];
+      state.conversations.forEach((conv) => {
+        conv.sceneState = createSceneState(conv.sceneState);
+      });
       state.currentConversationId = data.currentConversationId || null;
       if (data.apiKeys) {
         state.apiKeys = data.apiKeys;
@@ -371,6 +376,39 @@
     return state.conversations.find((c) => c.id === state.currentConversationId) || null;
   }
 
+  function normalizeMentalScore(value) {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n)) return '';
+    return String(Math.min(10, Math.max(1, n)));
+  }
+
+  function createSceneState(seed = {}) {
+    seed = seed || {};
+    return {
+      mental: seed.mental || '',
+      mentalScore: normalizeMentalScore(seed.mentalScore),
+      physical: seed.physical || '',
+      plot: seed.plot || '',
+      directions: seed.directions || '',
+    };
+  }
+
+  function getSceneLine(block, label) {
+    const match = block.match(new RegExp('^' + label + '[:：]\\s*(.*)$', 'm'));
+    return match ? match[1].trim() : '';
+  }
+
+  function getSceneDirections(block) {
+    const match = block.match(/^走向[:：]?\s*([\s\S]*)$/m);
+    if (!match) return '';
+    const lines = match[1]
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && line !== '@@END')
+      .slice(0, 4);
+    return lines.join('\n');
+  }
+
   function createConversation(provider) {
     const p = provider || 'openai';
     return {
@@ -392,7 +430,7 @@
       preciseMode: DEFAULTS.preciseMode,
       archived: false,
       sceneMode: false,
-      sceneState: { mental: '', physical: '', plot: '' },
+      sceneState: createSceneState(),
       autoCompress: false,
       messages: [],
     };
@@ -1149,10 +1187,13 @@
     const show = conv.sceneMode;
     dom.scenePanel.style.display = show ? '' : 'none';
     if (show) {
-      const ss = conv.sceneState || {};
+      const ss = createSceneState(conv.sceneState);
+      conv.sceneState = ss;
       dom.sceneMental.value = ss.mental || '';
+      dom.sceneMentalScore.value = ss.mentalScore || '';
       dom.scenePhysical.value = ss.physical || '';
       dom.scenePlot.value = ss.plot || '';
+      dom.sceneDirections.value = ss.directions || '';
     }
   }
 
@@ -1372,17 +1413,33 @@
     // Build full system prompt with scene state if enabled
     let fullSystemPrompt = effectiveSystemPrompt;
     if (conv.sceneMode) {
-      const ss = conv.sceneState || {};
+      const ss = createSceneState(conv.sceneState);
+      conv.sceneState = ss;
       const sceneBlock = [
         '\n\n[写作场景记忆 — 独立存储，不随上下文压缩]',
         ss.mental ? '当前精神状态：' + ss.mental : '',
-        ss.physical ? '当前身体状态：' + ss.physical : '',
-        ss.plot ? '当前故事情节：' + ss.plot : '',
-        '\n请在每次回复末尾用以下格式更新场景状态（不展示给用户）：',
+        ss.mentalScore ? '当前精神评分：' + ss.mentalScore + '/10' : '',
+        ss.physical ? '当前身体细节：' + ss.physical : '',
+        ss.plot ? '当前剧情总结：' + ss.plot : '',
+        ss.directions ? '上次剧情走向：\n' + ss.directions : '',
+        '\n写文模式规则：',
+        '1. 每次回复后必须维护人物精神状态、身体细节、当前剧情总结和剧情走向。',
+        '2. 精神评分使用 1-10 的整数。评分要跟剧情变化一致，但不要无理由持续降低。',
+        '3. 身体细节要具体到姿态、感官、疲劳、伤痛或动作变化，避免只写空泛形容词。',
+        '4. 剧情走向必须给 2-4 个，彼此要有实际差异，并尽量避开上次已经生成过的走向。',
+        '5. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
+        '6. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
+        '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '精神: <更新后的精神状态>',
-        '身体: <更新后的身体状态>',
-        '情节: <更新后的情节摘要>',
+        '精神评分: <1-10整数>',
+        '身体: <更新后的身体细节>',
+        '情节: <当前剧情小总结>',
+        '走向:',
+        '1. <剧情走向一>',
+        '2. <剧情走向二>',
+        '3. <可选剧情走向三>',
+        '4. <可选剧情走向四>',
         '@@END',
       ].filter(Boolean).join('\n');
       fullSystemPrompt = (effectiveSystemPrompt || '') + sceneBlock;
@@ -1485,13 +1542,18 @@
         const sceneMatch = assistantMsg.content.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
         if (sceneMatch) {
           const block = sceneMatch[1];
-          const mental = (block.match(/精神[:：]\s*(.+)/) || [])[1] || '';
-          const physical = (block.match(/身体[:：]\s*(.+)/) || [])[1] || '';
-          const plot = (block.match(/情节[:：]\s*(.+)/) || [])[1] || '';
+          const previousScene = createSceneState(conv.sceneState);
+          const mental = getSceneLine(block, '精神');
+          const mentalScore = normalizeMentalScore(getSceneLine(block, '精神评分'));
+          const physical = getSceneLine(block, '身体');
+          const plot = getSceneLine(block, '情节');
+          const directions = getSceneDirections(block);
           conv.sceneState = {
-            mental: mental.trim(),
-            physical: physical.trim(),
-            plot: plot.trim(),
+            mental: mental || previousScene.mental,
+            mentalScore: mentalScore || previousScene.mentalScore,
+            physical: physical || previousScene.physical,
+            plot: plot || previousScene.plot,
+            directions: directions || previousScene.directions,
           };
           // Strip the scene block from displayed content
           assistantMsg.content = assistantMsg.content.replace(/@@SCENE\s*[\s\S]*?\s*@@END/, '').trim();
@@ -1907,7 +1969,7 @@
           c.preciseMode = c.preciseMode || false;
           c.archived = c.archived || false;
           c.sceneMode = c.sceneMode || false;
-          c.sceneState = c.sceneState || { mental: '', physical: '', plot: '' };
+          c.sceneState = createSceneState(c.sceneState);
           c.autoCompress = c.autoCompress || false;
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
@@ -2185,6 +2247,15 @@
         debouncedSave();
       }
     });
+    dom.sceneMentalScore.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv && conv.sceneState) {
+        conv.sceneState.mentalScore = normalizeMentalScore(dom.sceneMentalScore.value);
+        dom.sceneMentalScore.value = conv.sceneState.mentalScore;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
     dom.scenePhysical.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
@@ -2197,6 +2268,14 @@
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.plot = dom.scenePlot.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+    dom.sceneDirections.addEventListener('input', () => {
+      const conv = getCurrentConv();
+      if (conv && conv.sceneState) {
+        conv.sceneState.directions = dom.sceneDirections.value;
         updateTimestamp(conv);
         debouncedSave();
       }

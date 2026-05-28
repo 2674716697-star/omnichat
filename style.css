@@ -1067,6 +1067,15 @@ a {
   resize: vertical;
 }
 
+.scene-score-input {
+  width: 88px;
+  min-height: 34px;
+  font-size: 13px !important;
+  padding: 7px 10px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 .scene-input:focus {
   border-color: rgba(255, 215, 0, 0.3) !important;
 }
