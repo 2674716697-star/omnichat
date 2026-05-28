@@ -108,6 +108,7 @@
     apiKeys: {},
     models: { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] },
     chatBackground: { type: 'none', value: '', opacity: 35 },
+    actionPrompts: { regenerate: '', continue: '', summarize: '', elaborate: '' },
     abortController: null,
     isStreaming: false,
     pendingRenameId: null,
@@ -181,6 +182,10 @@
     dom.btnPickBgImage = $('#btnPickBgImage');
     dom.btnRemoveBgImage = $('#btnRemoveBgImage');
     dom.inputBgFile = $('#inputBgFile');
+    dom.inputActionRegenerate = $('#inputActionRegenerate');
+    dom.inputActionContinue = $('#inputActionContinue');
+    dom.inputActionSummarize = $('#inputActionSummarize');
+    dom.inputActionElaborate = $('#inputActionElaborate');
     dom.toolWarning = $('#toolWarning');
 
     dom.mainContent = $('#mainContent');
@@ -241,6 +246,7 @@
         apiKeys: state.apiKeys,
         models: state.models,
         chatBackground: state.chatBackground,
+        actionPrompts: state.actionPrompts,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -269,6 +275,7 @@
       }
       state.models = data.models || { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] };
       state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
+      state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
       return true;
     } catch (e) {
       showToast('数据加载失败，将使用全新状态。', 'warning');
@@ -681,6 +688,24 @@
       html += '</div>';
     }
 
+    // Post-response action buttons
+    if (msg._showActions && !msg._streaming) {
+      html += '<div class="msg-actions" data-msg-index="' + (msg._actionIndex || '') + '">';
+      html += '<button class="btn-msg-action" data-action="regenerate" title="重新生成">';
+      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
+      html += '重新生成</button>';
+      html += '<button class="btn-msg-action" data-action="continue" title="继续生成">';
+      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+      html += '继续生成</button>';
+      html += '<button class="btn-msg-action" data-action="summarize" title="生成摘要">';
+      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
+      html += '生成摘要</button>';
+      html += '<button class="btn-msg-action" data-action="elaborate" title="深入探讨">';
+      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>';
+      html += '深入探讨</button>';
+      html += '</div>';
+    }
+
     return html;
   }
 
@@ -861,6 +886,11 @@
     dom.selectToolCallLimit.value = String(conv.toolCallLimit);
     updateToolWarning();
     updateApiKeyField();
+    // Restore action prompts
+    dom.inputActionRegenerate.value = state.actionPrompts.regenerate || '';
+    dom.inputActionContinue.value = state.actionPrompts.continue || '';
+    dom.inputActionSummarize.value = state.actionPrompts.summarize || '';
+    dom.inputActionElaborate.value = state.actionPrompts.elaborate || '';
 
     populateModelSelect();
   }
@@ -1011,6 +1041,66 @@
   function removeBgImage() {
     setChatBackground('none', '');
     showToast('背景已移除', 'info');
+  }
+
+  function handleMessageAction(action, msgIndex) {
+    const conv = getCurrentConv();
+    if (!conv || state.isStreaming) return;
+
+    const prompts = {
+      regenerate: state.actionPrompts.regenerate || '',
+      continue: state.actionPrompts.continue || '请继续',
+      summarize: state.actionPrompts.summarize || '请用简洁的语言总结以上对话的要点。',
+      elaborate: state.actionPrompts.elaborate || '请对上一个回答进行更深入、更详细的探讨，补充更多背景和细节。',
+    };
+
+    // Hide actions on the current last message
+    const lastMsg = conv.messages[conv.messages.length - 1];
+    if (lastMsg) lastMsg._showActions = false;
+
+    let sendText = '';
+
+    switch (action) {
+      case 'regenerate':
+        if (prompts.regenerate) {
+          sendText = prompts.regenerate;
+          conv.messages.push({ role: 'user', content: sendText });
+        } else {
+          // Default: remove last assistant and resend last user message
+          if (lastMsg && lastMsg.role === 'assistant') conv.messages.pop();
+          const lastUser = [...conv.messages].reverse().find((m) => m.role === 'user');
+          if (!lastUser) return;
+          sendText = lastUser.content;
+          conv.messages.push({ role: 'user', content: sendText });
+        }
+        break;
+
+      case 'continue':
+        sendText = prompts.continue;
+        conv.messages.push({ role: 'user', content: sendText });
+        break;
+
+      case 'summarize':
+        sendText = prompts.summarize;
+        conv.messages.push({ role: 'user', content: sendText });
+        break;
+
+      case 'elaborate':
+        sendText = prompts.elaborate;
+        conv.messages.push({ role: 'user', content: sendText });
+        break;
+    }
+
+    updateTimestamp(conv);
+    renderAll();
+    sendMessageContent(sendText);
+  }
+
+  // Shared send logic without clearing input (used by action buttons)
+  async function sendMessageContent(text) {
+    dom.inputMessage.value = text;
+    await sendMessage();
+    dom.inputMessage.value = '';
   }
 
   function updateToolWarning() {
@@ -1259,6 +1349,12 @@
       // Remove empty assistant messages (no content and no error appended)
       if (assistantMsg.content === '' && conv.messages.includes(assistantMsg)) {
         conv.messages.pop();
+      }
+
+      // Show action buttons on completed response
+      if (assistantMsg.content && conv.messages.includes(assistantMsg)) {
+        assistantMsg._showActions = true;
+        assistantMsg._actionIndex = conv.messages.indexOf(assistantMsg);
       }
 
       updateTimestamp(conv);
@@ -1893,12 +1989,43 @@
     });
     dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
     dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
+
+    // Message action buttons (event delegation)
+    dom.messagesContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-msg-action');
+      if (!btn || state.isStreaming) return;
+      const action = btn.dataset.action;
+      // Find the message index from the parent
+      const msgEl = btn.closest('.message');
+      const msgIndex = msgEl ? parseInt(msgEl.dataset.index, 10) : -1;
+      if (action && msgIndex >= 0) {
+        handleMessageAction(action, msgIndex);
+      }
+    });
     dom.inputBgFile.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleBgImagePick(e.target.files[0]);
         e.target.value = '';
       }
     });
+    // Custom action prompts
+    dom.inputActionRegenerate.addEventListener('input', () => {
+      state.actionPrompts.regenerate = dom.inputActionRegenerate.value.trim();
+      debouncedSave();
+    });
+    dom.inputActionContinue.addEventListener('input', () => {
+      state.actionPrompts.continue = dom.inputActionContinue.value.trim();
+      debouncedSave();
+    });
+    dom.inputActionSummarize.addEventListener('input', () => {
+      state.actionPrompts.summarize = dom.inputActionSummarize.value.trim();
+      debouncedSave();
+    });
+    dom.inputActionElaborate.addEventListener('input', () => {
+      state.actionPrompts.elaborate = dom.inputActionElaborate.value.trim();
+      debouncedSave();
+    });
+
     dom.inputBgOpacity.addEventListener('input', () => {
       const val = parseInt(dom.inputBgOpacity.value, 10);
       state.chatBackground.opacity = val;

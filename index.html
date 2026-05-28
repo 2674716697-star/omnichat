@@ -229,6 +229,18 @@
           </label>
         </div>
 
+        <!-- Message Actions -->
+        <div class="setting-group">
+          <label class="setting-label">消息操作按钮（可自定义提示词）</label>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+            <input type="text" class="input" id="inputActionRegenerate" placeholder="重新生成" style="font-size:12px;padding:6px 10px">
+            <input type="text" class="input" id="inputActionContinue" placeholder="继续生成" style="font-size:12px;padding:6px 10px">
+            <input type="text" class="input" id="inputActionSummarize" placeholder="生成摘要" style="font-size:12px;padding:6px 10px">
+            <input type="text" class="input" id="inputActionElaborate" placeholder="深入探讨" style="font-size:12px;padding:6px 10px">
+          </div>
+          <div class="setting-hint">修改按钮对应的提示词，留空使用默认</div>
+        </div>
+
         <!-- Tool Call Limit -->
         <div class="setting-group">
           <label class="setting-label">工具最大调用次数</label>

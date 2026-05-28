@@ -1493,6 +1493,35 @@ a {
   line-height: 1.4;
 }
 
+/* Message action buttons */
+.msg-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-msg-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 10px;
+  border: 0.5px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 150ms var(--spring), color 150ms var(--spring), border-color 150ms var(--spring);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-msg-action:active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
 .cache-hit {
   color: #4caf84;
   font-weight: 500;
