@@ -494,20 +494,56 @@
     }
   }
 
+  function renderBubbleHTML(msg) {
+    // Build inner HTML for an assistant message bubble
+    let html = '';
+
+    // Thinking / reasoning section
+    const reasoning = msg.reasoning || '';
+    if (reasoning) {
+      const isStreamingReasoning = msg._streaming && !msg.content;
+      const openAttr = isStreamingReasoning ? ' open' : '';
+      html += '<details class="thinking-section"' + openAttr + '>';
+      html += '<summary class="thinking-header">思考过程</summary>';
+      html += '<div class="thinking-content">' + renderMarkdown(reasoning) + '</div>';
+      html += '</details>';
+    }
+
+    // Main content
+    html += '<div class="message-content">' + renderMarkdown(String(msg.content || '')) + '</div>';
+
+    // Token usage
+    if (msg.usage && !msg._streaming) {
+      const u = msg.usage;
+      html += '<div class="token-usage">';
+      html += 'Tokens: ' + (u.prompt_tokens || 0).toLocaleString() + ' 输入';
+      html += ' + ' + (u.completion_tokens || 0).toLocaleString() + ' 输出';
+      if (u.total_tokens) {
+        html += ' = ' + u.total_tokens.toLocaleString() + ' 总计';
+      }
+      if (u.completion_tokens_details && u.completion_tokens_details.reasoning_tokens) {
+        html += ' (含 ' + u.completion_tokens_details.reasoning_tokens.toLocaleString() + ' 思考)';
+      }
+      html += '</div>';
+    }
+
+    return html;
+  }
+
   function createMessageElement(msg, index) {
     const div = document.createElement('div');
     div.className = `message ${msg.role}`;
     div.setAttribute('data-index', index);
 
     if (msg.role === 'system-info') {
-      div.innerHTML = `<div class="message-bubble">${escapeHtml(msg.content)}</div>`;
-    } else {
-      const roleLabel = msg.role === 'user' ? 'You' : 'AI';
+      div.innerHTML = '<div class="message-bubble">' + escapeHtml(msg.content) + '</div>';
+    } else if (msg.role === 'assistant') {
+      const roleLabel = 'AI';
       const bubbleClass = msg._streaming ? 'message-bubble streaming-cursor' : 'message-bubble';
-      div.innerHTML = `
-        <div class="message-role">${roleLabel}</div>
-        <div class="${bubbleClass}">${renderMarkdown(String(msg.content || ''))}</div>
-      `;
+      div.innerHTML = '<div class="message-role">' + roleLabel + '</div><div class="' + bubbleClass + '">' + renderBubbleHTML(msg) + '</div>';
+    } else {
+      const roleLabel = 'You';
+      div.innerHTML = '<div class="message-role">' + roleLabel + '</div><div class="message-bubble">' + renderMarkdown(String(msg.content || '')) + '</div>';
     }
 
     return div;
@@ -519,7 +555,7 @@
     if (!lastItem) return;
     const bubble = lastItem.querySelector('.message-bubble');
     if (!bubble) return;
-    bubble.innerHTML = renderMarkdown(String(msg.content || ''));
+    bubble.innerHTML = renderBubbleHTML(msg);
     if (msg._streaming) {
       bubble.classList.add('streaming-cursor');
     } else {
@@ -892,8 +928,12 @@
         await processStream(resp, assistantMsg, conv);
       } else {
         const data = await resp.json();
-        const content = data.choices?.[0]?.message?.content || '';
-        assistantMsg.content = content;
+        const msg = data.choices?.[0]?.message || {};
+        assistantMsg.content = msg.content || '';
+        assistantMsg.reasoning = msg.reasoning_content || msg.thinking || '';
+        if (data.usage) {
+          assistantMsg.usage = data.usage;
+        }
       }
     } catch (e) {
       if (e.name === 'AbortError') {
@@ -962,10 +1002,29 @@
 
           try {
             const parsed = JSON.parse(dataStr);
-            const delta = parsed.choices?.[0]?.delta?.content;
+            const delta = parsed.choices?.[0]?.delta;
+
             if (delta) {
-              assistantMsg.content += delta;
-              throttledRender();
+              // Capture reasoning/thinking content
+              const reasoning = delta.reasoning_content || delta.thinking || '';
+              if (reasoning) {
+                assistantMsg.reasoning = (assistantMsg.reasoning || '') + reasoning;
+              }
+
+              // Capture main content
+              const content = delta.content || '';
+              if (content) {
+                assistantMsg.content += content;
+              }
+
+              if (reasoning || content) {
+                throttledRender();
+              }
+            }
+
+            // Capture usage from final chunk
+            if (parsed.usage) {
+              assistantMsg.usage = parsed.usage;
             }
           } catch (_) {
             // Skip unparseable chunks
@@ -973,14 +1032,24 @@
         }
       }
 
-      // Process remaining buffer
+      // Process remaining buffer (may contain last chunk with usage)
       if (buffer.trim()) {
         const trimmed = buffer.trim();
         if (trimmed.startsWith('data:') && trimmed !== 'data:[DONE]') {
           try {
             const parsed = JSON.parse(trimmed.slice(5).trim());
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) assistantMsg.content += delta;
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta) {
+              const reasoning = delta.reasoning_content || delta.thinking || '';
+              if (reasoning) {
+                assistantMsg.reasoning = (assistantMsg.reasoning || '') + reasoning;
+              }
+              const content = delta.content || '';
+              if (content) assistantMsg.content += content;
+            }
+            if (parsed.usage) {
+              assistantMsg.usage = parsed.usage;
+            }
           } catch (_) { /* skip */ }
         }
       }
