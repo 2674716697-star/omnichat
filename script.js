@@ -674,19 +674,28 @@
 
     if (list.length === 0) {
       dom.convList.innerHTML = '<div class="empty-state">' + (query ? '无匹配会话' : '暂无历史会话') + '</div>';
+      updateArchiveToggleUI();
       return;
     }
 
-    // Split into active and archived for display
+    // Split into active and archived
     const activeList = list.filter((c) => !c.archived);
     const archivedList = list.filter((c) => c.archived);
+
+    function getGroupKey(c) {
+      return c.provider + '|' + (resolveModel(c) || '');
+    }
+
+    function getGroupLabel(c) {
+      var pname = (PROVIDERS[c.provider] || PROVIDERS.openai).name;
+      var model = resolveModel(c) || '(未选模型)';
+      return pname + ' · ' + model;
+    }
 
     function renderItem(c) {
       const isActive = c.id === state.currentConversationId;
       const msgCount = c.messages.length;
       const dateStr = formatDate(c.updatedAt);
-      const providerName = (PROVIDERS[c.provider] || PROVIDERS.openai).name;
-      const archiveAction = c.archived ? 'unarchive' : 'archive';
       const archiveIcon = c.archived
         ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
         : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>';
@@ -695,7 +704,6 @@
         '<div class="conv-item-content">' +
         '<div class="conv-item-title">' + escapeHtml(c.title) + (c.archived ? ' <span class="archive-badge">归档</span>' : '') + '</div>' +
         '<div class="conv-item-meta">' +
-        '<span>' + providerName + '</span>' +
         '<span>' + msgCount + ' 条</span>' +
         '<span>' + dateStr + '</span>' +
         '</div></div>' +
@@ -710,22 +718,71 @@
       );
     }
 
-    let html = '';
-    for (const c of activeList) {
-      html += renderItem(c);
+    function renderGroupedList(convs) {
+      var groups = new Map();
+      for (var i = 0; i < convs.length; i++) {
+        var c = convs[i];
+        var key = getGroupKey(c);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(c);
+      }
+
+      // Sort groups by most recent conversation
+      var sortedGroups = [];
+      groups.forEach(function(convsInGroup, key) {
+        var latest = 0;
+        for (var j = 0; j < convsInGroup.length; j++) {
+          var t = new Date(convsInGroup[j].updatedAt).getTime();
+          if (t > latest) latest = t;
+        }
+        sortedGroups.push({ key: key, convs: convsInGroup, latest: latest });
+      });
+      sortedGroups.sort(function(a, b) { return b.latest - a.latest; });
+
+      var html = '';
+      for (var gi = 0; gi < sortedGroups.length; gi++) {
+        var group = sortedGroups[gi];
+        var first = group.convs[0];
+        var label = getGroupLabel(first);
+
+        // Sort convs within group by updatedAt desc
+        group.convs.sort(function(a, b) { return new Date(b.updatedAt) - new Date(a.updatedAt); });
+
+        html += '<div class="conv-group">';
+        html += '<div class="conv-group-header">';
+        html += '<span class="conv-group-label">' + escapeHtml(label) + '</span>';
+        html += '<span class="conv-group-count">' + group.convs.length + '</span>';
+        html += '<button class="conv-group-add" data-provider="' + escapeHtml(first.provider) + '" data-model="' + escapeHtml(first.model || '') + '" data-custom-model="' + escapeHtml(first.customModel || '') + '" aria-label="在此模型下新建对话">';
+        html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+        html += '</button></div>';
+
+        for (var ci = 0; ci < group.convs.length; ci++) {
+          html += renderItem(group.convs[ci]);
+        }
+        html += '</div>';
+      }
+      return html;
     }
+
+    var html = renderGroupedList(activeList);
 
     if (archivedList.length > 0) {
       html += '<div class="archive-section-header">归档 · ' + archivedList.length + ' 个会话</div>';
-      for (const c of archivedList) {
-        html += renderItem(c);
+      for (var ai = 0; ai < archivedList.length; ai++) {
+        html += renderItem(archivedList[ai]);
       }
     }
 
     dom.convList.innerHTML = html;
 
-    // Update archive toggle state
-    const totalArchived = state.conversations.filter((c) => c.archived).length;
+    updateArchiveToggleUI();
+  }
+
+  function updateArchiveToggleUI() {
+    var totalArchived = 0;
+    for (var i = 0; i < state.conversations.length; i++) {
+      if (state.conversations[i].archived) totalArchived++;
+    }
     dom.archivedCount.textContent = totalArchived > 0 ? totalArchived : '';
     dom.btnToggleArchived.classList.toggle('active', state.showArchived);
     if (totalArchived === 0) {
@@ -1799,8 +1856,31 @@
   // CONVERSATION ACTIONS
   // =========================================================================
 
-  function newConversation() {
-    const conv = createConversation();
+  function newConversation(overrides) {
+    const current = getCurrentConv();
+    const provider = (overrides && overrides.provider) || (current && current.provider) || 'openai';
+    const conv = createConversation(provider);
+
+    if (overrides) {
+      // Targeted creation from group header — only set provider/model/customModel
+      if (overrides.model !== undefined) conv.model = overrides.model;
+      if (overrides.customModel !== undefined) conv.customModel = overrides.customModel;
+    } else if (current) {
+      // Full inheritance from current conversation
+      conv.model = current.model;
+      conv.customModel = current.customModel;
+      conv.systemPrompt = current.systemPrompt;
+      conv.temperature = current.temperature;
+      conv.topP = current.topP;
+      conv.maxTokens = current.maxTokens;
+      conv.stream = current.stream;
+      conv.enableCaching = current.enableCaching;
+      conv.preciseMode = current.preciseMode;
+      conv.sceneMode = current.sceneMode;
+      conv.autoCompress = current.autoCompress;
+      conv.sceneState = createSceneState(current.sceneState);
+    }
+
     state.conversations.push(conv);
     state.currentConversationId = conv.id;
     renderAll();
@@ -2156,6 +2236,14 @@
         if (action === 'rename') renameConversation(id);
         if (action === 'delete') deleteConversation(id);
         if (action === 'archive') toggleConversationArchive(id);
+        if (btn.classList.contains('conv-group-add')) {
+          e.stopPropagation();
+          const provider = btn.dataset.provider;
+          const model = btn.dataset.model || '';
+          const customModel = btn.dataset.customModel || '';
+          newConversation({ provider: provider, model: model, customModel: customModel });
+          closeDrawer('history');
+        }
         return;
       }
 
@@ -2540,6 +2628,9 @@
 
     setupEvents();
     renderAll();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollToBottom(true));
+    });
     normalizeDrawerState();
     updateSendUI();
 
