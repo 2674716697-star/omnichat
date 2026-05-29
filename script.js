@@ -76,6 +76,7 @@
     preciseMode: false,
     keepThinkingOpen: true,
     sceneDetailLevel: 'medium',
+    worldMode: false,
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''
@@ -123,6 +124,7 @@
     models: { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] },
     chatBackground: { type: 'none', value: '', opacity: 35 },
     actionPrompts: { regenerate: '', continue: '', summarize: '', elaborate: '' },
+    worldStarterEnabled: false,
     abortController: null,
     isStreaming: false,
     pendingRenameId: null,
@@ -202,6 +204,8 @@
     dom.inputSceneMode = $('#inputSceneMode');
     dom.inputAutoCompress = $('#inputAutoCompress');
     dom.inputKeepThinking = $('#inputKeepThinking');
+    dom.inputWorldStarter = $('#inputWorldStarter');
+    dom.btnStartWorld = $('#btnStartWorld');
     dom.inputSceneDetail = $('#inputSceneDetail');
     dom.scenePanel = $('#scenePanel');
     dom.scenePanelToggle = $('#scenePanelToggle');
@@ -325,6 +329,7 @@
         apiKeys: state.apiKeys,
         models: state.models,
         chatBackground: state.chatBackground,
+        worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -361,6 +366,7 @@
       }
       state.models = data.models || { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] };
       state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
+      state.worldStarterEnabled = data.worldStarterEnabled || false;
       state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
       return true;
     } catch (e) {
@@ -642,6 +648,13 @@
       var m = line.match(/^([A-Da-d])[\.\)、：:\s]\s*(.+)/) || line.match(/^[\(（]([A-Da-d])[\)）]\s*(.+)/);
       if (m) {
         options.push({ letter: m[1].toUpperCase(), content: m[2].trim() });
+      } else {
+        var nm = line.match(/^(\d{1,2})[\.\)、：:\s]\s*(.+)/);
+        if (nm) {
+          var num = parseInt(nm[1], 10);
+          var letters = ['A', 'B', 'C', 'D'];
+          if (num >= 1 && num <= 4) options.push({ letter: letters[num - 1], content: nm[2].trim() });
+        }
       }
     }
     return options;
@@ -885,6 +898,7 @@ function createSceneWorld(seed) {
       sceneNpcs: [],
       autoCompress: false,
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
+      worldMode: DEFAULTS.worldMode,
       sceneDetailLevel: DEFAULTS.sceneDetailLevel,
       messages: [],
     };
@@ -1644,6 +1658,7 @@ function createSceneWorld(seed) {
     dom.inputAutoCompress.checked = !!conv.autoCompress;
     dom.inputKeepThinking.checked = conv.keepThinkingOpen !== false;
     if (dom.inputSceneDetail) dom.inputSceneDetail.value = conv.sceneDetailLevel || 'medium';
+    if (dom.inputWorldStarter) dom.inputWorldStarter.checked = !!state.worldStarterEnabled;
     conv.toolCallLimit = 0;
     conv.toolCallLimitMode = 'disabled';
     dom.selectToolCallLimit.value = '0';
@@ -2271,7 +2286,80 @@ function updateScenePanelUI() {
     }, 50);
   }
 
-  function handleMessageAction(action, msgIndex) {
+    function buildCharacterCard(conv) {
+    if (!conv) return '';
+    var w=conv.sceneWorld||{}, ch=conv.sceneCharacter||{}, npcs=conv.sceneNpcs||[];
+    var lines=[];
+    lines.push('【角色卡】');
+    if(ch.name) lines.push('姓名：'+ch.name);
+    if(ch.age) lines.push('年龄：'+ch.age);
+    if(ch.role) lines.push('身份：'+ch.role);
+    if(ch.species) lines.push('类型/形态：'+ch.species);
+    if(ch.appearance) lines.push('外貌：'+ch.appearance);
+    if(ch.traits) lines.push('性格/习惯：'+ch.traits);
+    if(ch.stats) lines.push('状态属性：'+ch.stats);
+    if(ch.currentGoal) lines.push('当前目标：'+ch.currentGoal);
+    lines.push('');
+    lines.push('【世界设定】');
+    if(w.openingName) lines.push('开局名称：'+w.openingName);
+    if(w.setting) lines.push('世界背景：'+w.setting);
+    if(w.locations) lines.push('地点清单：'+w.locations);
+    if(w.mood) lines.push('故事基调：'+w.mood);
+    if(w.rules) lines.push('规则限制：'+w.rules);
+    if(w.notes) lines.push('备注：'+w.notes);
+    if(npcs.length){
+      lines.push('');
+      lines.push('【NPC】');
+      for(var i=0;i<npcs.length;i++){
+        var n=npcs[i];
+        if(!n.name) continue;
+        var nl=(i+1)+'. '+n.name;
+        if(n.role) nl+=' / '+n.role;
+        if(n.status) nl+=' / '+n.status;
+        if(n.notes) nl+=' ['+n.notes+']';
+        lines.push(nl);
+      }
+    }
+    return lines.join('\n');
+  }
+  function checkAge18Plus() {
+    var conv=getCurrentConv();
+    if(!conv||!conv.sceneCharacter) return true;
+    var age=conv.sceneCharacter.age;
+    if(!age||age===''||isNaN(parseInt(age,10))) return true;
+    var n=parseInt(age,10);
+    if(n<18){ showToast('角色年龄必须为 18+','warning'); return false; }
+    return true;
+  }
+  function startWorldMode() {
+    if(!checkAge18Plus()) return;
+    var current=getCurrentConv();
+    // Capture scene data from current conv before creating new one
+    var savedWorld=current&&current.sceneWorld?createSceneWorld(current.sceneWorld):null;
+    var savedChar=current&&current.sceneCharacter?createSceneCharacter(current.sceneCharacter):null;
+    var savedNpcs=current&&current.sceneNpcs?normalizeSceneNpcs(current.sceneNpcs):[];
+    var savedStatus=current&&current.sceneStatus?createSceneStatus(current.sceneStatus):null;
+    var conv=newConversation();
+    conv=getCurrentConv();
+    if(!conv) return;
+    // Copy saved scene data into new conv
+    if(savedWorld) conv.sceneWorld=savedWorld;
+    if(savedChar) conv.sceneCharacter=savedChar;
+    if(savedNpcs.length) conv.sceneNpcs=savedNpcs;
+    if(savedStatus) conv.sceneStatus=savedStatus;
+    conv.worldMode=true;
+    conv.sceneMode=true;
+    var card=buildCharacterCard(conv);
+    if(!card){ showToast('请先填写角色卡','warning'); return; }
+    conv.messages.push({role:'user',content:card});
+    updateTimestamp(conv);
+    conv.title=conv.sceneWorld&&conv.sceneWorld.openingName?conv.sceneWorld.openingName:'世界开局';
+    renderAll();
+    saveToStorage();
+    dom.inputMessage.value = card;
+    dom.inputMessage.focus();
+  }
+function handleMessageAction(action, msgIndex) {
     const conv = getCurrentConv();
     if (!conv || state.isStreaming) return;
 
@@ -3436,6 +3524,7 @@ function updateScenePanelUI() {
         debouncedSave();
       }
     });
+    if (dom.inputWorldStarter) dom.inputWorldStarter.addEventListener('change', () => { state.worldStarterEnabled = dom.inputWorldStarter.checked; debouncedSave(); });
     if (dom.inputSceneDetail) dom.inputSceneDetail.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
@@ -3615,7 +3704,7 @@ function updateScenePanelUI() {
     });
 
     // Copy character card button
-    dom.btnCopyCharCard.addEventListener('click', function() {
+    dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv || !conv.sceneCharacter) return;
       var ch = conv.sceneCharacter;
@@ -3634,7 +3723,7 @@ function updateScenePanelUI() {
     });
 
     // Generate opening prompt button
-    dom.btnGenOpeningPrompt.addEventListener('click', function() {
+    dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
       var w = conv.sceneWorld || {};
@@ -3744,7 +3833,7 @@ function updateScenePanelUI() {
       if (chip && !state.isStreaming) {
         var letter = chip.dataset.choice;
         var content = chip.dataset.content;
-        dom.inputMessage.value = '选择 ' + letter + '：' + content;
+        dom.inputMessage.value = '选' + letter;
         dom.inputMessage.style.height = 'auto';
         dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
         dom.inputMessage.focus();
@@ -3858,17 +3947,19 @@ function updateScenePanelUI() {
         var img = new Image();
         img.onload = function() {
           var canvas = document.createElement('canvas');
-          var maxSide = 900;
+          var maxSide = 600;
           var w=img.width, h=img.height;
           if (w>h && w>maxSide) { h=h*maxSide/w; w=maxSide; }
           else if (h>maxSide) { w=w*maxSide/h; h=maxSide; }
           canvas.width=w; canvas.height=h;
           canvas.getContext('2d').drawImage(img,0,0,w,h);
-          var dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.65);
           var c = getCurrentConv();
           if (!c || !c.sceneNpcs) return;
           for (var ni=0; ni<c.sceneNpcs.length; ni++) {
-            if (c.sceneNpcs[ni].id === npcId) { c.sceneNpcs[ni].image = dataUrl; break; }
+            if (c.sceneNpcs[ni].id === npcId) { var imgCount=0; for(var nci=0;nci<c.sceneNpcs.length;nci++){if(c.sceneNpcs[nci].image)imgCount++;}
+              if(imgCount>=6){showToast('最多保存6张NPC图片，请先移除旧图片','warning');return;}
+              c.sceneNpcs[ni].image = dataUrl; break; }
           }
           updateTimestamp(c); debouncedSave(); renderNpcGrid();
         };
@@ -3879,6 +3970,7 @@ function updateScenePanelUI() {
     });
 if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
     if (dom.btnFinishSetup) dom.btnFinishSetup.addEventListener('click', () => showSetupConfirm());
+    if (dom.btnStartWorld) dom.btnStartWorld.addEventListener('click', () => startWorldMode());
 
     // Export / Import / Clear all
     dom.btnExportAll.addEventListener('click', () => exportAllJSON());
