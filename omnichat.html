@@ -827,23 +827,95 @@ var labelGroup = dirLabels.join('|');
 var multiLineRe = new RegExp('^(?:' + labelGroup + ')[:：]?\\s*([\\s\\S]*)$', 'm');
 var match = block.match(multiLineRe);
 if (match) {
-// Normalize: split lines, strip list markers (1. / 1、/ - / ·), trim, filter
 var raw = match[1];
 var lines = raw
 .split('\n')
 .map(function(line) { return line.trim(); })
-.filter(function(line) { return line && line !== '@@END'; })
-.map(function(line) {
-// Strip leading list markers: "1.", "1、", "1)", "-", "·", "•", "*"
-return line.replace(/^[\d]{1,2}[\.\)、]?\s*|^[-·•*]\s*/, '').trim();
-})
-.filter(Boolean)
-.slice(0, 4);
-if (lines.length) return lines.join('\n');
+.filter(function(line) { return line && line !== '@@END'; });
+var parsed = [];
+var letters = ['A', 'B', 'C', 'D'];
+var autoLetterIdx = 0;
+for (var i = 0; i < lines.length && parsed.length < 4; i++) {
+var line = lines[i];
+// Try A/B/C/D prefix: "A. xxx", "A、xxx", "A：xxx", "A: xxx", "A) xxx"
+var letterMatch = line.match(/^([A-Da-d])[\.\)、：:\s]\s*(.+)/);
+if (letterMatch) {
+var letter = letterMatch[1].toUpperCase();
+var content = letterMatch[2].trim();
+if (content) { parsed.push(letter + '. ' + content); autoLetterIdx = Math.max(autoLetterIdx, letters.indexOf(letter) + 1); }
+continue;
+}
+// Try (A) xxx or （A）xxx format
+var parenMatch = line.match(/^[\(（]([A-Da-d])[\)）]\s*(.+)/);
+if (parenMatch) {
+var pLetter = parenMatch[1].toUpperCase();
+var pContent = parenMatch[2].trim();
+if (pContent) { parsed.push(pLetter + '. ' + pContent); autoLetterIdx = Math.max(autoLetterIdx, letters.indexOf(pLetter) + 1); }
+continue;
+}
+// Try numbered prefix: "1. xxx", "2、xxx", "3) xxx", "4：xxx" → map to A/B/C/D
+var numMatch = line.match(/^(\d{1,2})[\.\)、：:\s]\s*(.+)/);
+if (numMatch) {
+var num = parseInt(numMatch[1], 10);
+var nContent = numMatch[2].trim();
+if (nContent && num >= 1 && num <= 4) {
+parsed.push(letters[num - 1] + '. ' + nContent);
+autoLetterIdx = Math.max(autoLetterIdx, num);
+}
+continue;
+}
+// Try bullet: "- xxx", "· xxx", "• xxx", "* xxx" → assign next auto letter
+var bulletMatch = line.match(/^[-·•*]\s*(.+)/);
+if (bulletMatch) {
+var bContent = bulletMatch[1].trim();
+if (bContent && autoLetterIdx < 4) {
+parsed.push(letters[autoLetterIdx] + '. ' + bContent);
+autoLetterIdx++;
+}
+continue;
+}
+// Plain line (no marker) → assign next auto letter
+if (line && autoLetterIdx < 4) {
+parsed.push(letters[autoLetterIdx] + '. ' + line);
+autoLetterIdx++;
+}
+}
+if (parsed.length) return parsed.join('\n');
 }
 // Fallback: try single-line capture for labels like "发展方向: xxx"
 var singleLineMatch = getSceneLineAny(block, dirLabels);
-return singleLineMatch;
+if (singleLineMatch) return 'A. ' + singleLineMatch;
+return '';
+}
+function parseDirectionOptions(directions) {
+if (!directions) return [];
+var lines = directions.split('\n');
+var options = [];
+for (var i = 0; i < lines.length; i++) {
+var line = lines[i].trim();
+if (!line) continue;
+// Match "A. xxx", "A、xxx", "A) xxx", "A: xxx", "A：xxx", "(A) xxx"
+var m = line.match(/^([A-Da-d])[\.\)、：:\s]\s*(.+)/) || line.match(/^[\(（]([A-Da-d])[\)）]\s*(.+)/);
+if (m) {
+options.push({ letter: m[1].toUpperCase(), content: m[2].trim() });
+}
+}
+return options;
+}
+function parseSceneChoiceInput(text) {
+if (!text) return null;
+var t = text.replace(/\s+/g, '').trim();
+if (!t) return null;
+// Direct single letter: "A", "a", "B。", "C.", "D" etc.
+var directMatch = t.match(/^([A-Da-d])[。.．]*$/);
+if (directMatch) return directMatch[1].toUpperCase();
+// "选A", "选择B", "我选C", "走D", "选A吧", "就B了", "要C"
+var choiceMatch = t.match(/^(?:选[择]?|我选|走|就|要|想选|选择)\s*([A-Da-d])\s*(?:吧|了|的)?[。.．]*$/);
+if (choiceMatch) return choiceMatch[1].toUpperCase();
+// "选项A", "路线B", "分支C"
+var labelMatch = t.match(/^(?:选项|路线|分支|方向)\s*([A-Da-d])[。.．]*$/);
+if (labelMatch) return labelMatch[1].toUpperCase();
+return null;
 }
 function renderSceneStatusTable(sceneState) {
 const ss = createSceneState(sceneState);
@@ -1881,9 +1953,10 @@ var sceneStateRef = [
 ];
 if (ss.directions) {
 sceneStateRef.push('上次剧情走向：');
+// directions are already stored in A/B/C/D format; preserve as-is
 var prevDirs = ss.directions.split('\n').filter(Boolean);
 for (var di = 0; di < prevDirs.length; di++) {
-sceneStateRef.push((di + 1) + '. ' + prevDirs[di].trim());
+sceneStateRef.push(prevDirs[di].trim());
 }
 } else {
 sceneStateRef.push('上次剧情走向：未记录');
@@ -1893,15 +1966,16 @@ var sceneBlock = [
 '\n\n[写作场景记忆 — 独立存储，不随上下文压缩]',
 ].concat(sceneStateRef).concat([
 '写文模式规则：',
-'0. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含“走向:”标签。走向: 后必须给出 2–4 条编号剧情走向（每条 16–32 字），基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成。走向之间必须有实际差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。不允许只在正文里写后续可能而不写入 @@SCENE。',
-'1. 每次回复后必须维护人物精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
-'2. 精神评分使用 1-10 的整数。评分要跟剧情变化一致，但不要无理由持续降低。',
-'3. 身体细节要具体到姿态、感官、疲劳、伤痛或动作变化，避免只写空泛形容词。',
-'4. 剧情走向必须给 2-4 个，彼此要有实际差异，并尽量避开上次已经生成过的走向。',
-'5. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
-'6. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
-'7. 应用会自动把场景记忆渲染到本次回答框里；正文里不要重复输出状态表。',
-'8. 场景状态要简洁：精神状态、身体细节、剧情总结各 1 句；剧情走向 2-4 条，每条控制在 16–32 个字。',
+'0. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 2–4 个剧情选项，使用 A/B/C/D 选项标号（如只有两个选项则只写 A/B，三个则只写 A/B/C）。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字。不允许只在正文里写后续可能而不写入 @@SCENE。',
+'1. 剧情走向必须以 A/B/C/D 选项形式输出。用户下一轮如果只输入 A、B、C 或 D（或其变体如”选A””选择B”），应视为用户选择了对应剧情分支，并沿该分支继续创作，不得忽略或自行发挥；如果用户自由输入其他内容，则按用户新要求继续，不要强行套用已有选项。',
+'2. 每次回复后必须维护人物精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
+'3. 精神评分使用 1-10 的整数。评分要跟剧情变化一致，但不要无理由持续降低。',
+'4. 身体细节要具体到姿态、感官、疲劳、伤痛或动作变化，避免只写空泛形容词。',
+'5. 剧情走向必须给 2-4 个，彼此要有实际差异，并尽量避开上次已经生成过的走向。',
+'6. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
+'7. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
+'8. 应用会自动把场景记忆渲染到本次回答框里；正文里不要重复输出状态表。',
+'9. 场景状态要简洁：精神状态、身体细节、剧情总结各 1 句；剧情走向 2-4 条，每条控制在 16–32 个字。',
 '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
 '@@SCENE',
 '精神: <更新后的精神状态>',
@@ -1909,10 +1983,10 @@ var sceneBlock = [
 '身体: <更新后的身体细节>',
 '情节: <当前剧情小总结>',
 '走向:',
-'1. <剧情走向一 — 基于本次正文，16–32 字>',
-'2. <剧情走向二 — 与走向一有明显差异>',
-'3. <可选剧情走向三>',
-'4. <可选剧情走向四>',
+'A. <剧情走向A — 基于本次正文，16–32 字>',
+'B. <剧情走向B — 与走向A有明显差异>',
+'C. <可选剧情走向C>',
+'D. <可选剧情走向D>',
 '@@END',
 ]).filter(Boolean).join('\n');
 fullSystemPrompt = (effectiveSystemPrompt || '') + sceneBlock;
@@ -1923,6 +1997,28 @@ if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
 messages.push(sysMsg);
 }
 messages.push(...buildConversationRequestMessages(conv, supportsCaching));
+// Scene mode A/B/C/D choice detection
+if (conv.sceneMode && conv.sceneState && conv.sceneState.directions) {
+var choiceLetter = parseSceneChoiceInput(text);
+if (choiceLetter) {
+var options = parseDirectionOptions(conv.sceneState.directions);
+var matched = null;
+for (var oi = 0; oi < options.length; oi++) {
+if (options[oi].letter === choiceLetter) { matched = options[oi]; break; }
+}
+if (matched) {
+messages.push({
+role: 'system',
+content: '[用户选择了上次剧情走向 ' + matched.letter + '：' + matched.content + '。请沿此分支继续生成剧情，不要偏离该方向。]'
+});
+} else {
+messages.push({
+role: 'system',
+content: '[用户输入了 ' + choiceLetter + '，但未在上次剧情走向中找到对应选项。请按用户的简短指示继续，如果无法确定方向，可询问用户具体意图。]'
+});
+}
+}
+}
 // Add placeholder assistant message for streaming
 const assistantMsg = { role: 'assistant', content: '', _streaming: true };
 conv.messages.push(assistantMsg);
