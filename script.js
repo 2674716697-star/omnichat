@@ -75,6 +75,7 @@
     enableCaching: true,
     preciseMode: false,
     keepThinkingOpen: true,
+    sceneDetailLevel: 'medium',
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''
@@ -234,6 +235,12 @@
     dom.sceneCharGoal = $('#sceneCharGoal');
     dom.btnCopyCharCard = $('#btnCopyCharCard');
     dom.btnGenOpeningPrompt = $('#btnGenOpeningPrompt');
+    dom.sceneTabs = $('#sceneTabs');
+    dom.sceneNpcGrid = $('#sceneNpcGrid');
+    dom.moodChips = $('#moodChips');
+    dom.speciesChips = $('#speciesChips');
+    dom.detailChips = $('#detailChips');
+    dom.btnGenHints = $('#btnGenHints');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
     dom.sceneStatusToggle = $('#sceneStatusToggle');
@@ -731,7 +738,9 @@
     if (bodyDetails) {
       var bdLines = bodyDetails.split('\n').filter(Boolean);
       if (bdLines.length) {
-        var maxBd = Math.min(bdLines.length, 4);
+        var dl = (getCurrentConv() && getCurrentConv().sceneDetailLevel) || 'medium';
+        var maxPerDl = { low: 2, medium: 3, high: 4, ultra: 6 };
+        var maxBd = Math.min(bdLines.length, maxPerDl[dl] || 3);
         bodyHtml = '<ul class="scene-body-details">';
         for (var bi = 0; bi < maxBd; bi++) {
           var clean = bdLines[bi].trim().replace(/^[-·•*\d{1,2}.\)、\s]+/, '');
@@ -881,6 +890,7 @@
       sceneNpcs: [],
       autoCompress: false,
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
+      sceneDetailLevel: DEFAULTS.sceneDetailLevel,
       messages: [],
     };
   }
@@ -1786,7 +1796,282 @@
     showToast('背景已移除', 'info');
   }
 
-  function updateScenePanelUI() {
+
+  function renderMoodChips() {
+    if (!dom.moodChips) return;
+    var moods = ['悬疑','温柔','冒险','日常','紧张','奇幻','科幻'];
+    var conv = getCurrentConv();
+    var current = conv && conv.sceneWorld ? conv.sceneWorld.mood : '';
+    var html = '';
+    for (var i = 0; i < moods.length; i++) {
+      var m = moods[i];
+      html += '<button class="scene-chip' + (current === m ? ' active' : '') + '" data-value="' + m + '">' + m + '</button>';
+    }
+    dom.moodChips.innerHTML = html;
+    // Bind click
+    var chips = dom.moodChips.querySelectorAll('.scene-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+      (function(chip) {
+        chip.addEventListener('click', function() {
+          var c = getCurrentConv();
+          if (!c || !c.sceneWorld) return;
+          var v = chip.dataset.value;
+          c.sceneWorld.mood = c.sceneWorld.mood === v ? '' : v;
+          updateTimestamp(c);
+          debouncedSave();
+          renderMoodChips();
+        });
+      })(chips[ci]);
+    }
+  }
+
+  function renderSpeciesChips() {
+    if (!dom.speciesChips) return;
+    var species = ['人类','精灵','机械体','兽人','龙裔','AI'];
+    var conv = getCurrentConv();
+    var current = conv && conv.sceneCharacter ? conv.sceneCharacter.species : '';
+    var html = '';
+    for (var i = 0; i < species.length; i++) {
+      var s = species[i];
+      html += '<button class="scene-chip' + (current === s ? ' active' : '') + '" data-value="' + s + '">' + s + '</button>';
+    }
+    dom.speciesChips.innerHTML = html;
+    var chips = dom.speciesChips.querySelectorAll('.scene-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+      (function(chip) {
+        chip.addEventListener('click', function() {
+          var c = getCurrentConv();
+          if (!c || !c.sceneCharacter) return;
+          var v = chip.dataset.value;
+          c.sceneCharacter.species = c.sceneCharacter.species === v ? '' : v;
+          updateTimestamp(c);
+          debouncedSave();
+          renderSpeciesChips();
+        });
+      })(chips[ci]);
+    }
+  }
+
+  function renderDetailChips() {
+    if (!dom.detailChips) return;
+    var conv = getCurrentConv();
+    var current = conv ? (conv.sceneDetailLevel || 'medium') : 'medium';
+    var chips = dom.detailChips.querySelectorAll('.scene-chip');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle('active', chips[i].dataset.value === current);
+    }
+  }
+
+  function renderNpcGrid() {
+    if (!dom.sceneNpcGrid) return;
+    var conv = getCurrentConv();
+    if (!conv) { dom.sceneNpcGrid.innerHTML = ''; return; }
+    var npcs = conv.sceneNpcs || [];
+    if (!npcs.length) {
+      dom.sceneNpcGrid.innerHTML = '<div class="scene-npc-empty">暂无 NPC，点击下方按钮添加</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < npcs.length; i++) {
+      var n = npcs[i];
+      if (!n.id) n.id = generateId();
+      var initial = (n.name || '?').charAt(0);
+      html += '<div class="npc-card" data-npc-id="' + n.id + '">';
+      html += '<div class="npc-card-inner">';
+      // Front
+      html += '<div class="npc-card-front">';
+      html += '<div class="npc-card-avatar">' + initial + '</div>';
+      html += '<div class="npc-card-name">' + escapeHtml(n.name || '未命名') + '</div>';
+      html += '<div class="npc-card-role">' + escapeHtml(n.role || '') + '</div>';
+      html += '<div class="npc-card-status">' + escapeHtml(n.status || '') + '</div>';
+      html += '</div>';
+      // Back
+      html += '<div class="npc-card-back">';
+      html += '<div class="npc-back-name">' + escapeHtml(n.name || '未命名') + '</div>';
+      html += '<input class="input scene-input npc-edit-field" data-field="name" placeholder="姓名" value="' + escapeHtml(n.name || '') + '">';
+      html += '<input class="input scene-input npc-edit-field" data-field="role" placeholder="身份/关系" value="' + escapeHtml(n.role || '') + '">';
+      html += '<input class="input scene-input npc-edit-field" data-field="status" placeholder="状态" value="' + escapeHtml(n.status || '') + '">';
+      html += '<textarea class="input scene-input npc-edit-field" data-field="notes" rows="2" placeholder="备注">' + escapeHtml(n.notes || '') + '</textarea>';
+      html += '<button class="btn btn-danger btn-sm npc-delete-btn" data-npc-id="' + n.id + '">删除</button>';
+      html += '</div>';
+      html += '</div></div>';
+    }
+    dom.sceneNpcGrid.innerHTML = html;
+    // Bind flip
+    var cards = dom.sceneNpcGrid.querySelectorAll('.npc-card');
+    for (var ci = 0; ci < cards.length; ci++) {
+      (function(card) {
+        card.addEventListener('click', function(e) {
+          if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea')) return;
+          card.classList.toggle('flipped');
+        });
+      })(cards[ci]);
+    }
+    // Bind edit fields
+    var fields = dom.sceneNpcGrid.querySelectorAll('.npc-edit-field');
+    for (var fi = 0; fi < fields.length; fi++) {
+      (function(field) {
+        field.addEventListener('input', function() {
+          var npcId = field.closest('.npc-card').dataset.npcId;
+          var f = field.dataset.field;
+          var v = field.value;
+          var c = getCurrentConv();
+          if (!c || !c.sceneNpcs) return;
+          for (var ni = 0; ni < c.sceneNpcs.length; ni++) {
+            if (c.sceneNpcs[ni].id === npcId) {
+              c.sceneNpcs[ni][f] = v;
+              if (f === 'role') c.sceneNpcs[ni].relation = v;
+              updateTimestamp(c);
+              debouncedSave();
+              break;
+            }
+          }
+        });
+      })(fields[fi]);
+    }
+    // Bind delete buttons
+    var delBtns = dom.sceneNpcGrid.querySelectorAll('.npc-delete-btn');
+    for (var di = 0; di < delBtns.length; di++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteNpc(btn.dataset.npcId);
+        });
+      })(delBtns[di]);
+    }
+  }
+
+
+  function renderRoleChips() {
+    if (!dom.sceneCharRole) return;
+    var roles = ['学生','教师','医生','调查员','旅人','守卫','机械师','研究员','商人','佣兵'];
+    var conv = getCurrentConv();
+    var current = conv && conv.sceneCharacter ? (conv.sceneCharacter.role || '') : '';
+    var roleInput = dom.sceneCharRole;
+    // Render chips as overlay near the role input
+    var container = roleInput.parentNode;
+    if (!container || !container.querySelector('.scene-chips')) {
+      var chipDiv = document.createElement('div');
+      chipDiv.className = 'scene-chips';
+      chipDiv.id = 'roleChips';
+      container.appendChild(chipDiv);
+    }
+    var chipDiv = container.querySelector('#roleChips');
+    if (!chipDiv) return;
+    var html = '';
+    for (var i = 0; i < roles.length; i++) {
+      var r = roles[i];
+      html += '<button class="scene-chip' + (current === r ? ' active' : '') + '" data-value="' + r + '">' + r + '</button>';
+    }
+    chipDiv.innerHTML = html;
+    var chips = chipDiv.querySelectorAll('.scene-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+      (function(chip) {
+        chip.addEventListener('click', function() {
+          var c = getCurrentConv();
+          if (!c || !c.sceneCharacter) return;
+          var v = chip.dataset.value;
+          var newRole = c.sceneCharacter.role === v ? '' : v;
+          c.sceneCharacter.role = newRole;
+          if (dom.sceneCharRole) dom.sceneCharRole.value = newRole;
+          updateTimestamp(c);
+          debouncedSave();
+          renderRoleChips();
+        });
+      })(chips[ci]);
+    }
+  }
+
+  function renderTraitChips() {
+    var traits = ['冷静','温柔','敏锐','谨慎','冲动','幽默','孤僻','坚韧','好奇','果断'];
+    if (!dom.sceneCharTraits) return;
+    var container = dom.sceneCharTraits.parentNode;
+    if (!container || !container.querySelector('#traitChips')) {
+      var chipDiv = document.createElement('div');
+      chipDiv.className = 'scene-chips';
+      chipDiv.id = 'traitChips';
+      container.appendChild(chipDiv);
+      container.insertBefore(chipDiv, dom.sceneCharTraits.nextSibling);
+    }
+    var chipDiv = container.querySelector('#traitChips');
+    if (!chipDiv) return;
+    var conv = getCurrentConv();
+    var current = conv && conv.sceneCharacter ? (conv.sceneCharacter.traits || '') : '';
+    var selected = current.split(/[,，、\s]+/).filter(Boolean);
+    var html = '';
+    for (var i = 0; i < traits.length; i++) {
+      var t = traits[i];
+      var isActive = selected.indexOf(t) !== -1;
+      html += '<button class="scene-chip' + (isActive ? ' active' : '') + '" data-value="' + t + '">' + t + '</button>';
+    }
+    chipDiv.innerHTML = html;
+    var chips = chipDiv.querySelectorAll('.scene-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+      (function(chip) {
+        chip.addEventListener('click', function() {
+          var c = getCurrentConv();
+          if (!c || !c.sceneCharacter) return;
+          var v = chip.dataset.value;
+          var cur = c.sceneCharacter.traits || '';
+          var sel = cur.split(/[,，、\s]+/).filter(Boolean);
+          var idx = sel.indexOf(v);
+          if (idx !== -1) sel.splice(idx, 1);
+          else sel.push(v);
+          c.sceneCharacter.traits = sel.join('，');
+          if (dom.sceneCharTraits) dom.sceneCharTraits.value = c.sceneCharacter.traits;
+          updateTimestamp(c);
+          debouncedSave();
+          renderTraitChips();
+        });
+      })(chips[ci]);
+    }
+  }
+
+  function renderGenreChips() {
+    var genres = ['低魔','科技','校园','都市','废土','悬疑','慢热','战斗','探索','群像'];
+    if (!dom.sceneRules) return;
+    var container = dom.sceneRules.parentNode;
+    if (!container || !container.querySelector('#genreChips')) {
+      var chipDiv = document.createElement('div');
+      chipDiv.className = 'scene-chips';
+      chipDiv.id = 'genreChips';
+      container.appendChild(chipDiv);
+      container.insertBefore(chipDiv, dom.sceneRules.nextSibling);
+    }
+    var chipDiv = container.querySelector('#genreChips');
+    if (!chipDiv) return;
+    var conv = getCurrentConv();
+    var current = conv && conv.sceneWorld ? (conv.sceneWorld.rules || '') : '';
+    var selected = current.split(/[,，、\s]+/).filter(Boolean);
+    var html = '';
+    for (var i = 0; i < genres.length; i++) {
+      var g = genres[i];
+      var isActive = selected.indexOf(g) !== -1;
+      html += '<button class="scene-chip' + (isActive ? ' active' : '') + '" data-value="' + g + '">' + g + '</button>';
+    }
+    chipDiv.innerHTML = html;
+    var chips = chipDiv.querySelectorAll('.scene-chip');
+    for (var ci = 0; ci < chips.length; ci++) {
+      (function(chip) {
+        chip.addEventListener('click', function() {
+          var c = getCurrentConv();
+          if (!c || !c.sceneWorld) return;
+          var v = chip.dataset.value;
+          var cur = c.sceneWorld.rules || '';
+          var sel = cur.split(/[,，、\s]+/).filter(Boolean);
+          var idx = sel.indexOf(v);
+          if (idx !== -1) sel.splice(idx, 1);
+          else sel.push(v);
+          c.sceneWorld.rules = sel.join('，');
+          if (dom.sceneRules) dom.sceneRules.value = c.sceneWorld.rules;
+          updateTimestamp(c);
+          debouncedSave();
+          renderGenreChips();
+        });
+      })(chips[ci]);
+    }
+  }
+function updateScenePanelUI() {
     const conv = getCurrentConv();
     if (!conv) {
       dom.scenePanel.style.display = 'none';
@@ -1805,7 +2090,13 @@
       syncSceneWorldUI();
       syncSceneCharacterUI();
       syncSceneStatusUI();
-      renderNpcList();
+      renderNpcGrid();
+      renderMoodChips();
+      renderSpeciesChips();
+      renderRoleChips();
+      renderTraitChips();
+      renderGenreChips();
+      renderDetailChips();
     }
   }
 
@@ -1830,7 +2121,7 @@
     dom.sceneCharName.value = ch.name || '';
     dom.sceneCharAge.value = ch.age || '';
     dom.sceneCharRole.value = ch.role || '';
-    dom.sceneCharSpecies.value = ch.species || '';
+    if (dom.sceneCharSpecies) dom.sceneCharSpecies.value = ch.species || '';
     dom.sceneCharAppearance.value = ch.appearance || '';
     dom.sceneCharTraits.value = ch.traits || '';
     dom.sceneCharStats.value = ch.stats || '';
@@ -1850,71 +2141,13 @@
     dom.sceneConstraints.value = st.constraints || '';
   }
 
-  function renderNpcList() {
-    var conv = getCurrentConv();
-    if (!conv) { dom.sceneNpcList.innerHTML = ''; return; }
-    var npcs = conv.sceneNpcs || [];
-    if (!npcs.length) {
-      dom.sceneNpcList.innerHTML = '<div class="scene-npc-empty">暂无 NPC，点击下方按钮添加</div>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < npcs.length; i++) {
-      var n = npcs[i];
-      if (!n.id) n.id = generateId();
-      html += '<div class="scene-npc-item" data-npc-id="' + n.id + '">';
-      html += '<div class="scene-npc-row">';
-      html += '<input class="input scene-npc-name" placeholder="姓名" value="' + escapeHtml(n.name || '') + '" data-field="name">';
-      html += '<input class="input scene-npc-role" placeholder="身份/关系" value="' + escapeHtml(n.role || '') + '" data-field="role">';
-      html += '<button class="scene-npc-del" data-npc-id="' + n.id + '" aria-label="删除 NPC">&times;</button>';
-      html += '</div>';
-      html += '<div class="scene-npc-row">';
-      html += '<input class="input scene-npc-status" placeholder="状态" value="' + escapeHtml(n.status || '') + '" data-field="status">';
-      html += '<input class="input scene-npc-notes" placeholder="备注" value="' + escapeHtml(n.notes || '') + '" data-field="notes">';
-      html += '</div></div>';
-    }
-    dom.sceneNpcList.innerHTML = html;
-
-    // Bind input events for NPC fields
-    var items = dom.sceneNpcList.querySelectorAll('.scene-npc-item');
-    for (var j = 0; j < items.length; j++) {
-      (function(item) {
-        var inputs = item.querySelectorAll('input');
-        for (var k = 0; k < inputs.length; k++) {
-          inputs[k].addEventListener('input', function() {
-            var npcId = item.dataset.npcId;
-            var field = this.dataset.field;
-            var value = this.value;
-            var c = getCurrentConv();
-            if (!c || !c.sceneNpcs) return;
-            for (var ni = 0; ni < c.sceneNpcs.length; ni++) {
-              if (c.sceneNpcs[ni].id === npcId) {
-                c.sceneNpcs[ni][field] = value;
-                updateTimestamp(c);
-                debouncedSave();
-                break;
-              }
-            }
-          });
-        }
-        var delBtn = item.querySelector('.scene-npc-del');
-        if (delBtn) {
-          delBtn.addEventListener('click', function() {
-            var npcId = this.dataset.npcId;
-            deleteNpc(npcId);
-          });
-        }
-      })(items[j]);
-    }
-  }
-
   function addNpc() {
     var conv = getCurrentConv();
     if (!conv) return;
     if (!conv.sceneNpcs) conv.sceneNpcs = [];
     conv.sceneNpcs.push({ id: generateId(), name: '', role: '', relation: '', status: '', notes: '' });
     updateTimestamp(conv);
-    renderNpcList();
+    renderNpcGrid();
     debouncedSave();
   }
 
@@ -1923,8 +2156,76 @@
     if (!conv || !conv.sceneNpcs) return;
     conv.sceneNpcs = conv.sceneNpcs.filter(function(n) { return n.id !== id; });
     updateTimestamp(conv);
-    renderNpcList();
+    renderNpcGrid();
     debouncedSave();
+  }
+
+  function generateSceneHints() {
+    var conv = getCurrentConv();
+    if (!conv) { showToast('没有当前会话', 'warning'); return; }
+    var hints = [];
+    if (conv.sceneState && conv.sceneState.directions) {
+      var dirs = parseDirectionOptions(conv.sceneState.directions);
+      if (dirs.length) hints = dirs.map(function(d) { return d.content; });
+    }
+    if (!hints.length) {
+      for (var i = conv.messages.length-1; i >= 0; i--) {
+        if (conv.messages[i].role === 'assistant' && conv.messages[i].content) {
+          var c = conv.messages[i].content;
+          var lines = c.split('\n').filter(Boolean);
+          for (var li = 0; li < Math.min(lines.length, 20); li++) {
+            var m = lines[li].match(/^([A-D])[\.、：:)]\s*(.+)/);
+            if (m) hints.push(m[2].trim());
+          }
+          if (hints.length) break;
+          var sents = c.replace(/[。！？\n]/g, '。').split('。').filter(function(s){return s.trim().length>8&&s.trim().length<60;});
+          hints = sents.slice(-4);
+          break;
+        }
+      }
+    }
+    if (!hints.length && conv.sceneWorld && conv.sceneWorld.openingName) {
+      hints = ['从' + conv.sceneWorld.openingName + '开始展开故事', '描写当前场景的氛围与细节', '引入新角色或外部事件'];
+    }
+    if (!hints.length) { showToast('当前暂无剧情可总结，先发送几条消息吧', 'info'); return; }
+    showHintsPanel(hints.slice(0, 4));
+  }
+
+  function clearHintsPanel() {
+    var p = document.querySelector('.hints-panel');
+    if (p) p.remove();
+  }
+
+  function showHintsPanel(hints) {
+    clearHintsPanel();
+    if (!hints.length) return;
+    var conv = getCurrentConv();
+    var panel = document.createElement('div');
+    panel.className = 'hints-panel';
+    if (conv) panel.dataset.convId = conv.id;
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'hints-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', function() { panel.remove(); });
+    panel.appendChild(closeBtn);
+    for (var i = 0; i < hints.length; i++) {
+      (function(hint) {
+        var chip = document.createElement('button');
+        chip.className = 'hints-chip';
+        chip.textContent = hint;
+        chip.addEventListener('click', function() {
+          dom.inputMessage.value = hint;
+          dom.inputMessage.style.height = 'auto';
+          dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
+          dom.inputMessage.focus();
+          panel.remove();
+        });
+        panel.appendChild(chip);
+      })(hints[i]);
+    }
+    var bottomBar = document.querySelector('.bottom-bar');
+    if (bottomBar && bottomBar.parentNode) bottomBar.parentNode.insertBefore(panel, bottomBar);
+    showToast('已生成 ' + hints.length + ' 条提示词，点击填入输入框', 'info');
   }
 
   function handleMessageAction(action, msgIndex) {
@@ -2205,6 +2506,7 @@
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
         '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
+        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足写尚未显露。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '角色: <当前POV角色名，不知道则写"主角">',
@@ -2790,6 +3092,7 @@
           c.sceneState = createSceneState(c.sceneState);
           c.autoCompress = c.autoCompress || false;
           c.keepThinkingOpen = c.keepThinkingOpen !== undefined ? c.keepThinkingOpen : DEFAULTS.keepThinkingOpen;
+          c.sceneDetailLevel = c.sceneDetailLevel || DEFAULTS.sceneDetailLevel;
           c.sceneWorld = createSceneWorld(c.sceneWorld);
           c.sceneCharacter = createSceneCharacter(c.sceneCharacter);
           c.sceneStatus = createSceneStatus(c.sceneStatus);
@@ -2890,13 +3193,20 @@
     var conv = getCurrentConv();
     var on = conv && conv.sceneMode;
     dom.appContainer.classList.toggle('scene-immersive', !!on);
-    if (dom.sceneCapsule) {
-      dom.sceneCapsule.style.display = on ? '' : 'none';
-    }
+    if (dom.sceneCapsule) dom.sceneCapsule.style.display = on ? '' : 'none';
+    if (dom.btnGenHints) dom.btnGenHints.style.display = on ? '' : 'none';
+    // Remove hints panel when leaving scene mode
+    if (!on) clearHintsPanel();
     updateInputPlaceholder();
   }
 
   function renderAll() {
+    // If hints panel belongs to a different conversation, clear it
+    var hp = document.querySelector('.hints-panel');
+    if (hp && hp.dataset.convId) {
+      var cur = getCurrentConv();
+      if (!cur || hp.dataset.convId !== cur.id) hp.remove();
+    }
     renderMessages();
     updateTopBar();
     updateWelcomeUI();
@@ -3173,7 +3483,40 @@
       }
     });
 
-    // World opening card inputs
+
+    // Scene panel tab switching
+    if (dom.sceneTabs) {
+      dom.sceneTabs.addEventListener('click', function(e) {
+        var tab = e.target.closest('.scene-tab');
+        if (!tab) return;
+        var tabName = tab.dataset.tab;
+        // Update active tab button
+        var tabs = dom.sceneTabs.querySelectorAll('.scene-tab');
+        for (var ti = 0; ti < tabs.length; ti++) tabs[ti].classList.remove('active');
+        tab.classList.add('active');
+        // Show matching content
+        var contents = dom.scenePanelBody.querySelectorAll('.scene-tab-content');
+        for (var ci = 0; ci < contents.length; ci++) {
+          contents[ci].classList.toggle('active', contents[ci].id === 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+        }
+      });
+    }
+
+    // Detail level chips
+    if (dom.detailChips) {
+      dom.detailChips.addEventListener('click', function(e) {
+        var chip = e.target.closest('.scene-chip');
+        if (!chip) return;
+        var conv = getCurrentConv();
+        if (!conv) return;
+        var val = chip.dataset.value;
+        conv.sceneDetailLevel = val;
+        updateTimestamp(conv);
+        debouncedSave();
+        renderDetailChips();
+      });
+    }
+// World opening card inputs
     dom.sceneOpeningName.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.openingName = this.value; updateTimestamp(conv); debouncedSave(); }
@@ -3212,7 +3555,7 @@
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.role = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharSpecies.addEventListener('change', function() {
+    if (dom.sceneCharSpecies) dom.sceneCharSpecies.addEventListener('change', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.species = this.value; updateTimestamp(conv); debouncedSave(); }
     });
@@ -3457,6 +3800,7 @@
     $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
     $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
     $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
+    if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
 
     // Export / Import / Clear all
     dom.btnExportAll.addEventListener('click', () => exportAllJSON());

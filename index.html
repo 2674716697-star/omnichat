@@ -348,161 +348,59 @@
           <span class="scene-panel-arrow">▾</span>
         </div>
         <div class="scene-panel-body" id="scenePanelBody">
-          <div class="scene-panel-hint">场景记忆在每次 AI 回复后自动更新并显示在回复框里。下方配置世界、角色、状态和 NPC。</div>
-
-          <!-- World Opening Card -->
-          <div class="scene-sub-card" id="sceneWorldCard">
-            <div class="scene-sub-card-header" id="sceneWorldToggle">
-              <span>世界开局</span>
-              <span class="scene-panel-arrow">▾</span>
-            </div>
-            <div class="scene-sub-card-body" id="sceneWorldBody">
-              <div class="scene-field">
-                <label>开局名称</label>
-                <input class="input scene-input" id="sceneOpeningName" placeholder="雨夜旧城 / 星港醒来 / 学院报到">
-              </div>
-              <div class="scene-field">
-                <label>世界背景</label>
-                <textarea class="input scene-input" id="sceneSetting" rows="2" placeholder="这个世界的背景设定、当前场景…"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>地点清单</label>
-                <textarea class="input scene-input" id="sceneLocations" rows="2" placeholder="一行一个地点"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>规则限制</label>
-                <textarea class="input scene-input" id="sceneRules" rows="2" placeholder="世界的规则或限制条件…"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>故事基调</label>
-                <select class="select scene-input" id="sceneMood">
-                  <option value="">不限</option>
-                  <option value="悬疑">悬疑</option>
-                  <option value="温柔">温柔</option>
-                  <option value="冒险">冒险</option>
-                  <option value="日常">日常</option>
-                  <option value="紧张">紧张</option>
-                  <option value="奇幻">奇幻</option>
-                  <option value="科幻">科幻</option>
-                </select>
-              </div>
-              <div class="scene-field">
-                <label>备注</label>
-                <textarea class="input scene-input" id="sceneWorldNotes" rows="2" placeholder="其他补充…"></textarea>
-              </div>
-            </div>
+          <div class="scene-tabs" id="sceneTabs">
+            <button class="scene-tab active" data-tab="world">世界观</button>
+            <button class="scene-tab" data-tab="character">主角</button>
+            <button class="scene-tab" data-tab="npc">NPC图鉴</button>
+            <button class="scene-tab" data-tab="status">状态</button>
+            <button class="scene-tab" data-tab="rules">规则/提示</button>
           </div>
-
-          <!-- Character Card -->
-          <div class="scene-sub-card" id="sceneCharCard">
-            <div class="scene-sub-card-header" id="sceneCharToggle">
-              <span>角色卡</span>
-              <span class="scene-panel-arrow">▾</span>
-            </div>
-            <div class="scene-sub-card-body" id="sceneCharBody">
-              <div class="scene-field">
-                <label>姓名</label>
-                <input class="input scene-input" id="sceneCharName" placeholder="角色姓名">
-              </div>
-              <div class="scene-flex-row">
-                <div class="scene-field" style="flex:1">
-                  <label>年龄</label>
-                  <input class="input scene-input" id="sceneCharAge" placeholder="18+">
-                </div>
-                <div class="scene-field" style="flex:1">
-                  <label>身份</label>
-                  <input class="input scene-input" id="sceneCharRole" placeholder="职业/身份">
-                </div>
-              </div>
-              <div class="scene-field">
-                <label>种族</label>
-                <select class="select scene-input" id="sceneCharSpecies">
-                  <option value="">请选择</option>
-                  <option value="人类">人类</option>
-                  <option value="精灵">精灵</option>
-                  <option value="机械体">机械体</option>
-                  <option value="兽人">兽人</option>
-                  <option value="龙裔">龙裔</option>
-                  <option value="AI">AI</option>
-                  <option value="其他">其他</option>
-                </select>
-              </div>
-              <div class="scene-field">
-                <label>外貌</label>
-                <textarea class="input scene-input" id="sceneCharAppearance" rows="2" placeholder="外貌特征、着装…"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>性格/习惯</label>
-                <textarea class="input scene-input" id="sceneCharTraits" rows="2" placeholder="性格特点、行为习惯…"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>状态属性</label>
-                <textarea class="input scene-input" id="sceneCharStats" rows="2" placeholder="自由文本，如：体力 80/100&#10;冷静 6/10"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>当前目标</label>
-                <textarea class="input scene-input" id="sceneCharGoal" rows="2" placeholder="角色当前的目标或动机…"></textarea>
-              </div>
-              <div class="scene-flex-row scene-btn-row">
-                <button class="btn btn-secondary btn-sm" id="btnCopyCharCard">复制角色卡</button>
-                <button class="btn btn-primary btn-sm" id="btnGenOpeningPrompt">生成开场提示词</button>
-              </div>
-            </div>
+          <div class="scene-tab-content active" id="tabWorld">
+            <p class="scene-tab-desc">设定故事的世界背景、地点和基调，帮助 AI 理解故事舞台。</p>
+            <div class="scene-field"><label>开局名称</label><input class="input scene-input" id="sceneOpeningName" placeholder="雨夜旧城 / 星港醒来 / 学院报到"></div>
+            <div class="scene-field"><label>世界背景</label><textarea class="input scene-input" id="sceneSetting" rows="2" placeholder="这个世界的背景设定、当前场景…"></textarea></div>
+            <div class="scene-field"><label>地点清单</label><textarea class="input scene-input" id="sceneLocations" rows="2" placeholder="一行一个地点"></textarea></div>
+            <div class="scene-field"><label>故事基调</label><div class="scene-chips" id="moodChips"></div><select class="select scene-input" id="sceneMood" style="display:none"></select></div>
+            <div class="scene-field"><label>备注</label><textarea class="input scene-input" id="sceneWorldNotes" rows="2" placeholder="其他补充…"></textarea></div>
           </div>
-
-          <!-- Status Bar Card -->
-          <div class="scene-sub-card" id="sceneStatusCard">
-            <div class="scene-sub-card-header" id="sceneStatusToggle">
-              <span>主角状态栏</span>
-              <span class="scene-panel-arrow">▾</span>
-            </div>
-            <div class="scene-sub-card-body" id="sceneStatusBody">
-              <div class="scene-flex-row">
-                <div class="scene-field" style="flex:1">
-                  <label>体力/生命</label>
-                  <input class="input scene-input" id="sceneHealth" placeholder="如：85/100">
-                </div>
-                <div class="scene-field" style="flex:1">
-                  <label>精力</label>
-                  <input class="input scene-input" id="sceneStamina" placeholder="如：充沛 / 60%">
-                </div>
-              </div>
-              <div class="scene-flex-row">
-                <div class="scene-field" style="flex:1">
-                  <label>冷静/精神</label>
-                  <input class="input scene-input" id="sceneComposure" placeholder="如：6/10">
-                </div>
-                <div class="scene-field" style="flex:1">
-                  <label>专注</label>
-                  <input class="input scene-input" id="sceneFocus" placeholder="如：高度集中 / 分散">
-                </div>
-              </div>
-              <div class="scene-field">
-                <label>当前目标</label>
-                <textarea class="input scene-input" id="sceneObjective" rows="2" placeholder="角色当前想要完成的目标…"></textarea>
-              </div>
-              <div class="scene-field">
-                <label>限制/提醒</label>
-                <textarea class="input scene-input" id="sceneConstraints" rows="2" placeholder="剧情限制或需要记住的提醒…"></textarea>
-              </div>
-            </div>
+          <div class="scene-tab-content" id="tabCharacter">
+            <p class="scene-tab-desc">定义主角的基本信息、外貌和性格，作为写作的稳定参考。</p>
+            <div class="scene-field"><label>姓名</label><input class="input scene-input" id="sceneCharName" placeholder="角色姓名"></div>
+            <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>年龄</label><input class="input scene-input" id="sceneCharAge" placeholder="18+"></div><div class="scene-field" style="flex:1"><label>身份/职业</label><input class="input scene-input" id="sceneCharRole" placeholder="职业/身份"></div></div>
+            <div class="scene-field"><label>种族/形态</label><div class="scene-chips" id="speciesChips"></div></div>
+            <div class="scene-field"><label>外貌</label><textarea class="input scene-input" id="sceneCharAppearance" rows="2" placeholder="外貌特征、着装…"></textarea></div>
+            <div class="scene-field"><label>性格/习惯</label><textarea class="input scene-input" id="sceneCharTraits" rows="2" placeholder="性格特点、行为习惯…"></textarea></div>
+            <div class="scene-field"><label>状态属性</label><textarea class="input scene-input" id="sceneCharStats" rows="2" placeholder="自由文本，如：体力 80/100&#10;冷静 6/10"></textarea></div>
+            <div class="scene-field"><label>当前目标</label><textarea class="input scene-input" id="sceneCharGoal" rows="2" placeholder="角色当前的目标或动机…"></textarea></div>
+            <div class="scene-flex-row scene-btn-row"><button class="btn btn-secondary btn-sm" id="btnCopyCharCard">复制角色卡</button><button class="btn btn-primary btn-sm" id="btnGenOpeningPrompt">生成开场提示词</button></div>
           </div>
-
-          <!-- NPC Card -->
-          <div class="scene-sub-card" id="sceneNpcCard">
-            <div class="scene-sub-card-header" id="sceneNpcToggle">
-              <span>NPC</span>
-              <span class="scene-panel-arrow">▾</span>
-            </div>
-            <div class="scene-sub-card-body" id="sceneNpcBody">
-              <div class="scene-npc-list" id="sceneNpcList"></div>
-              <button class="btn btn-secondary btn-sm btn-full" id="btnAddNpc" style="margin-top:6px">+ 添加 NPC</button>
+          <div class="scene-tab-content" id="tabNpc">
+            <p class="scene-tab-desc">管理故事中的其他人物，每张卡片可翻转查看详情和编辑。</p>
+            <div class="scene-npc-grid" id="sceneNpcGrid"></div>
+            <button class="btn btn-primary btn-sm btn-full" id="btnAddNpc" style="margin-top:8px">+ 添加 NPC</button>
+          </div>
+          <div class="scene-tab-content" id="tabStatus">
+            <p class="scene-tab-desc">追踪主角的各项数值状态，自动出现在回复的状态面板中。</p>
+            <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>体力/生命</label><input class="input scene-input" id="sceneHealth" placeholder="如：85/100"></div><div class="scene-field" style="flex:1"><label>精力</label><input class="input scene-input" id="sceneStamina" placeholder="如：充沛 / 60%"></div></div>
+            <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>冷静/精神</label><input class="input scene-input" id="sceneComposure" placeholder="如：6/10"></div><div class="scene-field" style="flex:1"><label>专注</label><input class="input scene-input" id="sceneFocus" placeholder="如：高度集中 / 分散"></div></div>
+            <div class="scene-field"><label>当前目标</label><textarea class="input scene-input" id="sceneObjective" rows="2" placeholder="角色当前想要完成的目标…"></textarea></div>
+            <div class="scene-field"><label>限制/提醒</label><textarea class="input scene-input" id="sceneConstraints" rows="2" placeholder="剧情限制或需要记住的提醒…"></textarea></div>
+          </div>
+          <div class="scene-tab-content" id="tabRules">
+            <p class="scene-tab-desc">设置故事规则限制和剧情状态的详细程度。</p>
+            <div class="scene-field"><label>规则限制</label><textarea class="input scene-input" id="sceneRules" rows="2" placeholder="世界的规则或限制条件…"></textarea></div>
+            <div class="scene-field"><label>剧情状态详细度</label>
+              <div class="scene-chips scene-detail-chips" id="detailChips">
+                <button class="scene-chip active" data-value="medium">中</button>
+                <button class="scene-chip" data-value="low">低</button>
+                <button class="scene-chip" data-value="high">高</button>
+                <button class="scene-chip" data-value="ultra">超高</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="messages-container" id="messagesContainer">
+<div class="messages-container" id="messagesContainer">
         <div class="welcome-screen" id="welcomeScreen">
           <div class="welcome-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -534,6 +432,7 @@
         <button class="btn-quick" id="btnQuickCopy" title="复制最后一条 AI 回复">复制回复</button>
         <button class="btn-quick" id="btnQuickPrecise" title="精确模式：低温输出 + 防幻觉 Prompt">精确</button>
         <button class="btn-quick" id="btnQuickExport" title="导出当前会话 Markdown">导出本聊</button>
+        <button class="btn-quick" id="btnGenHints" title="基于当前剧情生成提示词，填入输入框" style="display:none">生成提示词</button>
         <span class="scene-capsule" id="sceneCapsule" style="display:none" aria-label="写文模式已开启">写文 ON</span>
       </div>
       <div class="input-row">
