@@ -75,7 +75,14 @@
     enableCaching: true,
     preciseMode: false,
     keepThinkingOpen: true,
+    sceneStatus: {
+      health: '', stamina: '', composure: '', focus: '',
+      currentObjective: '', constraints: ''
+    },
   };
+
+  const SCENE_MOODS = ['悬疑', '温柔', '冒险', '日常', '紧张', '奇幻', '科幻'];
+  const SCENE_SPECIES = ['人类', '精灵', '机械体', '兽人', '龙裔', 'AI', '其他'];
 
   const REQUEST_CHAR_SOFT_LIMIT = 52000;
   const REQUEST_RECENT_MSG_LIMIT = 18;
@@ -202,6 +209,47 @@
     dom.scenePhysical = $('#scenePhysical');
     dom.scenePlot = $('#scenePlot');
     dom.sceneDirections = $('#sceneDirections');
+    dom.sceneCapsule = $('#sceneCapsule');
+    // World opening card
+    dom.sceneWorldCard = $('#sceneWorldCard');
+    dom.sceneWorldToggle = $('#sceneWorldToggle');
+    dom.sceneWorldBody = $('#sceneWorldBody');
+    dom.sceneOpeningName = $('#sceneOpeningName');
+    dom.sceneSetting = $('#sceneSetting');
+    dom.sceneLocations = $('#sceneLocations');
+    dom.sceneRules = $('#sceneRules');
+    dom.sceneMood = $('#sceneMood');
+    dom.sceneWorldNotes = $('#sceneWorldNotes');
+    // Character card
+    dom.sceneCharCard = $('#sceneCharCard');
+    dom.sceneCharToggle = $('#sceneCharToggle');
+    dom.sceneCharBody = $('#sceneCharBody');
+    dom.sceneCharName = $('#sceneCharName');
+    dom.sceneCharAge = $('#sceneCharAge');
+    dom.sceneCharRole = $('#sceneCharRole');
+    dom.sceneCharSpecies = $('#sceneCharSpecies');
+    dom.sceneCharAppearance = $('#sceneCharAppearance');
+    dom.sceneCharTraits = $('#sceneCharTraits');
+    dom.sceneCharStats = $('#sceneCharStats');
+    dom.sceneCharGoal = $('#sceneCharGoal');
+    dom.btnCopyCharCard = $('#btnCopyCharCard');
+    dom.btnGenOpeningPrompt = $('#btnGenOpeningPrompt');
+    // Status bar card
+    dom.sceneStatusCard = $('#sceneStatusCard');
+    dom.sceneStatusToggle = $('#sceneStatusToggle');
+    dom.sceneStatusBody = $('#sceneStatusBody');
+    dom.sceneHealth = $('#sceneHealth');
+    dom.sceneStamina = $('#sceneStamina');
+    dom.sceneComposure = $('#sceneComposure');
+    dom.sceneFocus = $('#sceneFocus');
+    dom.sceneObjective = $('#sceneObjective');
+    dom.sceneConstraints = $('#sceneConstraints');
+    // NPC card
+    dom.sceneNpcCard = $('#sceneNpcCard');
+    dom.sceneNpcToggle = $('#sceneNpcToggle');
+    dom.sceneNpcBody = $('#sceneNpcBody');
+    dom.sceneNpcList = $('#sceneNpcList');
+    dom.btnAddNpc = $('#btnAddNpc');
     dom.toolWarning = $('#toolWarning');
 
     dom.mainContent = $('#mainContent');
@@ -288,6 +336,10 @@
       state.conversations = data.conversations || [];
       state.conversations.forEach((conv) => {
         conv.sceneState = createSceneState(conv.sceneState);
+        conv.sceneWorld = createSceneWorld(conv.sceneWorld);
+        conv.sceneCharacter = createSceneCharacter(conv.sceneCharacter);
+        conv.sceneStatus = createSceneStatus(conv.sceneStatus);
+        conv.sceneNpcs = normalizeSceneNpcs(conv.sceneNpcs);
       });
       state.currentConversationId = data.currentConversationId || null;
       if (data.apiKeys) {
@@ -398,6 +450,70 @@
       plot: seed.plot || '',
       directions: seed.directions || '',
     };
+  }
+
+  function buildSceneWorldRef(conv) {
+    var w = conv.sceneWorld;
+    if (!w) return '';
+    var lines = [];
+    if (w.openingName) lines.push('开局名称：' + w.openingName);
+    if (w.setting) lines.push('世界设定：' + w.setting);
+    if (w.locations) lines.push('地点清单：' + w.locations.replace(/\n/g, '、'));
+    if (w.rules) lines.push('规则限制：' + w.rules);
+    if (w.mood) lines.push('故事基调：' + w.mood);
+    if (w.notes) lines.push('备注：' + w.notes);
+    if (!lines.length) return '';
+    return '[世界设定 — 稳定参考，不逐字复述]\n' + lines.join('\n');
+  }
+
+  function buildSceneCharacterRef(conv) {
+    var ch = conv.sceneCharacter;
+    if (!ch) return '';
+    var lines = [];
+    if (ch.name) {
+      var label = '主角：' + ch.name;
+      if (ch.age) label += '，' + ch.age + '岁';
+      if (ch.role) label += '，' + ch.role;
+      if (ch.species && ch.species !== '人类') label += '，' + ch.species;
+      lines.push(label);
+    }
+    if (ch.appearance) lines.push('外貌：' + ch.appearance);
+    if (ch.traits) lines.push('性格/习惯：' + ch.traits);
+    if (ch.stats) lines.push('状态属性：' + ch.stats);
+    if (ch.currentGoal) lines.push('当前目标：' + ch.currentGoal);
+    if (!lines.length) return '';
+    return '[角色设定 — 稳定参考，不逐字复述]\n' + lines.join('\n');
+  }
+
+  function buildSceneStatusRef(conv) {
+    var st = conv.sceneStatus;
+    if (!st) return '';
+    var parts = [];
+    if (st.health) parts.push('体力/生命：' + st.health);
+    if (st.stamina) parts.push('精力：' + st.stamina);
+    if (st.composure) parts.push('冷静/精神：' + st.composure);
+    if (st.focus) parts.push('专注：' + st.focus);
+    if (st.currentObjective) parts.push('当前目标：' + st.currentObjective);
+    if (st.constraints) parts.push('限制/提醒：' + st.constraints);
+    if (!parts.length) return '';
+    return '[主角状态 — 稳定参考，不逐字复述]\n' + parts.join('\n');
+  }
+
+  function buildSceneNpcsRef(conv) {
+    var npcs = conv.sceneNpcs;
+    if (!npcs || !npcs.length) return '';
+    var lines = [];
+    for (var i = 0; i < npcs.length; i++) {
+      var n = npcs[i];
+      if (!n.name) continue;
+      var desc = n.name;
+      if (n.role) desc += '（' + n.role + '）';
+      if (n.status) desc += ' — ' + n.status;
+      if (n.notes) desc += ' [' + n.notes + ']';
+      lines.push(desc);
+    }
+    if (!lines.length) return '';
+    return '[NPC 列表 — 稳定参考，不逐字复述]\n' + lines.join('\n');
   }
 
   function getSceneLine(block, label) {
@@ -523,36 +639,132 @@
     return null;
   }
 
-  function renderSceneStatusTable(sceneState) {
-    const ss = createSceneState(sceneState);
-    if (!ss.mental && !ss.mentalScore && !ss.physical && !ss.plot && !ss.directions) return '';
+  function renderSceneStatusTable(msg) {
+    var ss = createSceneState(msg.sceneSnapshot);
+    // Use generation-time snapshots; fallback to current conv for old messages
+    var st = msg.sceneStatusSnapshot;
+    var ch = msg.sceneCharacterSnapshot;
+    if (!st || !ch) {
+      var conv = getCurrentConv();
+      if (!st) st = conv && conv.sceneStatus ? conv.sceneStatus : null;
+      if (!ch) ch = conv && conv.sceneCharacter ? conv.sceneCharacter : null;
+    }
+    var hasStatus = st && (st.health || st.stamina || st.composure || st.focus || st.currentObjective || st.constraints);
+    var hasChar = ch && (ch.name || ch.currentGoal);
+    if (!ss.mental && !ss.mentalScore && !ss.physical && !ss.plot && !ss.directions && !hasStatus && !hasChar) return '';
     const score = ss.mentalScore ? ss.mentalScore + '/10' : '未评分';
     const mental = ss.mental || '未记录';
     const physical = ss.physical || '未记录';
     const plot = ss.plot || '未记录';
-    const directions = ss.directions
-      ? ss.directions
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => escapeHtml(line))
-        .slice(0, 4)
-        .join('<br>')
-      : '未记录';
-    return [
-      '<div class="scene-status-card">',
-      '<div class="scene-status-title">场景记忆</div>',
-      '<table class="scene-status-table">',
-      '<tbody>',
-      '<tr><th>精神状态</th><td>' + escapeHtml(mental) + '</td></tr>',
-      '<tr><th>精神评分</th><td>' + escapeHtml(score) + '</td></tr>',
-      '<tr><th>身体细节</th><td>' + escapeHtml(physical) + '</td></tr>',
-      '<tr><th>剧情总结</th><td>' + escapeHtml(plot) + '</td></tr>',
-      '<tr><th>剧情走向</th><td>' + directions + '</td></tr>',
-      '</tbody>',
-      '</table>',
-      '</div>',
-    ].join('');
+
+    // Build clickable direction chips
+    var directionsHtml = '未记录';
+    if (ss.directions) {
+      var dirOpts = parseDirectionOptions(ss.directions);
+      if (dirOpts.length) {
+        var chips = [];
+        for (var di = 0; di < dirOpts.length; di++) {
+          var d = dirOpts[di];
+          chips.push('<button class="dir-choice-chip" data-choice="' + d.letter + '" data-content="' + escapeHtml(d.content) + '">' + d.letter + '. ' + escapeHtml(d.content) + '</button>');
+        }
+        directionsHtml = chips.join('');
+      } else {
+        directionsHtml = escapeHtml(ss.directions).replace(/\n/g, '<br>');
+      }
+    }
+
+    var html = '';
+    html += '<div class="scene-status-card">';
+    html += '<div class="scene-status-title">场景记忆</div>';
+
+    // Compact character + status block
+    if (hasChar || hasStatus) {
+      html += '<div class="scene-status-compact">';
+      if (hasChar && ch.name) {
+        html += '<div class="scene-compact-line"><span class="scene-compact-label">角色</span>' + escapeHtml(ch.name);
+        if (ch.currentGoal) html += ' · ' + escapeHtml(ch.currentGoal);
+        html += '</div>';
+      }
+      if (hasStatus) {
+        var statItems = [];
+        if (st.health) statItems.push('<span class="scene-stat-chip">体力 ' + escapeHtml(st.health) + '</span>');
+        if (st.stamina) statItems.push('<span class="scene-stat-chip">精力 ' + escapeHtml(st.stamina) + '</span>');
+        if (st.composure) statItems.push('<span class="scene-stat-chip">冷静 ' + escapeHtml(st.composure) + '</span>');
+        if (st.focus) statItems.push('<span class="scene-stat-chip">专注 ' + escapeHtml(st.focus) + '</span>');
+        if (st.constraints) statItems.push('<span class="scene-stat-chip">' + escapeHtml(st.constraints) + '</span>');
+        if (statItems.length) html += '<div class="scene-compact-line">' + statItems.join(' ') + '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '<table class="scene-status-table"><tbody>';
+    html += '<tr><th>精神状态</th><td>' + escapeHtml(mental) + '</td></tr>';
+    html += '<tr><th>精神评分</th><td>' + escapeHtml(score) + '</td></tr>';
+    html += '<tr><th>身体细节</th><td>' + escapeHtml(physical) + '</td></tr>';
+    html += '<tr><th>剧情总结</th><td>' + escapeHtml(plot) + '</td></tr>';
+    html += '<tr><th>剧情走向</th><td class="dir-choices-cell">' + directionsHtml + '</td></tr>';
+    html += '</tbody></table>';
+    html += '</div>';
+    return html;
+  }
+
+  function createSceneWorld(seed) {
+    seed = seed || {};
+    return {
+      openingName: seed.openingName || '',
+      setting: seed.setting || '',
+      locations: seed.locations || '',
+      rules: seed.rules || '',
+      mood: seed.mood || '',
+      notes: seed.notes || '',
+    };
+  }
+
+  function createSceneCharacter(seed) {
+    seed = seed || {};
+    return {
+      name: seed.name || '',
+      age: seed.age || '',
+      role: seed.role || '',
+      species: seed.species || '',
+      appearance: seed.appearance || '',
+      traits: seed.traits || '',
+      stats: seed.stats || '',
+      currentGoal: seed.currentGoal || '',
+    };
+  }
+
+  function createSceneStatus(seed) {
+    seed = seed || {};
+    return {
+      health: seed.health || '',
+      stamina: seed.stamina || '',
+      composure: seed.composure || '',
+      focus: seed.focus || '',
+      currentObjective: seed.currentObjective || '',
+      constraints: seed.constraints || '',
+    };
+  }
+
+  function createSceneNpc(seed) {
+    seed = seed || {};
+    return {
+      id: seed.id || generateId(),
+      name: seed.name || '',
+      role: seed.role || '',
+      relation: seed.relation || '',
+      status: seed.status || '',
+      notes: seed.notes || '',
+    };
+  }
+
+  function normalizeSceneNpcs(list) {
+    if (!list || !Array.isArray(list)) return [];
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      out.push(createSceneNpc(list[i]));
+    }
+    return out;
   }
 
   function createConversation(provider) {
@@ -577,6 +789,10 @@
       archived: false,
       sceneMode: false,
       sceneState: createSceneState(),
+      sceneWorld: createSceneWorld(),
+      sceneCharacter: createSceneCharacter(),
+      sceneStatus: createSceneStatus(),
+      sceneNpcs: [],
       autoCompress: false,
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
       messages: [],
@@ -1035,7 +1251,7 @@
     html += '<div class="message-content">' + contentHTML + '</div>';
 
     if (msg.sceneSnapshot && !msg._streaming) {
-      html += renderSceneStatusTable(msg.sceneSnapshot);
+      html += renderSceneStatusTable(msg);
     }
 
     // Token usage
@@ -1500,7 +1716,129 @@
       dom.scenePhysical.value = ss.physical || '';
       dom.scenePlot.value = ss.plot || '';
       dom.sceneDirections.value = ss.directions || '';
+      syncSceneWorldUI();
+      syncSceneCharacterUI();
+      syncSceneStatusUI();
+      renderNpcList();
     }
+  }
+
+  function syncSceneWorldUI() {
+    var conv = getCurrentConv();
+    if (!conv || !conv.sceneWorld) return;
+    var w = createSceneWorld(conv.sceneWorld);
+    conv.sceneWorld = w;
+    dom.sceneOpeningName.value = w.openingName || '';
+    dom.sceneSetting.value = w.setting || '';
+    dom.sceneLocations.value = w.locations || '';
+    dom.sceneRules.value = w.rules || '';
+    dom.sceneMood.value = w.mood || '';
+    dom.sceneWorldNotes.value = w.notes || '';
+  }
+
+  function syncSceneCharacterUI() {
+    var conv = getCurrentConv();
+    if (!conv || !conv.sceneCharacter) return;
+    var ch = createSceneCharacter(conv.sceneCharacter);
+    conv.sceneCharacter = ch;
+    dom.sceneCharName.value = ch.name || '';
+    dom.sceneCharAge.value = ch.age || '';
+    dom.sceneCharRole.value = ch.role || '';
+    dom.sceneCharSpecies.value = ch.species || '';
+    dom.sceneCharAppearance.value = ch.appearance || '';
+    dom.sceneCharTraits.value = ch.traits || '';
+    dom.sceneCharStats.value = ch.stats || '';
+    dom.sceneCharGoal.value = ch.currentGoal || '';
+  }
+
+  function syncSceneStatusUI() {
+    var conv = getCurrentConv();
+    if (!conv || !conv.sceneStatus) return;
+    var st = createSceneStatus(conv.sceneStatus);
+    conv.sceneStatus = st;
+    dom.sceneHealth.value = st.health || '';
+    dom.sceneStamina.value = st.stamina || '';
+    dom.sceneComposure.value = st.composure || '';
+    dom.sceneFocus.value = st.focus || '';
+    dom.sceneObjective.value = st.currentObjective || '';
+    dom.sceneConstraints.value = st.constraints || '';
+  }
+
+  function renderNpcList() {
+    var conv = getCurrentConv();
+    if (!conv) { dom.sceneNpcList.innerHTML = ''; return; }
+    var npcs = conv.sceneNpcs || [];
+    if (!npcs.length) {
+      dom.sceneNpcList.innerHTML = '<div class="scene-npc-empty">暂无 NPC，点击下方按钮添加</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < npcs.length; i++) {
+      var n = npcs[i];
+      if (!n.id) n.id = generateId();
+      html += '<div class="scene-npc-item" data-npc-id="' + n.id + '">';
+      html += '<div class="scene-npc-row">';
+      html += '<input class="input scene-npc-name" placeholder="姓名" value="' + escapeHtml(n.name || '') + '" data-field="name">';
+      html += '<input class="input scene-npc-role" placeholder="身份/关系" value="' + escapeHtml(n.role || '') + '" data-field="role">';
+      html += '<button class="scene-npc-del" data-npc-id="' + n.id + '" aria-label="删除 NPC">&times;</button>';
+      html += '</div>';
+      html += '<div class="scene-npc-row">';
+      html += '<input class="input scene-npc-status" placeholder="状态" value="' + escapeHtml(n.status || '') + '" data-field="status">';
+      html += '<input class="input scene-npc-notes" placeholder="备注" value="' + escapeHtml(n.notes || '') + '" data-field="notes">';
+      html += '</div></div>';
+    }
+    dom.sceneNpcList.innerHTML = html;
+
+    // Bind input events for NPC fields
+    var items = dom.sceneNpcList.querySelectorAll('.scene-npc-item');
+    for (var j = 0; j < items.length; j++) {
+      (function(item) {
+        var inputs = item.querySelectorAll('input');
+        for (var k = 0; k < inputs.length; k++) {
+          inputs[k].addEventListener('input', function() {
+            var npcId = item.dataset.npcId;
+            var field = this.dataset.field;
+            var value = this.value;
+            var c = getCurrentConv();
+            if (!c || !c.sceneNpcs) return;
+            for (var ni = 0; ni < c.sceneNpcs.length; ni++) {
+              if (c.sceneNpcs[ni].id === npcId) {
+                c.sceneNpcs[ni][field] = value;
+                updateTimestamp(c);
+                debouncedSave();
+                break;
+              }
+            }
+          });
+        }
+        var delBtn = item.querySelector('.scene-npc-del');
+        if (delBtn) {
+          delBtn.addEventListener('click', function() {
+            var npcId = this.dataset.npcId;
+            deleteNpc(npcId);
+          });
+        }
+      })(items[j]);
+    }
+  }
+
+  function addNpc() {
+    var conv = getCurrentConv();
+    if (!conv) return;
+    if (!conv.sceneNpcs) conv.sceneNpcs = [];
+    conv.sceneNpcs.push({ id: generateId(), name: '', role: '', relation: '', status: '', notes: '' });
+    updateTimestamp(conv);
+    renderNpcList();
+    debouncedSave();
+  }
+
+  function deleteNpc(id) {
+    var conv = getCurrentConv();
+    if (!conv || !conv.sceneNpcs) return;
+    conv.sceneNpcs = conv.sceneNpcs.filter(function(n) { return n.id !== id; });
+    updateTimestamp(conv);
+    renderNpcList();
+    debouncedSave();
   }
 
   function handleMessageAction(action, msgIndex) {
@@ -1736,9 +2074,23 @@
       }
       sceneStateRef.push('');
 
+      // Inject world and character settings as stable reference
+      var worldRef = buildSceneWorldRef(conv);
+      var charRef = buildSceneCharacterRef(conv);
+      var statusRef = buildSceneStatusRef(conv);
+      var npcsRef = buildSceneNpcsRef(conv);
+      var settingRefs = [];
+      if (worldRef) settingRefs.push(worldRef);
+      if (charRef) settingRefs.push(charRef);
+      if (statusRef) settingRefs.push(statusRef);
+      if (npcsRef) settingRefs.push(npcsRef);
+      if (settingRefs.length) {
+        settingRefs.push('');
+      }
+
       var sceneBlock = [
         '\n\n[写作场景记忆 — 独立存储，不随上下文压缩]',
-      ].concat(sceneStateRef).concat([
+      ].concat(sceneStateRef).concat(settingRefs).concat([
         '写文模式规则：',
         '0. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 2–4 个剧情选项，使用 A/B/C/D 选项标号（如只有两个选项则只写 A/B，三个则只写 A/B/C）。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字。不允许只在正文里写后续可能而不写入 @@SCENE。',
         '1. 剧情走向必须以 A/B/C/D 选项形式输出。用户下一轮如果只输入 A、B、C 或 D（或其变体如”选A””选择B”），应视为用户选择了对应剧情分支，并沿该分支继续创作，不得忽略或自行发挥；如果用户自由输入其他内容，则按用户新要求继续，不要强行套用已有选项。',
@@ -1895,11 +2247,15 @@
             directions: directions || previousScene.directions,
           };
           assistantMsg.sceneSnapshot = createSceneState(conv.sceneState);
+          assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
+          assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
           // Strip the scene block from displayed content
           assistantMsg.content = assistantMsg.content.replace(/@@SCENE\s*[\s\S]*?\s*@@END/, '').trim();
           updateScenePanelUI();
         } else {
           assistantMsg.sceneSnapshot = createSceneState(conv.sceneState);
+          assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
+          assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
         }
       }
 
@@ -2071,6 +2427,10 @@
       conv.autoCompress = current.autoCompress;
       conv.keepThinkingOpen = current.keepThinkingOpen;
       conv.sceneState = createSceneState(current.sceneState);
+      conv.sceneWorld = createSceneWorld(current.sceneWorld);
+      conv.sceneCharacter = createSceneCharacter(current.sceneCharacter);
+      conv.sceneStatus = createSceneStatus(current.sceneStatus);
+      conv.sceneNpcs = normalizeSceneNpcs(current.sceneNpcs);
     }
 
     state.conversations.push(conv);
@@ -2319,6 +2679,10 @@
           c.sceneState = createSceneState(c.sceneState);
           c.autoCompress = c.autoCompress || false;
           c.keepThinkingOpen = c.keepThinkingOpen !== undefined ? c.keepThinkingOpen : DEFAULTS.keepThinkingOpen;
+          c.sceneWorld = createSceneWorld(c.sceneWorld);
+          c.sceneCharacter = createSceneCharacter(c.sceneCharacter);
+          c.sceneStatus = createSceneStatus(c.sceneStatus);
+          c.sceneNpcs = normalizeSceneNpcs(c.sceneNpcs);
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
           state.conversations.push(c);
@@ -2354,6 +2718,31 @@
     URL.revokeObjectURL(url);
   }
 
+  function copyTextToClipboard(text, successMessage) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(function () { showToast(successMessage, 'success'); })
+        .catch(function () { showToast('复制失败，请手动选择文本复制', 'warning'); });
+      return;
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    ta.style.pointerEvents = 'none';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast(successMessage, 'success');
+    } catch (_) {
+      showToast('复制失败，请手动选择文本复制', 'warning');
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+
   // =========================================================================
   // UPDATE UI
   // =========================================================================
@@ -2370,12 +2759,22 @@
     }
   }
 
+  function updateSceneModeClass() {
+    var conv = getCurrentConv();
+    var on = conv && conv.sceneMode;
+    dom.appContainer.classList.toggle('scene-immersive', !!on);
+    if (dom.sceneCapsule) {
+      dom.sceneCapsule.style.display = on ? '' : 'none';
+    }
+  }
+
   function renderAll() {
     renderMessages();
     updateTopBar();
     updateWelcomeUI();
     renderConvList();
     updateScenePanelUI();
+    updateSceneModeClass();
     if (state.ui.isSettingsOpen) {
       syncSettingsToUI();
     }
@@ -2532,6 +2931,7 @@
         conv.sceneMode = dom.inputSceneMode.checked;
         updateTimestamp(conv);
         updateScenePanelUI();
+        updateSceneModeClass();
         renderMessages();
         debouncedSave();
       }
@@ -2644,8 +3044,214 @@
       }
     });
 
+    // World opening card inputs
+    dom.sceneOpeningName.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.openingName = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneSetting.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.setting = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneLocations.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.locations = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneRules.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.rules = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneMood.addEventListener('change', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.mood = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneWorldNotes.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneWorld) { conv.sceneWorld.notes = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+
+    // Character card inputs
+    dom.sceneCharName.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.name = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharAge.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.age = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharRole.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.role = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharSpecies.addEventListener('change', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.species = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharAppearance.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.appearance = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharTraits.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.traits = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharStats.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.stats = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneCharGoal.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneCharacter) { conv.sceneCharacter.currentGoal = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+
+    // Copy character card button
+    dom.btnCopyCharCard.addEventListener('click', function() {
+      var conv = getCurrentConv();
+      if (!conv || !conv.sceneCharacter) return;
+      var ch = conv.sceneCharacter;
+      var card = [];
+      if (ch.name) card.push('姓名：' + ch.name);
+      if (ch.age) card.push('年龄：' + ch.age);
+      if (ch.role) card.push('身份：' + ch.role);
+      if (ch.species) card.push('种族：' + ch.species);
+      if (ch.appearance) card.push('外貌：' + ch.appearance);
+      if (ch.traits) card.push('性格/习惯：' + ch.traits);
+      if (ch.stats) card.push('状态：' + ch.stats);
+      if (ch.currentGoal) card.push('当前目标：' + ch.currentGoal);
+      var text = card.join('\n');
+      if (!text) { showToast('角色卡为空，请先填写', 'warning'); return; }
+      copyTextToClipboard(text, '角色卡已复制到剪贴板');
+    });
+
+    // Generate opening prompt button
+    dom.btnGenOpeningPrompt.addEventListener('click', function() {
+      var conv = getCurrentConv();
+      if (!conv) return;
+      var w = conv.sceneWorld || {};
+      var ch = conv.sceneCharacter || {};
+      var ss = conv.sceneState || {};
+      var parts = [];
+      parts.push('请根据以下设定续写故事。');
+      if (w.openingName) parts.push('开局：' + w.openingName);
+      if (w.setting) parts.push('世界设定：' + w.setting);
+      if (ch.name) {
+        var charDesc = '主角：' + ch.name;
+        if (ch.age) charDesc += '，' + ch.age + '岁';
+        if (ch.role) charDesc += '，' + ch.role;
+        if (ch.species && ch.species !== '人类') charDesc += '，' + ch.species;
+        parts.push(charDesc);
+      }
+      if (ch.appearance) parts.push('外貌：' + ch.appearance);
+      if (ch.traits) parts.push('性格：' + ch.traits);
+      if (ch.stats) parts.push('状态属性：' + ch.stats);
+      if (ch.currentGoal) parts.push('当前目标：' + ch.currentGoal);
+      if (w.mood) parts.push('基调：' + w.mood);
+      if (ss.mental) parts.push('精神状态：' + ss.mental);
+      if (ss.physical) parts.push('身体细节：' + ss.physical);
+      if (ss.plot) parts.push('当前剧情：' + ss.plot);
+      // Phase 3: status bar
+      var st = conv.sceneStatus;
+      if (st) {
+        var stParts = [];
+        if (st.health) stParts.push('体力/生命：' + st.health);
+        if (st.stamina) stParts.push('精力：' + st.stamina);
+        if (st.composure) stParts.push('冷静/精神：' + st.composure);
+        if (st.focus) stParts.push('专注：' + st.focus);
+        if (st.currentObjective) stParts.push('当前目标：' + st.currentObjective);
+        if (st.constraints) stParts.push('限制/提醒：' + st.constraints);
+        if (stParts.length) parts.push('主角状态：\n' + stParts.join('\n'));
+      }
+      // Phase 3: NPCs
+      var npcs = conv.sceneNpcs;
+      if (npcs && npcs.length) {
+        var npcLines = [];
+        for (var ni = 0; ni < npcs.length; ni++) {
+          var n = npcs[ni];
+          if (!n.name) continue;
+          var line = n.name;
+          if (n.role) line += '（' + n.role + '）';
+          if (n.status) line += ' — ' + n.status;
+          if (n.notes) line += ' [' + n.notes + ']';
+          npcLines.push(line);
+        }
+        if (npcLines.length) parts.push('NPC：\n' + npcLines.join('\n'));
+      }
+      parts.push('请用生动细致的文笔，基于以上设定开始续写。注意保持人物一致性，推进剧情发展。');
+      dom.inputMessage.value = parts.join('\n');
+      dom.inputMessage.style.height = 'auto';
+      dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
+      dom.inputMessage.focus();
+      showToast('开场提示词已生成到输入框，可修改后发送', 'info');
+    });
+
+    // Status bar card toggle
+    if (dom.sceneStatusToggle) {
+      dom.sceneStatusToggle.addEventListener('click', function() {
+        dom.sceneStatusCard.classList.toggle('collapsed');
+      });
+    }
+    // NPC card toggle
+    if (dom.sceneNpcToggle) {
+      dom.sceneNpcToggle.addEventListener('click', function() {
+        dom.sceneNpcCard.classList.toggle('collapsed');
+      });
+    }
+    // Add NPC button
+    if (dom.btnAddNpc) {
+      dom.btnAddNpc.addEventListener('click', function() { addNpc(); });
+    }
+
+    // Status bar input events
+    var statusFields = [
+      { dom: dom.sceneHealth, key: 'health' },
+      { dom: dom.sceneStamina, key: 'stamina' },
+      { dom: dom.sceneComposure, key: 'composure' },
+      { dom: dom.sceneFocus, key: 'focus' },
+    ];
+    for (var si = 0; si < statusFields.length; si++) {
+      (function(field) {
+        field.dom.addEventListener('input', function() {
+          var conv = getCurrentConv();
+          if (conv && conv.sceneStatus) { conv.sceneStatus[field.key] = this.value; updateTimestamp(conv); debouncedSave(); }
+        });
+      })(statusFields[si]);
+    }
+    dom.sceneObjective.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneStatus) { conv.sceneStatus.currentObjective = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+    dom.sceneConstraints.addEventListener('input', function() {
+      var conv = getCurrentConv();
+      if (conv && conv.sceneStatus) { conv.sceneStatus.constraints = this.value; updateTimestamp(conv); debouncedSave(); }
+    });
+
+    // World card toggle
+    if (dom.sceneWorldToggle) {
+      dom.sceneWorldToggle.addEventListener('click', function() {
+        dom.sceneWorldCard.classList.toggle('collapsed');
+      });
+    }
+    // Character card toggle
+    if (dom.sceneCharToggle) {
+      dom.sceneCharToggle.addEventListener('click', function() {
+        dom.sceneCharCard.classList.toggle('collapsed');
+      });
+    }
+
     // Message action buttons (event delegation)
     dom.messagesContainer.addEventListener('click', (e) => {
+      // Direction choice chip
+      const chip = e.target.closest('.dir-choice-chip');
+      if (chip && !state.isStreaming) {
+        var letter = chip.dataset.choice;
+        var content = chip.dataset.content;
+        dom.inputMessage.value = '选择 ' + letter + '：' + content;
+        dom.inputMessage.style.height = 'auto';
+        dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
+        dom.inputMessage.focus();
+        return;
+      }
+
       const btn = e.target.closest('.btn-msg-action');
       if (!btn || state.isStreaming) return;
       const action = btn.dataset.action;

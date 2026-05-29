@@ -843,8 +843,9 @@ a {
 
 .btn-sm {
   font-size: 12px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   margin-top: 6px;
+  min-height: 34px;
 }
 
 /* --- Main Content --- */
@@ -1143,6 +1144,238 @@ a {
   color: var(--text-tertiary);
   margin-top: 4px;
   line-height: 1.4;
+}
+
+/* --- Scene Flex Row (dual-column → stack on mobile) --- */
+.scene-flex-row {
+  display: flex;
+  gap: 8px;
+}
+
+.scene-btn-row {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* --- Scene Sub-Cards (World / Character) --- */
+.scene-sub-card {
+  margin-top: 10px;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--scene-radius);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.scene-sub-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.scene-sub-card-header .scene-panel-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 200ms var(--spring);
+}
+
+.scene-sub-card.collapsed .scene-sub-card-header .scene-panel-arrow {
+  transform: rotate(-90deg);
+}
+
+.scene-sub-card-body {
+  padding: 0 12px 10px;
+  transition: max-height 300ms var(--spring), opacity 200ms ease;
+  max-height: 800px;
+  opacity: 1;
+}
+
+.scene-sub-card.collapsed .scene-sub-card-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+/* Immersive mode sub-card overrides */
+.scene-immersive .scene-sub-card {
+  border-color: rgba(180, 130, 160, 0.15);
+  background: rgba(30, 20, 40, 0.45);
+}
+
+/* --- NPC List --- */
+.scene-npc-empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.scene-npc-item {
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--scene-radius);
+  padding: 8px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.scene-npc-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.scene-npc-row:last-child {
+  margin-bottom: 0;
+}
+
+.scene-npc-name,
+.scene-npc-role {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px !important;
+  padding: 5px 8px !important;
+}
+
+.scene-npc-status,
+.scene-npc-notes {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px !important;
+  padding: 5px 8px !important;
+}
+
+.scene-npc-del {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  align-self: center;
+}
+
+.scene-npc-del:active {
+  background: rgba(255, 69, 58, 0.2);
+  color: var(--danger-bright);
+}
+
+/* --- Compact Status Block in Status Card --- */
+.scene-status-compact {
+  padding: 6px 10px 4px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+}
+
+.scene-compact-line {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.scene-compact-label {
+  font-weight: 600;
+  color: var(--scene-gold);
+  margin-right: 4px;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.scene-stat-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: rgba(200, 140, 170, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  border: 0.5px solid rgba(180, 130, 160, 0.18);
+  white-space: nowrap;
+}
+
+/* --- Direction Choice Chips --- */
+.dir-choice-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 36px;
+  margin-bottom: 3px;
+  border: 0.5px solid rgba(200, 140, 170, 0.22);
+  border-radius: var(--scene-radius);
+  background: rgba(200, 140, 170, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 1.45;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dir-choice-chip:active {
+  background: rgba(200, 140, 170, 0.18);
+  border-color: var(--scene-accent);
+  color: var(--text-primary);
+}
+
+.dir-choice-chip:last-child {
+  margin-bottom: 0;
+}
+
+.dir-choices-cell {
+  padding: 4px 10px 6px !important;
+}
+
+/* Immersive mode overrides */
+.scene-immersive .scene-stat-chip {
+  background: rgba(200, 140, 170, 0.15);
+  border-color: rgba(180, 130, 160, 0.25);
+}
+
+.scene-immersive .dir-choice-chip {
+  border-color: rgba(200, 140, 170, 0.28);
+  background: rgba(200, 140, 170, 0.08);
+}
+
+.scene-immersive .dir-choice-chip:active {
+  background: rgba(200, 140, 170, 0.22);
+  border-color: var(--scene-accent-bright);
+}
+
+.scene-immersive .scene-npc-item {
+  border-color: rgba(180, 130, 160, 0.12);
+  background: rgba(30, 20, 40, 0.3);
+}
+
+.scene-immersive .scene-npc-del {
+  border-color: rgba(180, 130, 160, 0.2);
+}
+
+.scene-immersive .scene-sub-card-header {
+  color: rgba(200, 160, 180, 0.8);
 }
 
 .scene-status-card {
@@ -1839,6 +2072,267 @@ a {
 /* --- Utility --- */
 .hidden {
   display: none !important;
+}
+
+/* ============================================================
+   Immersive Writing Mode (scene-immersive)
+   ============================================================ */
+
+/* -- Scene accent variables (overridable via :root if needed) -- */
+:root {
+  --scene-accent: #d078a0;
+  --scene-accent-bright: #e890b8;
+  --scene-accent-dim: rgba(208, 120, 160, 0.18);
+  --scene-gold: #c0a050;
+  --scene-gold-bright: #d4b860;
+  --scene-purple: rgba(40, 20, 50, 0.72);
+  --scene-card-bg: rgba(22, 16, 30, 0.78);
+  --scene-card-border: rgba(180, 120, 150, 0.28);
+  --scene-radius: 8px;
+}
+
+/* -- Capsule indicator -- */
+.scene-capsule {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 0.5px solid var(--scene-accent-dim);
+  border-radius: 12px;
+  background: rgba(208, 120, 160, 0.12);
+  color: var(--scene-accent-bright);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.4;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* -- Container: narrow column on desktop, background visible -- */
+.scene-immersive.app-container {
+  max-width: 720px;
+}
+
+/* -- Main content: more transparent for background depth -- */
+.scene-immersive .main-content {
+  background: transparent;
+}
+
+/* -- Messages container: slight padding adjustment -- */
+.scene-immersive .messages-container {
+  padding: 0 10px;
+  padding-bottom: 12px;
+}
+
+/* -- Welcome screen: semi-transparent -- */
+.scene-immersive .welcome-screen {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* -- Assistant bubble: glass card effect -- */
+.scene-immersive .message.assistant .message-bubble {
+  background: var(--scene-card-bg);
+  border: 0.5px solid var(--scene-card-border);
+  border-radius: var(--scene-radius);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(180, 120, 150, 0.1);
+}
+
+.scene-immersive .message.user .message-bubble {
+  border-radius: var(--scene-radius);
+}
+
+/* -- Scene Panel: pink-purple card -- */
+.scene-immersive .scene-panel {
+  margin: 6px 10px;
+  border: 0.5px solid var(--scene-card-border);
+  border-radius: var(--scene-radius);
+  background: var(--scene-card-bg);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.scene-immersive .scene-panel-header {
+  color: var(--scene-gold-bright);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 8px 12px;
+}
+
+.scene-immersive .scene-field label {
+  color: var(--scene-gold);
+  font-size: 10.5px;
+}
+
+.scene-immersive .scene-input,
+.scene-immersive .scene-score-input {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(180, 130, 160, 0.15) !important;
+  border-radius: 6px !important;
+}
+
+.scene-immersive .scene-input:focus,
+.scene-immersive .scene-score-input:focus {
+  border-color: rgba(200, 140, 170, 0.4) !important;
+}
+
+.scene-immersive .scene-panel-hint {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* -- Scene Status Card inside assistant bubble: pink-purple table -- */
+.scene-immersive .scene-status-card {
+  margin-top: 10px;
+  border: 0.5px solid rgba(200, 140, 170, 0.28);
+  border-radius: var(--scene-radius);
+  background: rgba(30, 16, 40, 0.65);
+  overflow: hidden;
+}
+
+.scene-immersive .scene-status-title {
+  padding: 7px 10px 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--scene-gold-bright);
+  letter-spacing: 0.2px;
+  border-bottom: 0.5px solid rgba(180, 120, 150, 0.15);
+}
+
+.scene-immersive .scene-status-table {
+  font-size: 11.5px;
+}
+
+.scene-immersive .scene-status-table th {
+  width: 72px;
+  color: var(--scene-gold);
+  font-weight: 500;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.scene-immersive .scene-status-table th,
+.scene-immersive .scene-status-table td {
+  padding: 6px 10px;
+  border-top: 0.5px solid rgba(180, 130, 160, 0.1);
+}
+
+.scene-immersive .scene-status-table td {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* -- Bottom bar: floating glass -- */
+.scene-immersive .bottom-bar {
+  background: rgba(22, 16, 30, 0.78);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  border-top: 0.5px solid var(--scene-card-border);
+}
+
+/* -- Quick action buttons in scene mode -- */
+.scene-immersive .btn-quick {
+  border-color: rgba(180, 130, 160, 0.18);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.scene-immersive .btn-quick:active {
+  background: var(--scene-accent-dim);
+  color: var(--scene-accent-bright);
+  border-color: var(--scene-accent);
+}
+
+/* -- Input field in scene mode -- */
+.scene-immersive .input-message {
+  background: rgba(22, 16, 30, 0.55);
+  border-color: rgba(180, 130, 160, 0.2);
+}
+
+.scene-immersive .input-message:focus {
+  border-color: var(--scene-accent);
+  background: rgba(22, 16, 30, 0.72);
+}
+
+/* -- Code blocks in scene mode -- */
+.scene-immersive .message-bubble code {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.scene-immersive .message-bubble pre {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(180, 130, 160, 0.12);
+}
+
+/* -- Thinking section in scene mode -- */
+.scene-immersive .thinking-section {
+  border-color: rgba(180, 130, 160, 0.15);
+}
+
+.scene-immersive .thinking-section[open] {
+  border-color: rgba(200, 140, 170, 0.3);
+}
+
+.scene-immersive .thinking-header {
+  background: rgba(30, 20, 40, 0.5);
+}
+
+.scene-immersive .thinking-content {
+  background: rgba(30, 20, 40, 0.3);
+  border-color: rgba(180, 130, 160, 0.1);
+}
+
+/* -- Scene-immersive responsive: mobile full-width -- */
+@media (max-width: 600px) {
+  .scene-immersive.app-container {
+    max-width: none;
+    width: 100%;
+  }
+
+  .scene-immersive .messages-container {
+    padding: 0 6px;
+    padding-bottom: 12px;
+  }
+
+  /* Stack dual-column rows vertically */
+  .scene-flex-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .scene-btn-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  /* NPC rows stack vertically */
+  .scene-npc-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .scene-npc-del {
+    align-self: flex-end;
+    margin-top: -2px;
+  }
+
+  /* Scene panel tighter padding */
+  .scene-panel-body {
+    padding: 0 8px 8px;
+  }
+
+  .scene-sub-card-body {
+    padding: 0 8px 8px;
+  }
+
+  /* Bottom bar capsule fit */
+  .quick-actions {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .scene-capsule {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
 }
 
 /* --- Responsive --- */
