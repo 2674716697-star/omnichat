@@ -315,18 +315,12 @@
 
         <!-- Tool Call Limit -->
         <div class="setting-group">
-          <label class="setting-label">工具最大调用次数</label>
-          <select class="select" id="selectToolCallLimit">
+          <label class="setting-label">工具调用（实验中）</label>
+          <select class="select" id="selectToolCallLimit" disabled aria-disabled="true">
             <option value="0">0 - 关闭</option>
-            <option value="1">1</option>
-            <option value="3">3</option>
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="-1">无限</option>
           </select>
-          <div class="tool-warning" id="toolWarning" style="display:none">
-            无限工具调用可能导致循环执行、长时间运行或产生大量 API 费用，请谨慎使用。
+          <div class="tool-warning" id="toolWarning">
+            当前网页端未执行外部工具调用，入口已锁定为关闭，避免误触发循环或额外费用。
           </div>
         </div>
       </div>

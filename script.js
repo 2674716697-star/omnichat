@@ -101,7 +101,6 @@
     importFailed: 'JSON 导入失败，请检查文件格式。',
     serverError: '服务商接口异常，请稍后重试。',
     streamParseError: '流式响应解析失败。',
-    toolNotImplemented: '当前版本仅预留工具调用配置，尚未执行外部工具。',
   };
 
   // =========================================================================
@@ -1117,7 +1116,9 @@
     dom.inputPreciseMode.checked = !!conv.preciseMode;
     dom.inputSceneMode.checked = !!conv.sceneMode;
     dom.inputAutoCompress.checked = !!conv.autoCompress;
-    dom.selectToolCallLimit.value = String(conv.toolCallLimit);
+    conv.toolCallLimit = 0;
+    conv.toolCallLimitMode = 'disabled';
+    dom.selectToolCallLimit.value = '0';
     updateToolWarning();
     updateApiKeyField();
     // Restore action prompts
@@ -1157,9 +1158,8 @@
     }
     dom.inputTemperature.value = String(conv.temperature);
     dom.tempVal.textContent = conv.temperature;
-    conv.toolCallLimit = parseInt(dom.selectToolCallLimit.value, 10);
-    conv.toolCallLimitMode =
-      conv.toolCallLimit === 0 ? 'disabled' : conv.toolCallLimit === -1 ? 'unlimited' : 'limited';
+    conv.toolCallLimit = 0;
+    conv.toolCallLimitMode = 'disabled';
 
     state.apiKeys[conv.provider] = dom.inputApiKey.value.trim();
 
@@ -1357,8 +1357,9 @@
   }
 
   function updateToolWarning() {
-    const val = parseInt(dom.selectToolCallLimit.value, 10);
-    dom.toolWarning.style.display = val === -1 ? '' : 'none';
+    dom.selectToolCallLimit.value = '0';
+    dom.selectToolCallLimit.disabled = true;
+    dom.toolWarning.style.display = '';
   }
 
   // =========================================================================
@@ -1478,11 +1479,6 @@
     if (!Number.isInteger(conv.maxTokens) || conv.maxTokens <= 0) {
       showToast('Max Tokens 必须为正整数。', 'error');
       return;
-    }
-
-    // Tool call check
-    if (conv.toolCallLimit > 0 || conv.toolCallLimit === -1) {
-      showToast(ERR_MSGS.toolNotImplemented, 'warning');
     }
 
     // Add user message
@@ -1797,29 +1793,6 @@
 
   function isAbortRequested() {
     return state.abortController ? state.abortController.signal.aborted : false;
-  }
-
-  // =========================================================================
-  // TOOL CALL STUB
-  // =========================================================================
-
-  function getToolCallSettings() {
-    const conv = getCurrentConv();
-    if (!conv) return { limit: 0, mode: 'disabled' };
-    return {
-      limit: conv.toolCallLimit,
-      mode: conv.toolCallLimitMode,
-    };
-  }
-
-  async function runToolLoop(messages, assistantMsg) {
-    // TODO: 实现工具调用循环
-    // 1. 检查 assistant 消息中的 tool_calls
-    // 2. 根据 toolCallLimitMode 和 toolCallLimit 控制循环次数
-    // 3. 执行工具并将结果追加到消息数组
-    // 4. 将工具结果发送回 API 并接收新回复
-    // 5. 循环直到无更多 tool_calls 或达到上限
-    throw new Error(ERR_MSGS.toolNotImplemented);
   }
 
   // =========================================================================
@@ -2312,9 +2285,8 @@
       updateToolWarning();
       const conv = getCurrentConv();
       if (conv) {
-        conv.toolCallLimit = parseInt(dom.selectToolCallLimit.value, 10);
-        conv.toolCallLimitMode =
-          conv.toolCallLimit === 0 ? 'disabled' : conv.toolCallLimit === -1 ? 'unlimited' : 'limited';
+        conv.toolCallLimit = 0;
+        conv.toolCallLimitMode = 'disabled';
         updateTimestamp(conv);
         debouncedSave();
       }
