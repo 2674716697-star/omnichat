@@ -1112,6 +1112,25 @@ a {
   overflow: hidden;
 }
 
+.scene-panel-footer {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 8px 12px;
+  padding-bottom: calc(8px + var(--safe-bottom));
+  background: rgba(14, 8, 22, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(220, 92, 145, 0.15);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.scene-panel.collapsed .scene-panel-footer { display: none; }
+
+/* Extra bottom space so last item isn't hidden behind sticky footer */
+.scene-panel-body { padding-bottom: 8px; }
+
 .scene-field {
   margin-bottom: 8px;
 }
@@ -1619,7 +1638,7 @@ a {
   border-top: 0.5px solid var(--border-color);
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   padding: 6px 14px;
-  padding-bottom: calc(6px + max(var(--safe-bottom), var(--keyboard-inset)));
+  padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
   position: relative;
   z-index: 10;
 }
@@ -2349,7 +2368,7 @@ a {
   border-bottom: none;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(220,92,145,0.06);
   padding: 8px 14px;
-  padding-bottom: calc(8px + max(var(--safe-bottom), var(--keyboard-inset)));
+  padding-bottom: calc(8px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
 }
 
 .scene-immersive .quick-actions {
@@ -2909,7 +2928,7 @@ a {
     width: 100%;
     border-radius: 12px 12px 0 0;
     padding: 6px 10px;
-    padding-bottom: calc(6px + max(var(--safe-bottom), var(--keyboard-inset)));
+    padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
   }
 
   .scene-immersive .dir-choice-chip {

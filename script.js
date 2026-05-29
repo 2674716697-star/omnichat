@@ -1585,6 +1585,8 @@ function createSceneWorld(seed) {
     var updateInsets = function() {
       var vv = window.visualViewport;
       var keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      // Only apply when keyboard is clearly visible (> 50px gap); otherwise let CSS safe-bottom handle it alone
+      if (keyboardInset < 50) keyboardInset = 0;
       document.documentElement.style.setProperty('--keyboard-inset', Math.round(keyboardInset) + 'px');
     };
     window.visualViewport.addEventListener('resize', updateInsets);
@@ -3733,18 +3735,7 @@ function updateScenePanelUI() {
       if (conv && conv.sceneStatus) { conv.sceneStatus.constraints = this.value; updateTimestamp(conv); debouncedSave(); }
     });
 
-    // World card toggle
-    if (dom.sceneWorldToggle) {
-      dom.sceneWorldToggle.addEventListener('click', function() {
-        dom.sceneWorldCard.classList.toggle('collapsed');
-      });
-    }
-    // Character card toggle
-    if (dom.sceneCharToggle) {
-      dom.sceneCharToggle.addEventListener('click', function() {
-        dom.sceneCharCard.classList.toggle('collapsed');
-      });
-    }
+    // World/Character cards removed (now tabbed) — toggles handled by tab switching
 
     // Message action buttons (event delegation)
     dom.messagesContainer.addEventListener('click', (e) => {
