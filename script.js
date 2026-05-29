@@ -405,8 +405,16 @@
     return match ? match[1].trim() : '';
   }
 
+  function getSceneLineAny(block, labels) {
+    for (const label of labels) {
+      const value = getSceneLine(block, label);
+      if (value) return value;
+    }
+    return '';
+  }
+
   function getSceneDirections(block) {
-    const match = block.match(/^走向[:：]?\s*([\s\S]*)$/m);
+    const match = block.match(/^(?:走向|剧情走向)[:：]?\s*([\s\S]*)$/m);
     if (!match) return '';
     const lines = match[1]
       .split('\n')
@@ -418,16 +426,30 @@
 
   function renderSceneStatusTable(sceneState) {
     const ss = createSceneState(sceneState);
-    if (!ss.mentalScore && !ss.physical) return '';
+    if (!ss.mental && !ss.mentalScore && !ss.physical && !ss.plot && !ss.directions) return '';
     const score = ss.mentalScore ? ss.mentalScore + '/10' : '未评分';
+    const mental = ss.mental || '未记录';
     const physical = ss.physical || '未记录';
+    const plot = ss.plot || '未记录';
+    const directions = ss.directions
+      ? ss.directions
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => escapeHtml(line))
+        .slice(0, 4)
+        .join('<br>')
+      : '未记录';
     return [
       '<div class="scene-status-card">',
-      '<div class="scene-status-title">写文状态</div>',
+      '<div class="scene-status-title">场景记忆</div>',
       '<table class="scene-status-table">',
       '<tbody>',
+      '<tr><th>精神状态</th><td>' + escapeHtml(mental) + '</td></tr>',
       '<tr><th>精神评分</th><td>' + escapeHtml(score) + '</td></tr>',
       '<tr><th>身体细节</th><td>' + escapeHtml(physical) + '</td></tr>',
+      '<tr><th>剧情总结</th><td>' + escapeHtml(plot) + '</td></tr>',
+      '<tr><th>剧情走向</th><td>' + directions + '</td></tr>',
       '</tbody>',
       '</table>',
       '</div>',
@@ -894,7 +916,9 @@
     if (reasoning) {
       const conv = getCurrentConv();
       const isStreamingReasoning = msg._streaming && !msg.content;
-      const keepOpen = conv && conv.keepThinkingOpen !== false;
+      const keepOpen = msg._keepThinkingOpen !== undefined
+        ? msg._keepThinkingOpen
+        : conv && conv.keepThinkingOpen !== false;
       const stayOpen = isStreamingReasoning || (keepOpen && !msg._streaming);
       const openAttr = stayOpen ? ' open' : '';
       const reasonHTML = msg._streaming ? renderContentFast(reasoning) : renderMarkdown(reasoning);
@@ -988,7 +1012,7 @@
       // Fast path: only update text content, skip full DOM rebuild
       let contentDiv = bubble.querySelector('.message-content');
       if (contentDiv) {
-        contentDiv.innerHTML = renderContentFast(msg.content || '');
+        contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
       }
       // Update thinking section if reasoning is streaming
       const reasoning = msg.reasoning || '';
@@ -1008,6 +1032,12 @@
     } else {
       // Full render when streaming ends — proper markdown everywhere
       bubble.innerHTML = renderBubbleHTML(msg);
+      const details = bubble.querySelector('.thinking-section');
+      const conv = getCurrentConv();
+      const keepOpen = msg._keepThinkingOpen !== undefined
+        ? msg._keepThinkingOpen
+        : conv && conv.keepThinkingOpen !== false;
+      if (details) details.open = !!keepOpen;
       bubble.classList.remove('streaming-cursor');
     }
   }
@@ -1150,6 +1180,16 @@
   function scrollToBottom(force) {
     if (!force && userScrolledUp) return;
     dom.mainContent.scrollTop = dom.mainContent.scrollHeight;
+  }
+
+  function preserveScrollPosition(fn) {
+    const el = dom.mainContent;
+    const beforeTop = el.scrollTop;
+    fn();
+    el.scrollTop = beforeTop;
+    requestAnimationFrame(() => {
+      el.scrollTop = beforeTop;
+    });
   }
 
   function checkUserScroll() {
@@ -1554,7 +1594,7 @@
     dom.inputMessage.value = '';
     dom.inputMessage.style.height = 'auto';
 
-    renderMessages();
+    preserveScrollPosition(renderMessages);
     updateTopBar();
     updateSendUI();
 
@@ -1585,13 +1625,14 @@
         ss.plot ? '当前剧情总结：' + ss.plot : '',
         ss.directions ? '上次剧情走向：\n' + ss.directions : '',
         '\n写文模式规则：',
-        '1. 每次回复后必须维护人物精神状态、身体细节、当前剧情总结和剧情走向。',
+        '1. 每次回复后必须维护人物精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
         '2. 精神评分使用 1-10 的整数。评分要跟剧情变化一致，但不要无理由持续降低。',
         '3. 身体细节要具体到姿态、感官、疲劳、伤痛或动作变化，避免只写空泛形容词。',
         '4. 剧情走向必须给 2-4 个，彼此要有实际差异，并尽量避开上次已经生成过的走向。',
         '5. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
         '6. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
-        '7. 应用会自动把精神评分和身体细节渲染成表格；正文里不要重复输出这个表格。',
+        '7. 应用会自动把场景记忆渲染到本次回答框里；正文里不要重复输出状态表。',
+        '8. 场景状态要简洁：精神状态、身体细节、剧情总结各 1 句；剧情走向 2-4 条，每条不超过 24 个字。',
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '精神: <更新后的精神状态>',
@@ -1619,7 +1660,7 @@
     // Add placeholder assistant message for streaming
     const assistantMsg = { role: 'assistant', content: '', _streaming: true };
     conv.messages.push(assistantMsg);
-    renderMessages();
+    preserveScrollPosition(renderMessages);
 
     // Create abort controller
     state.abortController = new AbortController();
@@ -1679,9 +1720,10 @@
         conv.messages.pop();
         showToast(e.message || ERR_MSGS.network, 'error');
       }
-      renderMessages();
+      preserveScrollPosition(renderMessages);
     } finally {
       assistantMsg._streaming = false;
+      assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
       state.isStreaming = false;
       state.abortController = null;
       updateSendUI();
@@ -1697,10 +1739,10 @@
         if (sceneMatch) {
           const block = sceneMatch[1];
           const previousScene = createSceneState(conv.sceneState);
-          const mental = getSceneLine(block, '精神');
-          const mentalScore = normalizeMentalScore(getSceneLine(block, '精神评分'));
-          const physical = getSceneLine(block, '身体');
-          const plot = getSceneLine(block, '情节');
+          const mental = getSceneLineAny(block, ['精神', '精神状态']);
+          const mentalScore = normalizeMentalScore(getSceneLineAny(block, ['精神评分', '评分']));
+          const physical = getSceneLineAny(block, ['身体', '身体细节']);
+          const plot = getSceneLineAny(block, ['情节', '剧情总结', '剧情']);
           const directions = getSceneDirections(block);
           conv.sceneState = {
             mental: mental || previousScene.mental,
@@ -1713,6 +1755,8 @@
           // Strip the scene block from displayed content
           assistantMsg.content = assistantMsg.content.replace(/@@SCENE\s*[\s\S]*?\s*@@END/, '').trim();
           updateScenePanelUI();
+        } else {
+          assistantMsg.sceneSnapshot = createSceneState(conv.sceneState);
         }
       }
 
@@ -1724,7 +1768,7 @@
 
       updateTimestamp(conv);
       updateTopBar();
-      renderMessages();
+      preserveScrollPosition(renderMessages);
       debouncedSave();
     }
   }
@@ -1747,7 +1791,7 @@
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
-          renderMessages();
+          preserveScrollPosition(renderMessages);
           lastRenderAt = performance.now();
           renderScheduled = false;
         });

@@ -853,6 +853,7 @@ a {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: auto;
+  overflow-anchor: none;
   padding: 8px 0;
   position: relative;
   background: transparent;
@@ -866,6 +867,7 @@ a {
   margin: 0 auto;
   padding: 0 12px;
   padding-bottom: 12px;
+  overflow-anchor: none;
   contain: layout style paint;
 }
 
