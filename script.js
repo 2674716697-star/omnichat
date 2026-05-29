@@ -202,6 +202,7 @@
     dom.inputSceneMode = $('#inputSceneMode');
     dom.inputAutoCompress = $('#inputAutoCompress');
     dom.inputKeepThinking = $('#inputKeepThinking');
+    dom.inputSceneDetail = $('#inputSceneDetail');
     dom.scenePanel = $('#scenePanel');
     dom.scenePanelToggle = $('#scenePanelToggle');
     dom.scenePanelBody = $('#scenePanelBody');
@@ -239,8 +240,9 @@
     dom.sceneNpcGrid = $('#sceneNpcGrid');
     dom.moodChips = $('#moodChips');
     dom.speciesChips = $('#speciesChips');
-    dom.detailChips = $('#detailChips');
     dom.btnGenHints = $('#btnGenHints');
+    dom.btnFinishSetup = $('#btnFinishSetup');
+    dom.npcImageInput = $('#npcImageInput');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
     dom.sceneStatusToggle = $('#sceneStatusToggle');
@@ -392,6 +394,7 @@
     dom.dialogConfirm.textContent = '确认';
     dom.dialogConfirm.className = 'btn btn-danger';
     dom.dialogCancel.textContent = '取消';
+    dom.dialogCancel.style.display = '';
     state.pendingConfirmAction = onConfirm;
     dom.dialogBody.innerHTML = msg;
     dom.dialogOverlay.style.display = 'flex';
@@ -399,6 +402,7 @@
 
   function hideConfirm() {
     state.pendingConfirmAction = null;
+    dom.dialogCancel.style.display = '';
     dom.dialogOverlay.style.display = 'none';
   }
 
@@ -462,6 +466,7 @@
       risk: seed.risk || '',
       innerVoice: seed.innerVoice || '',
       directions: seed.directions || '',
+      characterStatuses: seed.characterStatuses || [],
     };
   }
 
@@ -642,7 +647,49 @@
     return options;
   }
 
-  function getSceneBodyDetails(block) {
+
+  function parseCharacterStatuses(block) {
+    var results = [];
+    // Try new multi-character format: lines starting with [角色] or [人物]
+    var charBlocks = block.split(/\n(?=\[(?:角色|人物)\])/);
+    if (charBlocks.length <= 1) {
+      // Fallback: single character from old fields
+      var single = {
+        name: getSceneLineAny(block, ['角色','当前角色','POV']) || '主角',
+        relation: '主角',
+        isMain: true,
+        mental: getSceneLineAny(block, ['精神','精神状态']),
+        mentalScore: normalizeMentalScore(getSceneLineAny(block, ['精神评分','评分'])),
+        physical: getSceneLineAny(block, ['身体','身体状态']),
+        bodyDetails: getSceneBodyDetails(block),
+        goal: getSceneLineAny(block, ['目标','当前目标']),
+        posture: getSceneLineAny(block, ['姿势','当前姿势']),
+        innerVoice: getSceneLineAny(block, ['内心','内心回声']),
+      };
+      if (single.mental || single.physical || single.bodyDetails) results.push(single);
+      return results;
+    }
+    for (var bi = 0; bi < charBlocks.length; bi++) {
+      var cb = charBlocks[bi];
+      var isMain = /\[(?:角色|人物)\](?:.*主角)/.test(cb) || bi === 0;
+      var c = {
+        name: getSceneLineAny(cb, ['名[称字]?','角色']) || (isMain ? '主角' : '人物' + (bi+1)),
+        relation: getSceneLineAny(cb, ['关系','定位']) || (isMain ? '主角' : ''),
+        isMain: isMain,
+        mental: getSceneLineAny(cb, ['精神','精神状态']),
+        mentalScore: normalizeMentalScore(getSceneLineAny(cb, ['精神评分','评分'])),
+        physical: getSceneLineAny(cb, ['身体','身体状态']),
+        bodyDetails: getSceneBodyDetails(cb),
+        goal: getSceneLineAny(cb, ['目标','当前目标']),
+        posture: getSceneLineAny(cb, ['姿势','当前姿势']),
+        innerVoice: getSceneLineAny(cb, ['内心','内心回声']),
+      };
+      if (c.mental || c.physical || c.bodyDetails || c.goal) results.push(c);
+    }
+    if (!results.length) return [];
+    return results;
+  }
+function getSceneBodyDetails(block) {
     // Extract multi-line body details under "身体细节:" label
     var labels = ['身体细节', '感官细节'];
     var labelGroup = labels.join('|');
@@ -683,42 +730,24 @@
     var ss = createSceneState(msg.sceneSnapshot);
     var st = msg.sceneStatusSnapshot;
     var ch = msg.sceneCharacterSnapshot;
-    if (!st || !ch) {
-      var conv = getCurrentConv();
-      if (!st) st = conv && conv.sceneStatus ? conv.sceneStatus : null;
-      if (!ch) ch = conv && conv.sceneCharacter ? conv.sceneCharacter : null;
+    if (!st || !ch) { var cv = getCurrentConv(); if (!st) st = cv && cv.sceneStatus ? cv.sceneStatus : null; if (!ch) ch = cv && cv.sceneCharacter ? cv.sceneCharacter : null; }
+    var characters = ss.characterStatuses || [];
+    var dl = (getCurrentConv() && getCurrentConv().sceneDetailLevel) || 'medium';
+    var maxPerDl = { low: 2, medium: 3, high: 4, ultra: 6 };
+    var maxBd = maxPerDl[dl] || 3;
+    var hasLegacy = ss.mental || ss.mentalScore || ss.physical || ss.plot;
+    if (!characters.length && hasLegacy) {
+      // Fallback: build single character from old fields
+      characters = [{ name: ss.currentRole || ch?.name || '主角', relation: '主角', isMain: true, mental: ss.mental, mentalScore: ss.mentalScore, physical: ss.physical, bodyDetails: ss.bodyDetails, goal: ss.currentGoal, posture: ss.posture, innerVoice: ss.innerVoice }];
     }
-    var hasAny = ss.mental || ss.mentalScore || ss.physical || ss.plot || ss.directions || ss.currentRole || ss.currentGoal || ss.posture || ss.bodyDetails || ss.risk || ss.innerVoice;
-    var hasStatus = st && (st.health || st.stamina || st.composure || st.focus || st.currentObjective || st.constraints);
-    var hasChar = ch && ch.name;
-    if (!hasAny && !hasStatus && !hasChar) return '';
-
-    var roleName = ss.currentRole || (ch && ch.name) || '主角';
-    var goalText = ss.currentGoal || (ch && ch.currentGoal) || '';
-    var score = ss.mentalScore || '';
-    var mental = ss.mental || '';
-    var posture = ss.posture || '';
-    var physical = ss.physical || '';
-    var bodyDetails = ss.bodyDetails || '';
-    var plot = ss.plot || '';
-    var risk = ss.risk || '';
-    var innerVoice = ss.innerVoice || '';
-
-    // Status chips row
-    var statChips = [];
-    if (score) {
-      var scoreNum = parseInt(score, 10) || 5;
-      var pct = Math.round(scoreNum / 10 * 100);
-      statChips.push('<span class="scene-stat-chip scene-stat-score">精神 <strong>' + score + '/10</strong><span class="scene-score-bar"><span class="scene-score-fill" style="width:' + pct + '%"></span></span></span>');
+    if (!characters.length && !ss.directions && !hasLegacy) return '';
+    var html = '';
+    // Render per-character cards
+    for (var ci = 0; ci < characters.length; ci++) {
+      var c = characters[ci];
+      html += renderCharacterCard(c, st, ch, maxBd, !!(ci===0));
     }
-    if (st && st.health) statChips.push('<span class="scene-stat-chip">体力 ' + escapeHtml(st.health) + '</span>');
-    if (st && st.stamina) statChips.push('<span class="scene-stat-chip">精力 ' + escapeHtml(st.stamina) + '</span>');
-    if (st && st.composure) statChips.push('<span class="scene-stat-chip">冷静 ' + escapeHtml(st.composure) + '</span>');
-    if (st && st.focus) statChips.push('<span class="scene-stat-chip">专注 ' + escapeHtml(st.focus) + '</span>');
-    var chipsHtml = statChips.length ? '<div class="scene-stat-chips">' + statChips.join('') + '</div>' : '';
-
-    // Directions
-    var directionsHtml = '';
+    // Directions section
     if (ss.directions) {
       var dirOpts = parseDirectionOptions(ss.directions);
       if (dirOpts.length) {
@@ -727,83 +756,48 @@
           var d = dirOpts[di];
           chips.push('<button class="dir-choice-chip" data-choice="' + d.letter + '" data-content="' + escapeHtml(d.content) + '"><span class="dir-chip-badge">' + d.letter + '</span><span class="dir-chip-text">' + escapeHtml(d.content) + '</span></button>');
         }
-        directionsHtml = '<div class="dir-choices-list">' + chips.join('') + '</div>';
-      } else {
-        directionsHtml = '<div class="dir-choices-list"><span class="dir-fallback">' + escapeHtml(ss.directions).replace(/\n/g, '<br>') + '</span></div>';
+        html += '<div class="scene-directions-section"><div class="scene-directions-title">剧情走向</div><div class="dir-choices-list">' + chips.join('') + '</div></div>';
       }
     }
-
-    // Body details bullets (max 4)
-    var bodyHtml = '';
-    if (bodyDetails) {
-      var bdLines = bodyDetails.split('\n').filter(Boolean);
-      if (bdLines.length) {
-        var dl = (getCurrentConv() && getCurrentConv().sceneDetailLevel) || 'medium';
-        var maxPerDl = { low: 2, medium: 3, high: 4, ultra: 6 };
-        var maxBd = Math.min(bdLines.length, maxPerDl[dl] || 3);
-        bodyHtml = '<ul class="scene-body-details">';
-        for (var bi = 0; bi < maxBd; bi++) {
-          var clean = bdLines[bi].trim().replace(/^[-·•*\d{1,2}.\)、\s]+/, '');
-          if (clean) bodyHtml += '<li>' + escapeHtml(clean) + '</li>';
-        }
-        if (bdLines.length > 4) bodyHtml += '<li class="scene-body-more">…</li>';
-        bodyHtml += '</ul>';
-      }
-    }
-
-    var html = '';
-    html += '<div class="scene-status-card">';
-    // Title bar
-    html += '<div class="scene-status-title">';
-    html += '<span class="scene-status-title-text">剧情状态</span>';
-    html += '<span class="scene-status-role">' + escapeHtml(roleName) + '</span>';
-    html += '</div>';
-
-    // Status chips
-    if (chipsHtml) html += chipsHtml;
-
-    // Info rows
-    html += '<div class="scene-status-rows">';
-    if (goalText) html += '<div class="scene-status-row"><span class="scene-row-label">当前目标</span><span class="scene-row-value">' + escapeHtml(goalText) + '</span></div>';
-    if (posture) html += '<div class="scene-status-row"><span class="scene-row-label">当前姿势</span><span class="scene-row-value">' + escapeHtml(posture) + '</span></div>';
-    if (mental) html += '<div class="scene-status-row"><span class="scene-row-label">精神状态</span><span class="scene-row-value">' + escapeHtml(mental) + '</span></div>';
-    if (physical) html += '<div class="scene-status-row"><span class="scene-row-label">身体状态</span><span class="scene-row-value">' + escapeHtml(physical) + '</span></div>';
-    html += '</div>';
-
-    // Body details section
-    if (bodyHtml) {
-      html += '<div class="scene-body-section">';
-      html += '<div class="scene-body-title">身体细节</div>';
-      html += bodyHtml;
-      html += '</div>';
-    }
-
-    // Plot and risk
-    if (plot || risk) {
-      html += '<div class="scene-plot-section">';
-      if (plot) html += '<p class="scene-plot-text">' + escapeHtml(plot) + '</p>';
-      if (risk) html += '<p class="scene-risk-text">' + escapeHtml(risk) + '</p>';
-      html += '</div>';
-    }
-
-    // Directions
-    if (directionsHtml) {
-      html += '<div class="scene-directions-section">';
-      html += '<div class="scene-directions-title">剧情走向</div>';
-      html += directionsHtml;
-      html += '</div>';
-    }
-
-    // Inner voice
-    if (innerVoice) {
-      html += '<div class="scene-inner-voice">' + escapeHtml(innerVoice) + '</div>';
-    }
-
-    html += '</div>';
+    if (ss.plot) html += '<div class="scene-plot-footer">' + escapeHtml(ss.plot) + '</div>';
     return html;
   }
 
-  function createSceneWorld(seed) {
+  function renderCharacterCard(c, st, ch, maxBd, isMain) {
+    var html = '';
+    html += '<div class="char-status-card' + (isMain ? ' char-main' : '') + '">';
+    html += '<div class="char-card-header"><span class="char-card-name">' + escapeHtml(c.name || '?') + '</span>';
+    html += '<span class="char-card-relation">' + escapeHtml(c.relation || '') + '</span>';
+    if (c.mentalScore) html += '<span class="char-card-score">' + c.mentalScore + '/10</span>';
+    html += '</div>';
+    var rows = [];
+    if (c.mental) rows.push({l:'精神',v:c.mental});
+    if (c.physical) rows.push({l:'身体',v:c.physical});
+    if (c.goal) rows.push({l:'目标',v:c.goal});
+    if (c.posture) rows.push({l:'姿态',v:c.posture});
+    if (rows.length) {
+      html += '<div class="char-card-rows">';
+      for (var ri=0;ri<rows.length;ri++) html += '<div class="char-row"><span class="char-row-l">'+rows[ri].l+'</span><span class="char-row-v">'+escapeHtml(rows[ri].v)+'</span></div>';
+      html += '</div>';
+    }
+    if (c.bodyDetails) {
+      var bdLines = c.bodyDetails.split('\n').filter(Boolean);
+      if (bdLines.length) {
+        var showBd = bdLines.slice(0, maxBd);
+        html += '<div class="char-body-details">';
+        for (var bi=0;bi<showBd.length;bi++) {
+          var clean = showBd[bi].trim().replace(/^[-·•*\d{1,2}.\\)、\s]+/, '');
+          if (clean) html += '<div class="char-body-item">' + escapeHtml(clean) + '</div>';
+        }
+        if (bdLines.length > maxBd) html += '<div class="char-body-more">…</div>';
+        html += '</div>';
+      }
+    }
+    if (c.innerVoice) html += '<div class="char-inner-voice">' + escapeHtml(c.innerVoice) + '</div>';
+    html += '</div>';
+    return html;
+  }
+function createSceneWorld(seed) {
     seed = seed || {};
     return {
       openingName: seed.openingName || '',
@@ -850,6 +844,7 @@
       relation: seed.relation || '',
       status: seed.status || '',
       notes: seed.notes || '',
+      image: seed.image || '',
     };
   }
 
@@ -1568,17 +1563,32 @@
   }
 
   function setupViewportInsets() {
-    if (!window.visualViewport) return;
+    // Set app height to visual viewport (fixes iOS bottom black bar)
+    var setAppHeight = function() {
+      var h;
+      if (window.visualViewport) {
+        h = window.visualViewport.height;
+      } else {
+        h = window.innerHeight;
+      }
+      // Only update if keyboard isn't dominating (avoid layout jump)
+      var keyboardGap = window.visualViewport ? Math.max(0, window.innerHeight - window.visualViewport.height) : 0;
+      if (keyboardGap < 180) {
+        document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px');
+      }
+    };
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', function() { setTimeout(setAppHeight, 350); });
 
-    const updateInsets = () => {
-      const vv = window.visualViewport;
-      const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    if (!window.visualViewport) return;
+    var updateInsets = function() {
+      var vv = window.visualViewport;
+      var keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       document.documentElement.style.setProperty('--keyboard-inset', Math.round(keyboardInset) + 'px');
     };
-
     window.visualViewport.addEventListener('resize', updateInsets);
     window.visualViewport.addEventListener('scroll', updateInsets);
-    window.addEventListener('orientationchange', () => setTimeout(updateInsets, 250));
     updateInsets();
   }
 
@@ -1631,6 +1641,7 @@
     dom.inputSceneMode.checked = !!conv.sceneMode;
     dom.inputAutoCompress.checked = !!conv.autoCompress;
     dom.inputKeepThinking.checked = conv.keepThinkingOpen !== false;
+    if (dom.inputSceneDetail) dom.inputSceneDetail.value = conv.sceneDetailLevel || 'medium';
     conv.toolCallLimit = 0;
     conv.toolCallLimitMode = 'disabled';
     dom.selectToolCallLimit.value = '0';
@@ -1663,6 +1674,7 @@
     conv.sceneMode = dom.inputSceneMode.checked;
     conv.autoCompress = dom.inputAutoCompress.checked;
     conv.keepThinkingOpen = dom.inputKeepThinking.checked;
+    if (dom.inputSceneDetail) conv.sceneDetailLevel = dom.inputSceneDetail.value;
     const prevPrecise = conv.preciseMode;
     conv.preciseMode = dom.inputPreciseMode.checked;
     if (conv.preciseMode && !prevPrecise) {
@@ -1852,16 +1864,6 @@
     }
   }
 
-  function renderDetailChips() {
-    if (!dom.detailChips) return;
-    var conv = getCurrentConv();
-    var current = conv ? (conv.sceneDetailLevel || 'medium') : 'medium';
-    var chips = dom.detailChips.querySelectorAll('.scene-chip');
-    for (var i = 0; i < chips.length; i++) {
-      chips[i].classList.toggle('active', chips[i].dataset.value === current);
-    }
-  }
-
   function renderNpcGrid() {
     if (!dom.sceneNpcGrid) return;
     var conv = getCurrentConv();
@@ -1880,13 +1882,19 @@
       html += '<div class="npc-card-inner">';
       // Front
       html += '<div class="npc-card-front">';
-      html += '<div class="npc-card-avatar">' + initial + '</div>';
+      if (n.image) {
+        html += '<div class="npc-card-img" style="background-image:url(' + n.image + ')"></div>';
+      } else {
+        html += '<div class="npc-card-avatar">' + initial + '</div>';
+      }
       html += '<div class="npc-card-name">' + escapeHtml(n.name || '未命名') + '</div>';
       html += '<div class="npc-card-role">' + escapeHtml(n.role || '') + '</div>';
       html += '<div class="npc-card-status">' + escapeHtml(n.status || '') + '</div>';
       html += '</div>';
       // Back
       html += '<div class="npc-card-back">';
+      html += '<button class="btn btn-sm npc-img-btn" data-npc-id="' + n.id + '" data-action="upload">上传图片</button>';
+      if (n.image) html += '<button class="btn btn-sm btn-danger npc-img-btn" data-npc-id="' + n.id + '" data-action="removeImg">移除图片</button>';
       html += '<div class="npc-back-name">' + escapeHtml(n.name || '未命名') + '</div>';
       html += '<input class="input scene-input npc-edit-field" data-field="name" placeholder="姓名" value="' + escapeHtml(n.name || '') + '">';
       html += '<input class="input scene-input npc-edit-field" data-field="role" placeholder="身份/关系" value="' + escapeHtml(n.role || '') + '">';
@@ -2096,7 +2104,6 @@ function updateScenePanelUI() {
       renderRoleChips();
       renderTraitChips();
       renderGenreChips();
-      renderDetailChips();
     }
   }
 
@@ -2226,6 +2233,40 @@ function updateScenePanelUI() {
     var bottomBar = document.querySelector('.bottom-bar');
     if (bottomBar && bottomBar.parentNode) bottomBar.parentNode.insertBefore(panel, bottomBar);
     showToast('已生成 ' + hints.length + ' 条提示词，点击填入输入框', 'info');
+  }
+
+  function showSetupConfirm() {
+    dom.dialogBody.innerHTML = '写文设置已完成？';
+    dom.dialogConfirm.textContent = '继续';
+    dom.dialogConfirm.className = 'btn btn-primary';
+    dom.dialogCancel.textContent = '返回修改';
+    state.pendingConfirmAction = function() {
+      hideConfirm();
+      showSetupCards();
+    };
+    dom.dialogOverlay.style.display = 'flex';
+  }
+
+  function showSetupCards() {
+    dom.dialogBody.innerHTML = '<div style=\"display:flex;flex-direction:column;gap:8px\"><button class=\"btn btn-primary btn-full\" id=\"dialogCopyChar\">复制角色卡</button><p style=\"font-size:10.5px;color:var(--text-tertiary);text-align:center;margin:0\">把角色设定打包成纯文本，方便粘贴给模型参考</p><button class=\"btn btn-secondary btn-full\" id=\"dialogGenOpening\">生成开场提示词</button><p style=\"font-size:10.5px;color:var(--text-tertiary);text-align:center;margin:0\">根据当前世界/角色/状态设定自动生成开场灵感</p></div>';
+    dom.dialogConfirm.textContent = '关闭';
+    dom.dialogConfirm.className = 'btn btn-secondary';
+    dom.dialogCancel.style.display = 'none';
+    state.pendingConfirmAction = function() { hideConfirm(); };
+    dom.dialogOverlay.style.display = 'flex';
+    // Bind the card buttons after dialog is shown
+    setTimeout(function() {
+      var copyBtn = document.getElementById('dialogCopyChar');
+      var genBtn = document.getElementById('dialogGenOpening');
+      if (copyBtn) copyBtn.addEventListener('click', function() {
+        if (dom.btnCopyCharCard) dom.btnCopyCharCard.click();
+        hideConfirm();
+      });
+      if (genBtn) genBtn.addEventListener('click', function() {
+        if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.click();
+        hideConfirm();
+      });
+    }, 50);
   }
 
   function handleMessageAction(action, msgIndex) {
@@ -2502,14 +2543,14 @@ function updateScenePanelUI() {
         '7. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
         '8. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
         '9. 应用会自动把场景记忆渲染到本次回答框里；正文里不要重复输出状态表。',
-        '10. 场景状态要简洁：精神状态、身体细节、剧情总结各 1 句；剧情走向 2-4 条，每条控制在 24–50 个字。',
+        '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向2-4条，每条24-50字，含行动+可能收益/风险/情绪变化。',
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
         '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
         '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足写尚未显露。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
-        '角色: <当前POV角色名，不知道则写"主角">',
+        '[角色: 主角名]',
         '目标: <角色此刻想做什么>',
         '姿势: <角色位置、姿态、动作状态>',
         '精神: <精神状态 — 具体触发原因>',
@@ -2654,6 +2695,7 @@ function updateScenePanelUI() {
           const plot = getSceneLineAny(block, ['情节', '剧情总结', '剧情']);
           const risk = getSceneLineAny(block, ['风险', '伏笔', '风险/伏笔']);
           const innerVoice = getSceneLineAny(block, ['内心', '内心回声', '内心独白', '心理']);
+          const characterStatuses = parseCharacterStatuses(block);
           const directions = getSceneDirections(block);
           if (!directions) {
             console.warn('[OmniChat] Scene mode reply has @@SCENE but no directions. Model may have omitted 走向:. block:', block.substring(0, 200));
@@ -2670,6 +2712,7 @@ function updateScenePanelUI() {
             risk: risk || previousScene.risk,
             innerVoice: innerVoice || previousScene.innerVoice,
             directions: directions || previousScene.directions,
+            characterStatuses: characterStatuses && characterStatuses.length ? characterStatuses : (previousScene.characterStatuses || []),
           };
           assistantMsg.sceneSnapshot = createSceneState(conv.sceneState);
           assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
@@ -3391,6 +3434,14 @@ function updateScenePanelUI() {
         debouncedSave();
       }
     });
+    if (dom.inputSceneDetail) dom.inputSceneDetail.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.sceneDetailLevel = dom.inputSceneDetail.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
 
     dom.inputPreciseMode.addEventListener('change', () => {
       const conv = getCurrentConv();
@@ -3499,21 +3550,6 @@ function updateScenePanelUI() {
         for (var ci = 0; ci < contents.length; ci++) {
           contents[ci].classList.toggle('active', contents[ci].id === 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
         }
-      });
-    }
-
-    // Detail level chips
-    if (dom.detailChips) {
-      dom.detailChips.addEventListener('click', function(e) {
-        var chip = e.target.closest('.scene-chip');
-        if (!chip) return;
-        var conv = getCurrentConv();
-        if (!conv) return;
-        var val = chip.dataset.value;
-        conv.sceneDetailLevel = val;
-        updateTimestamp(conv);
-        debouncedSave();
-        renderDetailChips();
       });
     }
 // World opening card inputs
@@ -3800,7 +3836,58 @@ function updateScenePanelUI() {
     $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
     $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
     $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
-    if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
+
+    // NPC image upload
+    if (dom.sceneNpcGrid) {
+      dom.sceneNpcGrid.addEventListener('click', function(e) {
+        var btn = e.target.closest('.npc-img-btn');
+        if (!btn) return;
+        e.stopPropagation();
+        var npcId = btn.dataset.npcId;
+        var action = btn.dataset.action;
+        if (action === 'upload') {
+          dom.npcImageInput._npcId = npcId;
+          dom.npcImageInput.click();
+        } else if (action === 'removeImg') {
+          var c = getCurrentConv();
+          if (!c || !c.sceneNpcs) return;
+          for (var ni=0; ni<c.sceneNpcs.length; ni++) {
+            if (c.sceneNpcs[ni].id === npcId) { c.sceneNpcs[ni].image = ''; break; }
+          }
+          updateTimestamp(c); debouncedSave(); renderNpcGrid();
+        }
+      });
+    }
+    if (dom.npcImageInput) dom.npcImageInput.addEventListener('change', function() {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      var npcId = this._npcId;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          var maxSide = 900;
+          var w=img.width, h=img.height;
+          if (w>h && w>maxSide) { h=h*maxSide/w; w=maxSide; }
+          else if (h>maxSide) { w=w*maxSide/h; h=maxSide; }
+          canvas.width=w; canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+          var c = getCurrentConv();
+          if (!c || !c.sceneNpcs) return;
+          for (var ni=0; ni<c.sceneNpcs.length; ni++) {
+            if (c.sceneNpcs[ni].id === npcId) { c.sceneNpcs[ni].image = dataUrl; break; }
+          }
+          updateTimestamp(c); debouncedSave(); renderNpcGrid();
+        };
+        img.src=e.target.result;
+      };
+      reader.readAsDataURL(file);
+      this.value='';
+    });
+if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
+    if (dom.btnFinishSetup) dom.btnFinishSetup.addEventListener('click', () => showSetupConfirm());
 
     // Export / Import / Clear all
     dom.btnExportAll.addEventListener('click', () => exportAllJSON());

@@ -313,6 +313,20 @@
           </label>
         </div>
 
+        <!-- Scene Detail Level -->
+        <div class="setting-group">
+          <label class="setting-label">
+            状态卡详细度
+            <span class="setting-hint" style="display:block;font-weight:400">控制 AI 回复末尾人物状态/身体细节/剧情走向的描述细腻程度</span>
+          </label>
+          <select class="select" id="inputSceneDetail">
+            <option value="low">低 — 简洁</option>
+            <option value="medium" selected>中 — 清楚</option>
+            <option value="high">高 — 细腻</option>
+            <option value="ultra">超高 — 丰富</option>
+          </select>
+        </div>
+
         <!-- Message Actions -->
         <div class="setting-group">
           <label class="setting-label">消息操作按钮（可自定义提示词）</label>
@@ -387,20 +401,16 @@
             <div class="scene-field"><label>限制/提醒</label><textarea class="input scene-input" id="sceneConstraints" rows="2" placeholder="剧情限制或需要记住的提醒…"></textarea></div>
           </div>
           <div class="scene-tab-content" id="tabRules">
-            <p class="scene-tab-desc">设置故事规则限制和剧情状态的详细程度。</p>
+            <p class="scene-tab-desc">设置故事规则限制。状态卡详细度请在右侧设置抽屉中调整。</p>
             <div class="scene-field"><label>规则限制</label><textarea class="input scene-input" id="sceneRules" rows="2" placeholder="世界的规则或限制条件…"></textarea></div>
-            <div class="scene-field"><label>剧情状态详细度</label>
-              <div class="scene-chips scene-detail-chips" id="detailChips">
-                <button class="scene-chip active" data-value="medium">中</button>
-                <button class="scene-chip" data-value="low">低</button>
-                <button class="scene-chip" data-value="high">高</button>
-                <button class="scene-chip" data-value="ultra">超高</button>
-              </div>
-            </div>
+          </div>
+          <div style="padding:8px 10px;border-top:0.5px solid rgba(220,92,145,0.12)">
+            <button class="btn btn-primary btn-full" id="btnFinishSetup">完成设置</button>
           </div>
         </div>
       </div>
-<div class="messages-container" id="messagesContainer">
+      <input type="file" id="npcImageInput" accept="image/*" style="display:none">
+      <div class="messages-container" id="messagesContainer">
         <div class="welcome-screen" id="welcomeScreen">
           <div class="welcome-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
