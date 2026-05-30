@@ -2412,7 +2412,7 @@ a {
   max-width: 720px;
   margin: 0 auto;
   border-radius: 14px 14px 0 0;
-  background: rgba(16, 10, 24, 0.8);
+  background: #100a18;
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   border: 1px solid rgba(220, 92, 145, 0.2);
@@ -3038,6 +3038,13 @@ a {
   .scene-capsule {
     font-size: 10px;
     padding: 3px 8px;
+  }
+}
+
+/* --- Mobile: opaque bottom-bar to prevent safe-area background bleed --- */
+@media (max-width: 768px) {
+  .bottom-bar {
+    background: #1c1c1e;
   }
 }
 
