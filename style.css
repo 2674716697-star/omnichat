@@ -884,6 +884,7 @@ a {
   overscroll-behavior-y: auto;
   overflow-anchor: none;
   padding: 8px 0;
+  padding-bottom: var(--bottom-bar-reserve, 150px);
   position: relative;
   background: transparent;
   transition: background 400ms var(--spring);
@@ -913,7 +914,7 @@ a {
 }
 
 /* Glass bars on top of background */
-.top-bar, .bottom-bar {
+.top-bar {
   position: relative;
   z-index: 10;
 }
@@ -1683,7 +1684,13 @@ a {
 
 /* --- Bottom Bar --- */
 .bottom-bar {
-  flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  z-index: 50;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -1691,8 +1698,17 @@ a {
   box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   padding: 6px 14px;
   padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
-  position: relative;
-  z-index: 10;
+}
+
+/* Reserve space in main-content so fixed bottom-bar doesn't obscure content */
+:root {
+  --bottom-bar-reserve: 152px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --bottom-bar-reserve: 170px;
+  }
 }
 
 .quick-actions {
@@ -2988,30 +3004,6 @@ a {
   .scene-capsule {
     font-size: 10px;
     padding: 3px 8px;
-  }
-}
-
-/* --- Opaque safe-area cover renders above bottom-bar background --- */
-.bottom-bar::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--safe-bottom, 0px);
-  background: #1c1c1e;
-  pointer-events: none;
-}
-
-@media (max-width: 640px) {
-  /* Keep input-message visually distinct from bottom-bar in normal mode */
-  .input-message {
-    background: #1a1a1f;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-  }
-  .input-message:focus {
-    background: #1e1e24;
-    border-color: var(--accent);
   }
 }
 
