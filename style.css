@@ -1802,56 +1802,6 @@ a {
   box-shadow: 0 1px 4px rgba(255,69,58,0.15);
 }
 
-/* Pull indicator for swipe-reveal */
-.security-pull {
-  display: flex;
-  justify-content: center;
-  padding: 4px 0 2px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.pull-indicator {
-  width: 28px;
-  height: 3.5px;
-  border-radius: 2px;
-  background: rgba(255,255,255,0.2);
-  transition: width 200ms var(--spring), background 200ms var(--spring);
-}
-
-.security-pull:active .pull-indicator {
-  width: 40px;
-  background: rgba(255,255,255,0.35);
-}
-
-/* Floating security panel */
-.security-panel {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%) translateY(100%);
-  width: 100%;
-  max-width: 800px;
-  background: rgba(28,28,30,0.88);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 0.5px solid var(--border-color);
-  padding: 10px 20px;
-  padding-bottom: calc(10px + var(--safe-bottom));
-  z-index: 8;
-  transition: transform 400ms var(--spring);
-}
-
-.security-panel.visible {
-  transform: translateX(-50%) translateY(0);
-}
-
-.security-panel-text {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  line-height: 1.5;
-  text-align: center;
-}
-
 /* --- Toast --- */
 .toast-container {
   position: fixed;

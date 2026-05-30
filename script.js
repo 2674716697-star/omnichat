@@ -150,8 +150,6 @@
     dom.btnToggleHistory = $('#btnToggleHistory');
     dom.btnToggleSettings = $('#btnToggleSettings');
     dom.btnToggleBg = $('#btnToggleBg');
-    dom.securityPull = $('#securityPull');
-    dom.securityPanel = $('#securityPanel');
     dom.topBarInfo = $('#topBarInfo');
     dom.convTitle = $('#convTitle');
     dom.badgeProvider = $('#badgeProvider');
@@ -4145,48 +4143,6 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       const input = document.getElementById(targetId);
       if (!input) return;
       input.type = input.type === 'password' ? 'text' : 'password';
-    });
-
-    // Security panel swipe / tap
-    let securityTimer = null;
-    let touchStartY = 0;
-    let touchMoved = false;
-
-    function showSecurityPanel() {
-      dom.securityPanel.classList.add('visible');
-      clearTimeout(securityTimer);
-      securityTimer = setTimeout(() => {
-        dom.securityPanel.classList.remove('visible');
-      }, 4000);
-    }
-
-    function hideSecurityPanel() {
-      dom.securityPanel.classList.remove('visible');
-      clearTimeout(securityTimer);
-    }
-
-    dom.securityPull.addEventListener('click', () => {
-      if (!touchMoved) {
-        dom.securityPanel.classList.contains('visible') ? hideSecurityPanel() : showSecurityPanel();
-      }
-    });
-
-    dom.bottomBar.addEventListener('touchstart', (e) => {
-      touchStartY = e.touches[0].clientY;
-      touchMoved = false;
-    }, { passive: true });
-
-    dom.bottomBar.addEventListener('touchmove', (e) => {
-      const dy = touchStartY - e.touches[0].clientY;
-      if (dy > 15) touchMoved = true;
-    }, { passive: true });
-
-    dom.bottomBar.addEventListener('touchend', (e) => {
-      const endY = e.changedTouches[0].clientY;
-      const dy = touchStartY - endY;
-      if (dy > 35) {
-        showSecurityPanel();
-      }
     });
 
     // Close drawers on Escape
