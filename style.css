@@ -2979,6 +2979,7 @@ a {
     border-radius: 12px 12px 0 0;
     padding: 6px 10px;
     padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
+    background: #100a18;
   }
 
   .scene-immersive .dir-choice-chip {
@@ -3007,6 +3008,16 @@ a {
   .scene-npc-del {
     align-self: flex-end;
     margin-top: -2px;
+  }
+
+  /* Scene panel: disable internal scroll on mobile — single page scroll */
+  .scene-panel {
+    max-height: none;
+    overflow: visible;
+  }
+  .scene-panel-body {
+    max-height: none;
+    overflow-y: visible;
   }
 
   /* Scene panel tighter padding */
