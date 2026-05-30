@@ -2172,12 +2172,6 @@ html.is-splashing .bottom-bar::after {
   font-weight: 600;
 }
 
-.scene-immersive .btn-quick-active {
-  background: var(--scene-accent-dim) !important;
-  color: var(--scene-accent-bright) !important;
-  border-color: var(--scene-accent) !important;
-}
-
 /* ============================================================
    Immersive Writing Mode — Visual Overhaul
    ============================================================ */
@@ -2378,30 +2372,6 @@ html.is-splashing .bottom-bar::after {
   border-color: var(--scene-accent-bright);
   color: #fff;
   box-shadow: 0 0 12px rgba(200, 120, 160, 0.15);
-}
-
-/* -- Bottom bar: centered narrower in story mode, same visual as normal -- */
-.scene-immersive .bottom-bar {
-  max-width: 720px;
-  margin: 0 auto;
-  border-radius: 14px 14px 0 0;
-}
-
-.scene-immersive .quick-actions {
-  margin-bottom: 6px;
-}
-
-
-.scene-immersive .input-message {
-  background: rgba(14, 8, 22, 0.6);
-  border-color: rgba(180, 130, 160, 0.18);
-  border-radius: 16px;
-  font-size: 14.5px;
-}
-
-.scene-immersive .input-message:focus {
-  border-color: var(--scene-accent);
-  background: rgba(18, 10, 28, 0.75);
 }
 
 /* -- Code blocks -- */
@@ -2915,12 +2885,6 @@ html.is-splashing .bottom-bar::after {
     margin: 2px 4px;
   }
 
-  .scene-immersive .bottom-bar {
-    max-width: none;
-    width: 100%;
-    border-radius: 12px 12px 0 0;
-  }
-
   .scene-immersive .dir-choice-chip {
     padding: 10px 12px;
     min-height: 40px;
@@ -3213,27 +3177,17 @@ html.is-standalone .bottom-bar::after {
   pointer-events: none;
 }
 
-/* -- Unified input-message: normal mode matches story mode quality -- */
-.input-message {
-  background: #1a1a1f;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 22px;
-  color: var(--text-primary);
-}
-
-.input-message:focus {
-  background: #1e1e24;
-  border-color: var(--accent);
-}
-
-/* Scene-immersive only changes accent, not base colors */
+/* -- Unified input-message across normal + story mode -- */
+.input-message,
 .scene-immersive .input-message {
   background: #1a1a1f;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 22px;
   font-size: 15px;
+  color: var(--text-primary);
 }
 
+.input-message:focus,
 .scene-immersive .input-message:focus {
   background: #1e1e24;
   border-color: var(--accent);
