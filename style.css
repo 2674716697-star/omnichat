@@ -1139,12 +1139,9 @@ a {
   overflow: hidden;
 }
 
-/* Shared action area — visible across all tabs */
+/* Shared action area — always visible at panel bottom, above composer */
 .scene-panel-actions {
   flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   padding: 10px 12px 12px;
   padding-bottom: calc(10px + var(--safe-bottom));
   background: rgba(14, 8, 22, 0.94);
@@ -1177,8 +1174,8 @@ a {
   }
 }
 
-/* Extra bottom space so last item isn't hidden behind sticky footer */
-.scene-panel-body { padding-bottom: 8px; }
+/* Bottom space so content clears the action area above composer */
+.scene-panel-body { padding-bottom: 12px; }
 
 .scene-field {
   margin-bottom: 8px;
