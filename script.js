@@ -1654,23 +1654,12 @@ function createSceneWorld(seed) {
   }
 
   function setupViewportInsets() {
-    // Set app height to visual viewport (fixes iOS bottom black bar)
-    var setAppHeight = function() {
-      var h;
-      if (window.visualViewport) {
-        h = window.visualViewport.height;
-      } else {
-        h = window.innerHeight;
-      }
-      // Only update if keyboard isn't dominating (avoid layout jump)
-      var keyboardGap = window.visualViewport ? Math.max(0, window.innerHeight - window.visualViewport.height) : 0;
-      if (keyboardGap < 180) {
-        document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px');
-      }
-    };
-    setAppHeight();
-    window.addEventListener('resize', setAppHeight);
-    window.addEventListener('orientationchange', function() { setTimeout(setAppHeight, 350); });
+    // Only track keyboard inset — let CSS 100dvh handle viewport height.
+    // Do NOT override --app-height with visualViewport.height:
+    // on devices with a home indicator, visualViewport.height excludes
+    // the safe-area (~34px on iPhone), which shrinks the app container
+    // and leaves a black bar at the bottom. CSS 100dvh correctly includes
+    // the safe-area, so removing the JS override fixes the black bar.
 
     if (!window.visualViewport) return;
     var updateInsets = function() {

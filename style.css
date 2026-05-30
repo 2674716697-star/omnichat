@@ -3041,10 +3041,27 @@ a {
   }
 }
 
-/* --- Mobile: opaque bottom-bar to prevent safe-area background bleed --- */
-@media (max-width: 768px) {
-  .bottom-bar {
-    background: #1c1c1e;
+/* --- Opaque safe-area cover renders above bottom-bar background --- */
+.bottom-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--safe-bottom, 0px);
+  background: #1c1c1e;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  /* Keep input-message visually distinct from bottom-bar in normal mode */
+  .input-message {
+    background: #1a1a1f;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .input-message:focus {
+    background: #1e1e24;
+    border-color: var(--accent);
   }
 }
 
