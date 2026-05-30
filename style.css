@@ -1709,11 +1709,12 @@ html.is-splashing .bottom-bar::after {
   max-width: 800px;
   margin: 0 auto;
   z-index: 50;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 0.5px solid var(--border-color);
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  background: #100a18;
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border: 1px solid rgba(220, 92, 145, 0.2);
+  border-bottom: none;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(220,92,145,0.06);
   padding: 6px 14px;
   padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
 }
@@ -1760,9 +1761,9 @@ html.is-splashing .bottom-bar::after {
 .input-message {
   flex: 1;
   padding: 10px 16px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(180, 130, 160, 0.18);
   border-radius: 22px;
-  background: rgba(28,28,30,0.5);
+  background: rgba(14, 8, 22, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   color: var(--text-primary);
@@ -1779,8 +1780,8 @@ html.is-splashing .bottom-bar::after {
 }
 
 .input-message:focus {
-  border-color: var(--accent);
-  background: rgba(28,28,30,0.7);
+  border-color: var(--scene-accent);
+  background: rgba(18, 10, 28, 0.75);
 }
 
 .input-message::placeholder {
@@ -3177,18 +3178,4 @@ html.is-standalone .bottom-bar::after {
   pointer-events: none;
 }
 
-/* -- Unified input-message across normal + story mode -- */
-.input-message,
-.scene-immersive .input-message {
-  background: #1a1a1f;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 22px;
-  font-size: 15px;
-  color: var(--text-primary);
-}
-
-.input-message:focus,
-.scene-immersive .input-message:focus {
-  background: #1e1e24;
-  border-color: var(--accent);
-}
+/* Bottom input area is globally unified — normal and story mode share the same purple-black aesthetic */
