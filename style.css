@@ -3216,3 +3216,51 @@ a {
   border: 0.5px solid rgba(200,160,60,0.15);
   border-radius: 6px;
 }
+
+/* ============================================================
+   Standalone / PWA / Add-to-Home-Screen mode
+   ============================================================ */
+html.is-standalone,
+html.is-standalone body {
+  background: #1c1c1e;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Extend bottom-bar coverage below viewport for standalone mode
+   where the container may leave a gap */
+html.is-standalone .bottom-bar::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -80px;
+  height: 80px;
+  background: inherit;
+  pointer-events: none;
+}
+
+/* -- Unified input-message: normal mode matches story mode quality -- */
+.input-message {
+  background: #1a1a1f;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  color: var(--text-primary);
+}
+
+.input-message:focus {
+  background: #1e1e24;
+  border-color: var(--accent);
+}
+
+/* Scene-immersive only changes accent, not base colors */
+.scene-immersive .input-message {
+  background: #1a1a1f;
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+}
+
+.scene-immersive .input-message:focus {
+  background: #1e1e24;
+  border-color: var(--accent);
+}

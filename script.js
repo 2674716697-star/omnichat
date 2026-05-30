@@ -4160,6 +4160,15 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
     loadFromStorage();
     setupViewportInsets();
 
+    // Detect standalone / PWA / "Add to Home Screen" mode
+    var isStandalone = window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches;
+    if (isStandalone) {
+      document.documentElement.classList.add('is-standalone');
+    }
+
     // Ensure at least one conversation exists
     if (state.conversations.length === 0) {
       const conv = createConversation();
