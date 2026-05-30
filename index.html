@@ -370,7 +370,7 @@
             <button class="scene-tab" data-tab="rules">规则/提示</button>
           </div>
           <div class="scene-tab-content active" id="tabWorld">
-            <p class="scene-tab-desc">设定故事的世界背景、地点和基调，帮助 AI 理解故事舞台。</p>
+            <p class="scene-tab-desc">先写这个世界的基本背景、地点、时代、氛围和限制。越具体，AI 越容易稳定开局。</p>
             <div class="scene-field"><label>开局名称</label><input class="input scene-input" id="sceneOpeningName" placeholder="雨夜旧城 / 星港醒来 / 学院报到"></div>
             <div class="scene-field"><label>世界背景</label><textarea class="input scene-input" id="sceneSetting" rows="2" placeholder="这个世界的背景设定、当前场景…"></textarea></div>
             <div class="scene-field"><label>地点清单</label><textarea class="input scene-input" id="sceneLocations" rows="2" placeholder="一行一个地点"></textarea></div>
@@ -378,7 +378,7 @@
             <div class="scene-field"><label>备注</label><textarea class="input scene-input" id="sceneWorldNotes" rows="2" placeholder="其他补充…"></textarea></div>
           </div>
           <div class="scene-tab-content" id="tabCharacter">
-            <p class="scene-tab-desc">定义主角的基本信息、外貌和性格，作为写作的稳定参考。</p>
+            <p class="scene-tab-desc">主角是故事的视角核心。建议补全身份、外貌、性格、目标和关键能力。</p>
             <div class="scene-field"><label>姓名</label><input class="input scene-input" id="sceneCharName" placeholder="角色姓名"></div>
             <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>年龄</label><input class="input scene-input" id="sceneCharAge" placeholder="18+"></div><div class="scene-field" style="flex:1"><label>身份/职业</label><input class="input scene-input" id="sceneCharRole" placeholder="职业/身份"></div></div>
             <div class="scene-field"><label>种族/形态</label><div class="scene-chips" id="speciesChips"></div></div>
@@ -388,24 +388,24 @@
             <div class="scene-field"><label>当前目标</label><textarea class="input scene-input" id="sceneCharGoal" rows="2" placeholder="角色当前的目标或动机…"></textarea></div>
           </div>
           <div class="scene-tab-content" id="tabNpc">
-            <p class="scene-tab-desc">管理故事中的其他人物，每张卡片可翻转查看详情和编辑。</p>
+            <p class="scene-tab-desc">NPC 会影响剧情推进。可以先写 1-3 个关键人物，后续再慢慢扩展。</p>
             <div class="scene-npc-grid" id="sceneNpcGrid"></div>
             <button class="btn btn-primary btn-sm btn-full" id="btnAddNpc" style="margin-top:8px">+ 添加 NPC</button>
           </div>
           <div class="scene-tab-content" id="tabStatus">
-            <p class="scene-tab-desc">追踪主角的各项数值状态，自动出现在回复的状态面板中。</p>
+            <p class="scene-tab-desc">状态会作为开局参考，例如体力、精神、目标、限制。可以简单写，不必一次填满。</p>
             <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>体力/生命</label><input class="input scene-input" id="sceneHealth" placeholder="如：85/100"></div><div class="scene-field" style="flex:1"><label>精力</label><input class="input scene-input" id="sceneStamina" placeholder="如：充沛 / 60%"></div></div>
             <div class="scene-flex-row"><div class="scene-field" style="flex:1"><label>冷静/精神</label><input class="input scene-input" id="sceneComposure" placeholder="如：6/10"></div><div class="scene-field" style="flex:1"><label>专注</label><input class="input scene-input" id="sceneFocus" placeholder="如：高度集中 / 分散"></div></div>
             <div class="scene-field"><label>当前目标</label><textarea class="input scene-input" id="sceneObjective" rows="2" placeholder="角色当前想要完成的目标…"></textarea></div>
             <div class="scene-field"><label>限制/提醒</label><textarea class="input scene-input" id="sceneConstraints" rows="2" placeholder="剧情限制或需要记住的提醒…"></textarea></div>
           </div>
           <div class="scene-tab-content" id="tabRules">
-            <p class="scene-tab-desc">设置故事规则限制。状态卡详细度请在右侧设置抽屉中调整。</p>
+            <p class="scene-tab-desc">这里写你希望 AI 长期遵守的叙事规则，例如文风、节奏、禁忌、分支数量和互动方式。</p>
             <div class="scene-field"><label>规则限制</label><textarea class="input scene-input" id="sceneRules" rows="2" placeholder="世界的规则或限制条件…"></textarea></div>
           </div>
         </div>
         <div class="scene-panel-actions">
-          <div class="scene-start-hint">建议先完善世界观、主角、NPC、状态和规则，开始后会自动发送给 AI。</div>
+          <div class="scene-start-hint">建议先完善世界观、主角、NPC、状态和规则。点击后，完整设定会发送给 AI；聊天界面只显示简短开始提示。</div>
           <div class="scene-action-row">
             <button class="btn btn-secondary btn-sm" id="btnCopyCharCard">复制角色卡</button>
             <button class="btn btn-primary btn-sm btn-start-world" id="btnStartWorld">以此开始</button>
