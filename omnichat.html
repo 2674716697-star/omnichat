@@ -3885,14 +3885,14 @@ dom.sceneCharGoal.addEventListener('input', function() {
 var conv = getCurrentConv();
 if (conv && conv.sceneCharacter) { conv.sceneCharacter.currentGoal = this.value; updateTimestamp(conv); debouncedSave(); }
 });
-dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
+if (dom.btnCopyCharCard) dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
 var conv = getCurrentConv();
 if (!conv) return;
 var card = buildCharacterCard(conv);
 if (!card) { showToast('角色卡为空，请先填写', 'warning'); return; }
 copyTextToClipboard(card, '角色卡已复制到剪贴板');
 });
-dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
+if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
 var conv = getCurrentConv();
 if (!conv) return;
 var sm = conv.storyMode;

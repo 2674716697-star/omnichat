@@ -3860,7 +3860,7 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // Copy character card button
-    dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
+    if (dom.btnCopyCharCard) dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
       var card = buildCharacterCard(conv);
@@ -3868,8 +3868,8 @@ function handleMessageAction(action, msgIndex) {
       copyTextToClipboard(card, '角色卡已复制到剪贴板');
     });
 
-    // Generate opening prompt button
-    dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
+    // Generate opening prompt button (hidden from UI, guarded)
+    if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
       var sm = conv.storyMode;
