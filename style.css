@@ -3256,8 +3256,9 @@ html.is-standalone .bottom-bar::after {
 /* Scene-immersive only changes accent, not base colors */
 .scene-immersive .input-message {
   background: #1a1a1f;
-  border-color: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 22px;
+  font-size: 15px;
 }
 
 .scene-immersive .input-message:focus {
