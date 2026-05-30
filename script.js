@@ -201,10 +201,9 @@
     dom.inputActionContinue = $('#inputActionContinue');
     dom.inputActionSummarize = $('#inputActionSummarize');
     dom.inputActionElaborate = $('#inputActionElaborate');
-    dom.inputSceneMode = $('#inputSceneMode');
+    dom.inputStoryMode = $('#inputStoryMode');
     dom.inputAutoCompress = $('#inputAutoCompress');
     dom.inputKeepThinking = $('#inputKeepThinking');
-    dom.inputWorldStarter = $('#inputWorldStarter');
     dom.btnStartWorld = $('#btnStartWorld');
     dom.inputSceneDetail = $('#inputSceneDetail');
     dom.scenePanel = $('#scenePanel');
@@ -322,6 +321,10 @@
 
   function saveToStorage() {
     try {
+      // Sync legacy scene fields → storyMode on all conversations before save
+      for (var si = 0; si < state.conversations.length; si++) {
+        syncLegacyToStoryMode(state.conversations[si]);
+      }
       const data = {
         version: STORAGE_VERSION,
         conversations: state.conversations,
@@ -354,6 +357,8 @@
         conv.sceneCharacter = createSceneCharacter(conv.sceneCharacter);
         conv.sceneStatus = createSceneStatus(conv.sceneStatus);
         conv.sceneNpcs = normalizeSceneNpcs(conv.sceneNpcs);
+        // Migrate old scene/world data to unified storyMode
+        migrateStoryMode(conv);
       });
       state.currentConversationId = data.currentConversationId || null;
       if (data.apiKeys) {
@@ -477,7 +482,8 @@
   }
 
   function buildSceneWorldRef(conv) {
-    var w = conv.sceneWorld;
+    var sm = conv.storyMode;
+    var w = (sm && sm.world) ? sm.world : conv.sceneWorld;
     if (!w) return '';
     var lines = [];
     if (w.openingName) lines.push('开局名称：' + w.openingName);
@@ -491,7 +497,8 @@
   }
 
   function buildSceneCharacterRef(conv) {
-    var ch = conv.sceneCharacter;
+    var sm = conv.storyMode;
+    var ch = (sm && sm.character) ? sm.character : conv.sceneCharacter;
     if (!ch) return '';
     var lines = [];
     if (ch.name) {
@@ -510,7 +517,8 @@
   }
 
   function buildSceneStatusRef(conv) {
-    var st = conv.sceneStatus;
+    var sm = conv.storyMode;
+    var st = (sm && sm.status) ? sm.status : conv.sceneStatus;
     if (!st) return '';
     var parts = [];
     if (st.health) parts.push('体力/生命：' + st.health);
@@ -524,7 +532,8 @@
   }
 
   function buildSceneNpcsRef(conv) {
-    var npcs = conv.sceneNpcs;
+    var sm = conv.storyMode;
+    var npcs = (sm && sm.npcs) ? sm.npcs : conv.sceneNpcs;
     if (!npcs || !npcs.length) return '';
     var lines = [];
     for (var i = 0; i < npcs.length; i++) {
@@ -870,6 +879,71 @@ function createSceneWorld(seed) {
     return out;
   }
 
+  // =========================================================================
+  // STORY MODE (unified world + scene mode)
+  // =========================================================================
+
+  function createStoryMode(seed) {
+    seed = seed || {};
+    return {
+      enabled: seed.enabled || false,
+      started: seed.started || false,
+      world: createSceneWorld(seed.world),
+      character: createSceneCharacter(seed.character),
+      status: createSceneStatus(seed.status),
+      npcs: normalizeSceneNpcs(seed.npcs),
+      sceneState: createSceneState(seed.sceneState),
+    };
+  }
+
+  function migrateStoryMode(conv) {
+    if (conv.storyMode && conv.storyMode.enabled !== undefined) return; // already migrated
+    conv.storyMode = createStoryMode({
+      enabled: !!(conv.sceneMode || conv.worldMode),
+      started: !!conv.worldMode,
+      world: conv.sceneWorld,
+      character: conv.sceneCharacter,
+      status: conv.sceneStatus,
+      npcs: conv.sceneNpcs,
+      sceneState: conv.sceneState,
+    });
+  }
+
+  function syncStoryModeToLegacy(conv) {
+    if (!conv.storyMode) return;
+    conv.sceneMode = conv.storyMode.enabled;
+    conv.worldMode = conv.storyMode.started;
+    conv.sceneWorld = conv.storyMode.world;
+    conv.sceneCharacter = conv.storyMode.character;
+    conv.sceneStatus = conv.storyMode.status;
+    conv.sceneNpcs = conv.storyMode.npcs;
+    conv.sceneState = conv.storyMode.sceneState;
+  }
+
+  function syncLegacyToStoryMode(conv) {
+    if (!conv) return;
+    if (!conv.storyMode) conv.storyMode = createStoryMode();
+    var sm = conv.storyMode;
+    sm.world = createSceneWorld(conv.sceneWorld);
+    sm.character = createSceneCharacter(conv.sceneCharacter);
+    sm.status = createSceneStatus(conv.sceneStatus);
+    sm.npcs = normalizeSceneNpcs(conv.sceneNpcs);
+    sm.sceneState = createSceneState(conv.sceneState);
+  }
+
+  // Helper: get effective story mode enabled/started state (primary + compat)
+  function isStoryEnabled(conv) {
+    if (!conv) return false;
+    var sm = conv.storyMode;
+    return !!(sm && sm.enabled) || !!conv.sceneMode;
+  }
+
+  function isStoryStarted(conv) {
+    if (!conv) return false;
+    var sm = conv.storyMode;
+    return !!(sm && sm.started) || !!conv.worldMode;
+  }
+
   function createConversation(provider) {
     const p = provider || 'openai';
     return {
@@ -890,6 +964,8 @@ function createSceneWorld(seed) {
       enableCaching: DEFAULTS.enableCaching,
       preciseMode: DEFAULTS.preciseMode,
       archived: false,
+      storyMode: createStoryMode(),
+      // Legacy fields — kept in sync with storyMode for backward compat
       sceneMode: false,
       sceneState: createSceneState(),
       sceneWorld: createSceneWorld(),
@@ -1654,11 +1730,10 @@ function createSceneWorld(seed) {
     dom.inputStream.checked = conv.stream;
     dom.inputCaching.checked = conv.enableCaching !== false;
     dom.inputPreciseMode.checked = !!conv.preciseMode;
-    dom.inputSceneMode.checked = !!conv.sceneMode;
+    if (dom.inputStoryMode) dom.inputStoryMode.checked = isStoryEnabled(conv);
     dom.inputAutoCompress.checked = !!conv.autoCompress;
     dom.inputKeepThinking.checked = conv.keepThinkingOpen !== false;
     if (dom.inputSceneDetail) dom.inputSceneDetail.value = conv.sceneDetailLevel || 'medium';
-    if (dom.inputWorldStarter) dom.inputWorldStarter.checked = !!state.worldStarterEnabled;
     conv.toolCallLimit = 0;
     conv.toolCallLimitMode = 'disabled';
     dom.selectToolCallLimit.value = '0';
@@ -1688,7 +1763,9 @@ function createSceneWorld(seed) {
     conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
     conv.stream = dom.inputStream.checked;
     conv.enableCaching = dom.inputCaching.checked;
-    conv.sceneMode = dom.inputSceneMode.checked;
+    conv.storyMode = conv.storyMode || createStoryMode();
+    conv.storyMode.enabled = dom.inputStoryMode.checked;
+    syncStoryModeToLegacy(conv);
     conv.autoCompress = dom.inputAutoCompress.checked;
     conv.keepThinkingOpen = dom.inputKeepThinking.checked;
     if (dom.inputSceneDetail) conv.sceneDetailLevel = dom.inputSceneDetail.value;
@@ -2102,7 +2179,10 @@ function updateScenePanelUI() {
       dom.scenePanel.style.display = 'none';
       return;
     }
-    var show = !!(conv.sceneMode || conv.worldMode || state.worldStarterEnabled);
+    var sm = conv.storyMode;
+    var show = !!(sm && sm.enabled);
+    // COMPAT: also check legacy fields during transition
+    if (!show) show = !!(conv.sceneMode || conv.worldMode || state.worldStarterEnabled);
     dom.scenePanel.style.display = show ? '' : 'none';
     if (show) {
       const ss = createSceneState(conv.sceneState);
@@ -2188,8 +2268,9 @@ function updateScenePanelUI() {
     var conv = getCurrentConv();
     if (!conv) { showToast('没有当前会话', 'warning'); return; }
     var hints = [];
-    if (conv.sceneState && conv.sceneState.directions) {
-      var dirs = parseDirectionOptions(conv.sceneState.directions);
+    var ss = (conv.storyMode && conv.storyMode.sceneState) ? conv.storyMode.sceneState : conv.sceneState;
+    if (ss && ss.directions) {
+      var dirs = parseDirectionOptions(ss.directions);
       if (dirs.length) hints = dirs.map(function(d) { return d.content; });
     }
     if (!hints.length) {
@@ -2288,7 +2369,10 @@ function updateScenePanelUI() {
 
     function buildCharacterCard(conv) {
     if (!conv) return '';
-    var w=conv.sceneWorld||{}, ch=conv.sceneCharacter||{}, npcs=conv.sceneNpcs||[];
+    var sm = conv.storyMode;
+    var w = (sm && sm.world) ? sm.world : (conv.sceneWorld || {});
+    var ch = (sm && sm.character) ? sm.character : (conv.sceneCharacter || {});
+    var npcs = (sm && sm.npcs) ? sm.npcs : (conv.sceneNpcs || []);
     var lines=[];
     lines.push('【角色卡】');
     if(ch.name) lines.push('姓名：'+ch.name);
@@ -2324,8 +2408,11 @@ function updateScenePanelUI() {
   }
   function checkAge18Plus() {
     var conv=getCurrentConv();
-    if(!conv||!conv.sceneCharacter) return true;
-    var age=conv.sceneCharacter.age;
+    if(!conv) return true;
+    var sm = conv.storyMode;
+    var ch = (sm && sm.character) ? sm.character : conv.sceneCharacter;
+    if(!ch) return true;
+    var age=ch.age;
     if(!age||age===''||isNaN(parseInt(age,10))) return true;
     var n=parseInt(age,10);
     if(n<18){ showToast('角色年龄必须为 18+','warning'); return false; }
@@ -2337,21 +2424,27 @@ function updateScenePanelUI() {
     // Build card from CURRENT conv first, to validate before creating new
     var card=current?buildCharacterCard(current):'';
     if(!card){ showToast('请先填写角色卡','warning'); return; }
-    // Capture scene data from current conv
-    var savedWorld=current&&current.sceneWorld?createSceneWorld(current.sceneWorld):null;
-    var savedChar=current&&current.sceneCharacter?createSceneCharacter(current.sceneCharacter):null;
-    var savedNpcs=current&&current.sceneNpcs?normalizeSceneNpcs(current.sceneNpcs):[];
-    var savedStatus=current&&current.sceneStatus?createSceneStatus(current.sceneStatus):null;
+    // Capture scene data from current conv (storyMode primary, legacy fallback)
+    var sm = current && current.storyMode;
+    var savedWorld = sm ? createSceneWorld(sm.world) : (current && current.sceneWorld ? createSceneWorld(current.sceneWorld) : null);
+    var savedChar = sm ? createSceneCharacter(sm.character) : (current && current.sceneCharacter ? createSceneCharacter(current.sceneCharacter) : null);
+    var savedNpcs = sm ? normalizeSceneNpcs(sm.npcs) : (current && current.sceneNpcs ? normalizeSceneNpcs(current.sceneNpcs) : []);
+    var savedStatus = sm ? createSceneStatus(sm.status) : (current && current.sceneStatus ? createSceneStatus(current.sceneStatus) : null);
     // Create new conversation
     newConversation();
     var conv=getCurrentConv();
     if(!conv) return;
-    if(savedWorld) conv.sceneWorld=savedWorld;
-    if(savedChar) conv.sceneCharacter=savedChar;
-    if(savedNpcs.length) conv.sceneNpcs=savedNpcs;
-    if(savedStatus) conv.sceneStatus=savedStatus;
-    conv.worldMode=true;
-    conv.sceneMode=true;
+    // Set storyMode as primary
+    conv.storyMode = createStoryMode({
+      enabled: true,
+      started: true,
+      world: savedWorld,
+      character: savedChar,
+      npcs: savedNpcs,
+      status: savedStatus,
+      sceneState: createSceneState(),
+    });
+    syncStoryModeToLegacy(conv);
     conv.title=savedWorld&&savedWorld.openingName?savedWorld.openingName:'世界开局';
     updateTimestamp(conv);
     saveToStorage();
@@ -2557,6 +2650,9 @@ function handleMessageAction(action, msgIndex) {
     updateTopBar();
     updateSendUI();
 
+    // Sync legacy scene fields → storyMode before prompt injection
+    syncLegacyToStoryMode(conv);
+
     // Build messages array with caching support
     const supportsCaching = conv.enableCaching && isAnthropicModel(model);
     const messages = [];
@@ -2573,11 +2669,14 @@ function handleMessageAction(action, msgIndex) {
 
     // Build full system prompt with scene state if enabled
     let fullSystemPrompt = effectiveSystemPrompt;
-    if (conv.worldMode) {
+    var storyEnabled = isStoryEnabled(conv);
+    var storyStarted = isStoryStarted(conv);
+
+    if (storyStarted) {
       var worldCard = buildCharacterCard(conv);
       fullSystemPrompt = (effectiveSystemPrompt || '') + '\n[世界模式 — 当前角色卡与设定]\n' + worldCard + '\n\n请根据以上角色卡与世界设定进行互动。每次回复末尾必须输出 @@SCENE 块，包含当前状态和 A/B/C/D 下一步选项。';
     }
-    if (conv.sceneMode) {
+    if (storyEnabled) {
       const ss = createSceneState(conv.sceneState);
       conv.sceneState = ss;
       // Build current scene state reference block
@@ -2668,7 +2767,7 @@ function handleMessageAction(action, msgIndex) {
         '@@END',
       ]).filter(Boolean).join('\n');
       var sceneBlockFinal = (effectiveSystemPrompt || '') + sceneBlock;
-      fullSystemPrompt = conv.worldMode ? fullSystemPrompt + '\n\n' + sceneBlockFinal : sceneBlockFinal;
+      fullSystemPrompt = storyStarted ? fullSystemPrompt + '\n\n' + sceneBlockFinal : sceneBlockFinal;
     }
 
     if (fullSystemPrompt) {
@@ -2679,8 +2778,8 @@ function handleMessageAction(action, msgIndex) {
 
     messages.push(...buildConversationRequestMessages(conv, supportsCaching));
 
-    // Scene mode A/B/C/D choice detection
-    if (conv.sceneMode && conv.sceneState && conv.sceneState.directions) {
+    // Story mode A/B/C/D choice detection
+    if (storyEnabled && conv.sceneState && conv.sceneState.directions) {
       var choiceLetter = parseSceneChoiceInput(text);
       if (choiceLetter) {
         var options = parseDirectionOptions(conv.sceneState.directions);
@@ -2779,7 +2878,7 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // Extract scene state from response
-      if (conv.sceneMode && assistantMsg.content) {
+      if (storyEnabled && assistantMsg.content) {
         const sceneMatch = assistantMsg.content.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
         if (sceneMatch) {
           const block = sceneMatch[1];
@@ -2829,6 +2928,8 @@ function handleMessageAction(action, msgIndex) {
             directions: directions || previousScene.directions,
             characterStatuses: characterStatuses && characterStatuses.length ? characterStatuses : (previousScene.characterStatuses || []),
           };
+          // Sync to storyMode long-term memory
+          if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
           // assistantMsg shows only THIS reply's parsed fields
           assistantMsg.sceneSnapshot = createSceneState(parsedSceneFromThisReply);
           assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
@@ -3258,6 +3359,8 @@ function handleMessageAction(action, msgIndex) {
           c.sceneCharacter = createSceneCharacter(c.sceneCharacter);
           c.sceneStatus = createSceneStatus(c.sceneStatus);
           c.sceneNpcs = normalizeSceneNpcs(c.sceneNpcs);
+          // Migrate old scene/world data to unified storyMode
+          migrateStoryMode(c);
           c.messages = c.messages.filter((m) => m.role && m.content !== undefined);
 
           state.conversations.push(c);
@@ -3346,13 +3449,13 @@ function handleMessageAction(action, msgIndex) {
 
   function updateInputPlaceholder() {
     var conv = getCurrentConv();
-    var on = conv && conv.sceneMode;
+    var on = isStoryEnabled(conv);
     dom.inputMessage.placeholder = on ? '输入剧情行动或选择 A/B/C/D…' : '输入消息…';
   }
 
   function updateSceneModeClass() {
     var conv = getCurrentConv();
-    var on = conv && conv.sceneMode;
+    var on = isStoryEnabled(conv);
     dom.appContainer.classList.toggle('scene-immersive', !!on);
     if (dom.sceneCapsule) dom.sceneCapsule.style.display = on ? '' : 'none';
     if (dom.btnGenHints) dom.btnGenHints.style.display = on ? '' : 'none';
@@ -3525,10 +3628,12 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputSceneMode.addEventListener('change', () => {
+    if (dom.inputStoryMode) dom.inputStoryMode.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
-        conv.sceneMode = dom.inputSceneMode.checked;
+        conv.storyMode = conv.storyMode || createStoryMode();
+        conv.storyMode.enabled = dom.inputStoryMode.checked;
+        syncStoryModeToLegacy(conv);
         updateTimestamp(conv);
         updateScenePanelUI();
         updateSceneModeClass();
@@ -3552,7 +3657,6 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.inputWorldStarter) dom.inputWorldStarter.addEventListener('change', () => { state.worldStarterEnabled = dom.inputWorldStarter.checked; updateScenePanelUI(); debouncedSave(); });
     if (dom.inputSceneDetail) dom.inputSceneDetail.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
@@ -3744,9 +3848,10 @@ function handleMessageAction(action, msgIndex) {
     dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
-      var w = conv.sceneWorld || {};
-      var ch = conv.sceneCharacter || {};
-      var ss = conv.sceneState || {};
+      var sm = conv.storyMode;
+      var w = (sm && sm.world) ? sm.world : (conv.sceneWorld || {});
+      var ch = (sm && sm.character) ? sm.character : (conv.sceneCharacter || {});
+      var ss = (sm && sm.sceneState) ? sm.sceneState : (conv.sceneState || {});
       var parts = [];
       parts.push('请根据以下设定续写故事。');
       if (w.openingName) parts.push('开局：' + w.openingName);
@@ -3767,7 +3872,7 @@ function handleMessageAction(action, msgIndex) {
       if (ss.physical) parts.push('身体细节：' + ss.physical);
       if (ss.plot) parts.push('当前剧情：' + ss.plot);
       // Phase 3: status bar
-      var st = conv.sceneStatus;
+      var st = (sm && sm.status) ? sm.status : conv.sceneStatus;
       if (st) {
         var stParts = [];
         if (st.health) stParts.push('体力/生命：' + st.health);
@@ -3779,7 +3884,7 @@ function handleMessageAction(action, msgIndex) {
         if (stParts.length) parts.push('主角状态：\n' + stParts.join('\n'));
       }
       // Phase 3: NPCs
-      var npcs = conv.sceneNpcs;
+      var npcs = (sm && sm.npcs) ? sm.npcs : conv.sceneNpcs;
       if (npcs && npcs.length) {
         var npcLines = [];
         for (var ni = 0; ni < npcs.length; ni++) {
