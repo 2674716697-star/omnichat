@@ -671,6 +671,33 @@ a {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-top: 4px;
+  white-space: normal;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/* Story mode settings row — copy + toggle layout */
+.story-mode-setting .setting-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.story-mode-setting .setting-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.story-mode-setting .toggle {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .story-mode-setting {
+    align-items: flex-start;
+  }
 }
 
 .tool-warning {

@@ -278,11 +278,11 @@
         </div>
 
         <!-- World Story Mode (unified scene + world starter) -->
-        <div class="setting-group setting-row">
-          <label class="setting-label">
-            世界故事模式
-            <span class="setting-hint" style="display:block;font-weight:400">开启后显示世界观、角色卡、NPC、状态、规则和剧情分支面板，适合写文、角色扮演和世界开局。</span>
-          </label>
+        <div class="setting-group setting-row story-mode-setting">
+          <div class="setting-copy">
+            <span class="setting-title">世界故事模式</span>
+            <span class="setting-hint">开启后显示世界观、角色卡、NPC、状态、规则和剧情分支面板，适合写文、角色扮演和世界开局。</span>
+          </div>
           <label class="toggle">
             <input type="checkbox" id="inputStoryMode">
             <span class="toggle-slider"></span>
@@ -358,7 +358,7 @@
       <div class="scene-panel collapsed" id="scenePanel" style="display:none">
         <div class="scene-panel-header" id="scenePanelToggle">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-          <span>写文设置</span>
+          <span>世界故事</span>
           <span class="scene-panel-arrow">▾</span>
         </div>
         <div class="scene-panel-body" id="scenePanelBody">
@@ -443,7 +443,7 @@
         <button class="btn-quick" id="btnQuickPrecise" title="精确模式：低温输出 + 防幻觉 Prompt">精确</button>
         <button class="btn-quick" id="btnQuickExport" title="导出当前会话 Markdown">导出本聊</button>
         <button class="btn-quick" id="btnGenHints" title="基于当前剧情生成提示词，填入输入框" style="display:none">生成提示词</button>
-        <span class="scene-capsule" id="sceneCapsule" style="display:none" aria-label="写文模式已开启">写文 ON</span>
+        <span class="scene-capsule" id="sceneCapsule" style="display:none" aria-label="世界故事模式已开启">世界故事 ON</span>
       </div>
       <div class="input-row">
         <textarea class="input-message" id="inputMessage" rows="1" placeholder="输入消息…" autocomplete="off"></textarea>

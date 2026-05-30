@@ -2181,8 +2181,8 @@ function updateScenePanelUI() {
     }
     var sm = conv.storyMode;
     var show = !!(sm && sm.enabled);
-    // COMPAT: also check legacy fields during transition
-    if (!show) show = !!(conv.sceneMode || conv.worldMode || state.worldStarterEnabled);
+    // COMPAT: also check legacy per-conversation fields during transition
+    if (!show) show = !!(conv.sceneMode || conv.worldMode);
     dom.scenePanel.style.display = show ? '' : 'none';
     if (show) {
       const ss = createSceneState(conv.sceneState);
@@ -2334,7 +2334,7 @@ function updateScenePanelUI() {
   }
 
   function showSetupConfirm() {
-    dom.dialogBody.innerHTML = '写文设置已完成？';
+    dom.dialogBody.innerHTML = '世界故事设置已完成？';
     dom.dialogConfirm.textContent = '继续';
     dom.dialogConfirm.className = 'btn btn-primary';
     dom.dialogCancel.textContent = '返回修改';
