@@ -119,6 +119,9 @@ check('dir-choices-list render code exists', /dir-choices-list/.test(js));
 check('world story per-turn format reminder exists', /本轮世界故事硬性格式要求/.test(js));
 check('reminder only for story mode (storyEnabled guard)', /if\s*\(\s*storyEnabled\s*\)\s*\{[\s\S]*reminder/.test(js));
 check('story response completeness warning', /Story response missing/.test(js));
+check('completeness checks sceneSnapshot (not visible @@SCENE)', /scene\s*=\s*assistantMsg\.sceneSnapshot/.test(js));
+check('completeness uses parseDirectionOptions for A/B/C/D count', /dirsParsed\.length\s*<\s*4/.test(js));
+check('visible text mental/body/npc checks retained', /assistantMsg\.content\).*missing\.push\('mental/.test(js));
 
 // =========================================================================
 // 8. BUILD VERSION

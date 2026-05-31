@@ -3071,20 +3071,25 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // Completeness warnings for story mode responses (non-blocking)
+      // Checks visible text for mental/body/npc, and sceneSnapshot for directions.
+      // Does NOT check visible text for @@SCENE/@@END (they are stripped from display).
       if (storyEnabled && assistantMsg.content) {
         var missing = [];
-        if (!/@@SCENE/.test(assistantMsg.content)) missing.push('@@SCENE');
-        if (!/mental|精神|心理/.test(assistantMsg.content)) missing.push('mental/心理');
-        if (!/身体|physical|感官|姿态|姿势|呼吸|肌肉/.test(assistantMsg.content)) missing.push('body/身体');
+        // Visible text checks: mental, body, NPC presence in displayed text
+        if (!/mental|精神|心理|内心|情绪|感受|觉得|感到/.test(assistantMsg.content)) missing.push('mental/心理');
+        if (!/身体|physical|感官|姿态|姿势|呼吸|肌肉|指尖|视线|手足/.test(assistantMsg.content)) missing.push('body/身体');
         if (conv.sceneNpcs && conv.sceneNpcs.length) {
           var npcNames = conv.sceneNpcs.map(function (n) { return n.name; });
           var hasNpc = npcNames.some(function (name) { return assistantMsg.content.indexOf(name) >= 0; });
           if (!hasNpc) missing.push('NPC');
         }
-        var snapshotDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
+        // Scene snapshot checks: directions extracted from @@SCENE block
+        var scene = assistantMsg.sceneSnapshot || null;
+        var snapshotDirs = scene && scene.directions ? scene.directions : '';
         var dirsParsed = snapshotDirs ? parseDirectionOptions(snapshotDirs) : [];
+        if (!scene) missing.push('sceneSnapshot');
         if (!snapshotDirs) missing.push('directions');
-        else if (dirsParsed.length < 2) missing.push('directions<' + dirsParsed.length);
+        else if (dirsParsed.length < 4) missing.push('A/B/C/D<' + dirsParsed.length);
         if (missing.length) {
           console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
         }
