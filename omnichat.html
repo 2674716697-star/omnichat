@@ -10,8 +10,14 @@
   <meta name="apple-mobile-web-app-title" content="OmniChat">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27192%27 height=%27192%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%230f0f0f%27/%3E%3Cpath d=%27M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z%27 fill=%27%234a9eff%27/%3E%3Ccircle cx=%2796%27 cy=%2796%27 r=%2716%27 fill=%27%236ab4ff%27/%3E%3C/svg%3E">
   <meta name="theme-color" content="#000000">
+  <meta name="build-version" content="mptxhlm7">
+  <meta name="build-commit" content="8533d09">
+  <meta name="build-version" content="mptxh6lh">
+  <meta name="build-commit" content="8533d09">
   <meta name="build-version" content="mptx4new">
   <meta name="build-commit" content="88793a4">
   <link rel="manifest" href="manifest.json">
@@ -453,6 +459,26 @@
         </div>
       </div>
       <input type="file" id="npcImageInput" accept="image/*" style="display:none">
+
+      <!-- Story Editor Overlay (independent sheet for world story editing) -->
+      <div class="story-editor-overlay" id="storyEditorOverlay" style="display:none">
+        <div class="story-editor-sheet">
+          <div class="story-editor-header">
+            <span class="story-editor-title">世界故事编辑器</span>
+            <button class="btn-icon" id="storyEditorClose" title="关闭编辑器" aria-label="关闭编辑器">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="story-editor-body" id="storyEditorBody">
+            <!-- Injected at runtime from scenePanelBody -->
+          </div>
+          <div class="story-editor-footer">
+            <button class="btn btn-secondary btn-sm" id="storyEditorCancel">取消</button>
+            <button class="btn btn-primary" id="storyEditorStart">以此开始</button>
+          </div>
+        </div>
+      </div>
+
       <div class="messages-container" id="messagesContainer">
         <div class="welcome-screen" id="welcomeScreen">
           <div class="welcome-icon">

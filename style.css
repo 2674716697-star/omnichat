@@ -3792,3 +3792,146 @@ html.has-custom-bg .user .message-bubble {
   border-top: 1px solid var(--border-light);
   margin: 10px 0;
 }
+
+/* ---- Story Editor Overlay ---- */
+.story-editor-open .bottom-bar { display: none; }
+.story-editor-open .scene-panel { display: none; }
+
+.story-editor-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+.story-editor-sheet {
+  display: flex; flex-direction: column;
+  width: 100%; max-width: 820px;
+  height: calc(100dvh - 40px); max-height: 900px;
+  margin: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(24,14,36,0.96), rgba(14,8,22,0.98));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.story-editor-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.story-editor-title {
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+}
+.story-editor-body {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 18px;
+  padding-bottom: calc(16px + var(--safe-bottom, 0px));
+}
+.story-editor-footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 12px 18px;
+  padding-bottom: calc(12px + var(--safe-bottom, 0px));
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.story-editor-body .scene-tabs {
+  position: sticky; top: 0; z-index: 2;
+  background: rgba(18,10,28,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin: -16px -18px 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.story-editor-body .scene-field {
+  margin-bottom: 14px;
+}
+.story-editor-body .scene-field label {
+  display: block;
+  font-size: 12px; font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.story-editor-body .scene-input {
+  width: 100%; box-sizing: border-box;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.25);
+  color: var(--text-primary);
+  resize: vertical;
+}
+.story-editor-body textarea.scene-input {
+  min-height: 72px;
+}
+.story-editor-body .scene-tab-desc {
+  font-size: 11.5px; line-height: 1.6;
+}
+/* NPC cards in editor */
+.story-editor-body .npc-card {
+  position: static !important;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+}
+.story-editor-body .npc-card .npc-card-front {
+  position: static !important;
+}
+.story-editor-body .npc-card .npc-card-name {
+  font-size: 13px; font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--scene-gold-bright);
+}
+.story-editor-body .npc-edit-field {
+  width: 100%; box-sizing: border-box;
+  margin-bottom: 6px;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.15);
+  color: var(--text-primary);
+  resize: vertical;
+}
+.story-editor-body .npc-edit-field[data-field="notes"] {
+  min-height: 72px;
+}
+.story-editor-body .npc-delete-btn {
+  float: right; margin-top: -32px;
+  position: relative; z-index: 1;
+  font-size: 10px; padding: 3px 8px;
+}
+.story-editor-body #btnAddNpc {
+  margin-top: 4px;
+  width: 100%;
+}
+.story-editor-body .scene-chip { font-size: 12px; padding: 5px 12px; }
+.story-editor-body .scene-chips { gap: 6px; margin: 4px 0 8px; }
+
+/* Scene panel inline: make it scrollable with proper bottom spacing */
+.scene-panel:not([style*="display:none"]) .scene-panel-body {
+  max-height: calc(100dvh - var(--top-bar-h, 52px) - var(--bottom-bar-h, 150px) - 80px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px));
+}
+
+/* Mobile: editor fullscreen */
+@media (max-width: 600px) {
+  .story-editor-sheet {
+    margin: 0; border-radius: 0;
+    height: 100dvh; max-height: 100dvh;
+  }
+  .story-editor-header { padding: 12px 14px; }
+  .story-editor-body { padding: 12px 14px; }
+  .story-editor-footer { padding: 10px 14px; }
+  .story-editor-body .scene-tabs {
+    margin: -12px -14px 10px;
+    padding: 8px 14px;
+  }
+}

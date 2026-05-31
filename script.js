@@ -2013,6 +2013,86 @@ function getSceneBodyDetails(block) {
   }
 
   // =========================================================================
+  // STORY EDITOR — independent overlay for world story configuration
+  // =========================================================================
+
+  function openStoryEditor() {
+    var overlay = document.getElementById('storyEditorOverlay');
+    var body = document.getElementById('storyEditorBody');
+    var sourceBody = document.getElementById('scenePanelBody');
+    if (!overlay || !body || !sourceBody) return;
+
+    // Clone the scene panel body content into the editor
+    body.innerHTML = sourceBody.innerHTML;
+
+    // Re-bind tab switching inside editor
+    var tabs = body.querySelectorAll('.scene-tab');
+    for (var ti = 0; ti < tabs.length; ti++) {
+      (function(tab) {
+        tab.addEventListener('click', function() {
+          var tn = tab.dataset.tab;
+          body.querySelectorAll('.scene-tab').forEach(function(t) { t.classList.remove('active'); });
+          tab.classList.add('active');
+          body.querySelectorAll('.scene-tab-content').forEach(function(c) {
+            c.classList.toggle('active', c.id === 'tab' + tn.charAt(0).toUpperCase() + tn.slice(1));
+          });
+        });
+      })(tabs[ti]);
+    }
+
+    // Re-bind mood/species/trait/genre chips
+    if (typeof renderMoodChips === 'function') renderMoodChips();
+    if (typeof renderSpeciesChips === 'function') renderSpeciesChips();
+    if (typeof renderRoleChips === 'function') renderRoleChips();
+    if (typeof renderTraitChips === 'function') renderTraitChips();
+    if (typeof renderGenreChips === 'function') renderGenreChips();
+
+    // Show overlay
+    overlay.style.display = 'flex';
+    state.ui.storyEditorOpen = true;
+    document.documentElement.classList.add('story-editor-open');
+    updateBottomBarHeight();
+  }
+
+  function closeStoryEditor() {
+    var overlay = document.getElementById('storyEditorOverlay');
+    if (!overlay) return;
+
+    // Sync editor inputs back to scenePanelBody inputs
+    var editorBody = document.getElementById('storyEditorBody');
+    var sourceBody = document.getElementById('scenePanelBody');
+    if (editorBody && sourceBody) {
+      syncEditorInputsBack(editorBody);
+    }
+
+    overlay.style.display = 'none';
+    state.ui.storyEditorOpen = false;
+    document.documentElement.classList.remove('story-editor-open');
+    updateBottomBarHeight();
+    updateScenePanelUI();
+  }
+
+  function syncEditorInputsBack(editorBody) {
+    // Copy values from editor inputs back to the source scene panel inputs
+    var sourceBody = document.getElementById('scenePanelBody');
+    if (!sourceBody) return;
+    var editorInputs = editorBody.querySelectorAll('input, textarea, select');
+    for (var ei = 0; ei < editorInputs.length; ei++) {
+      var eInput = editorInputs[ei];
+      if (!eInput.id) continue;
+      var sInput = sourceBody.querySelector('#' + eInput.id);
+      if (sInput && (sInput.tagName === 'INPUT' || sInput.tagName === 'TEXTAREA')) {
+        sInput.value = eInput.value;
+        sInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (sInput && sInput.tagName === 'SELECT') {
+        sInput.value = eInput.value;
+        sInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  }
+
+  // =========================================================================
   // RENDER: CONVERSATION LIST
   // =========================================================================
 
@@ -5118,6 +5198,36 @@ function handleMessageAction(action, msgIndex) {
     dom.mainContent.addEventListener('pointerdown', function() { state.ui.programmaticScroll = false; }, { passive: true });
 
     // Quick actions
+    // Story editor toggle: click "世界故事 · ON" pill → open overlay editor
+    if (dom.sceneCapsule) {
+      dom.sceneCapsule.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openStoryEditor();
+      });
+      dom.sceneCapsule.style.cursor = 'pointer';
+    }
+
+    // Story editor close / cancel / start buttons
+    var storyEditorClose = document.getElementById('storyEditorClose');
+    var storyEditorCancel = document.getElementById('storyEditorCancel');
+    var storyEditorStart = document.getElementById('storyEditorStart');
+    var storyEditorOverlay = document.getElementById('storyEditorOverlay');
+    if (storyEditorClose) storyEditorClose.addEventListener('click', closeStoryEditor);
+    if (storyEditorCancel) storyEditorCancel.addEventListener('click', closeStoryEditor);
+    if (storyEditorStart) {
+      storyEditorStart.addEventListener('click', function() {
+        syncEditorInputsBack(document.getElementById('storyEditorBody'));
+        closeStoryEditor();
+        if (typeof startWorldMode === 'function') startWorldMode();
+      });
+    }
+    // Click overlay background to close
+    if (storyEditorOverlay) {
+      storyEditorOverlay.addEventListener('click', function(e) {
+        if (e.target === storyEditorOverlay) closeStoryEditor();
+      });
+    }
+
     // "更多" toggle for secondary quick actions
     var moreBtn = $('#btnQuickMore');
     if (moreBtn) {
