@@ -1436,6 +1436,10 @@ function getSceneBodyDetails(block) {
     ui: {
       isHistoryOpen: false,
       isSettingsOpen: false,
+      autoFollowStreaming: true,
+      userScrolling: false,
+      lastUserScrollAt: 0,
+      programmaticScroll: false,
     },
   };
 
@@ -2341,31 +2345,48 @@ function getSceneBodyDetails(block) {
       : parseInt(lastItem.dataset.index, 10);
 
     if (msg._streaming) {
-      // Fast path: only update text content, skip full DOM rebuild
-      let contentDiv = bubble.querySelector('.message-content');
-      if (contentDiv) {
-        contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
-      }
-      // Update thinking section if reasoning is streaming
-      const reasoning = msg.reasoning || '';
-      if (reasoning) {
-        let thinkDiv = bubble.querySelector('.thinking-content');
-        if (!thinkDiv) {
-          // Thinking section doesn't exist yet, need full rebuild
+      var newContentLen = (msg.content || '').length;
+      var newReasonLen = (msg.reasoning || '').length;
+      var lastCLen = msg._lastRenderedContentLength || 0;
+      var lastRLen = msg._lastRenderedReasoningLength || 0;
+
+      // Update content div only if content changed
+      if (newContentLen !== lastCLen) {
+        var contentDiv = bubble.querySelector('.message-content');
+        if (!contentDiv) {
+          // Content div doesn't exist yet — need full rebuild (first render)
           bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
+          msg._lastRenderedContentLength = newContentLen;
+          msg._lastRenderedReasoningLength = newReasonLen;
         } else {
-          thinkDiv.innerHTML = renderContentFast(reasoning);
-          // Ensure details is open during reasoning
-          const details = bubble.querySelector('.thinking-section');
-          if (details && !msg.content) details.open = true;
+          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
+          msg._lastRenderedContentLength = newContentLen;
         }
       }
+
+      // Update thinking section only if reasoning changed
+      if (newReasonLen !== lastRLen) {
+        var reasoning = msg.reasoning || '';
+        if (reasoning) {
+          var thinkDiv = bubble.querySelector('.thinking-content');
+          if (!thinkDiv) {
+            bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
+            msg._lastRenderedContentLength = newContentLen;
+          } else {
+            thinkDiv.innerHTML = renderContentFast(reasoning);
+          }
+          var details = bubble.querySelector('.thinking-section');
+          if (details && !msg.content) details.open = true;
+        }
+        msg._lastRenderedReasoningLength = newReasonLen;
+      }
+
       bubble.classList.add('streaming-cursor');
     } else {
       // Full render when streaming ends — proper markdown everywhere
       bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-      const details = bubble.querySelector('.thinking-section');
-      const keepOpen = msg._keepThinkingOpen !== undefined
+      var details = bubble.querySelector('.thinking-section');
+      var keepOpen = msg._keepThinkingOpen !== undefined
         ? msg._keepThinkingOpen
         : conv && conv.keepThinkingOpen !== false;
       if (details) details.open = !!keepOpen;
@@ -2463,27 +2484,98 @@ function getSceneBodyDetails(block) {
   // RENDER: SCROLL
   // =========================================================================
 
-  let userScrolledUp = false;
+  // =========================================================================
+  // SMART SCROLL — auto-follow bottom unless user manually scrolls away
+  // =========================================================================
+
+  function getScrollContainer() {
+    return dom.mainContent;
+  }
+
+  function isNearBottom(el, threshold) {
+    if (!el) return true;
+    var t = threshold || 80;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= t;
+  }
+
+  function scrollToBottomIfNeeded(opts) {
+    var el = getScrollContainer();
+    if (!el) return;
+    var smooth = opts && opts.smooth;
+    var force = opts && opts.force;
+
+    if (!force && !state.ui.autoFollowStreaming) return;
+    if (!force && !isNearBottom(el, 120)) return;
+
+    state.ui.programmaticScroll = true;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      // Reset programmatic flag after smooth scroll completes
+      setTimeout(function() { state.ui.programmaticScroll = false; }, 400);
+    } else {
+      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(function() { state.ui.programmaticScroll = false; });
+    }
+  }
 
   function scrollToBottom(force) {
-    if (!force && userScrolledUp) return;
-    dom.mainContent.scrollTop = dom.mainContent.scrollHeight;
+    scrollToBottomIfNeeded({ force: !!force });
   }
 
   function preserveScrollPosition(fn) {
-    const el = dom.mainContent;
-    const beforeTop = el.scrollTop;
+    var el = getScrollContainer();
+    if (!el) { fn(); return; }
+    var beforeTop = el.scrollTop;
     fn();
     el.scrollTop = beforeTop;
-    requestAnimationFrame(() => {
-      el.scrollTop = beforeTop;
-    });
+    requestAnimationFrame(function() { el.scrollTop = beforeTop; });
   }
 
   function checkUserScroll() {
-    const el = dom.mainContent;
-    const threshold = 60;
-    userScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
+    // Handled by the scroll/wheel/touch listeners below
+  }
+
+  // User scroll detection: pause auto-follow when user scrolls away,
+  // resume when they scroll back near bottom.
+  function onUserScrollIntent() {
+    if (state.ui.programmaticScroll) return;
+    var el = getScrollContainer();
+    if (!el) return;
+    if (!isNearBottom(el, 80)) {
+      state.ui.autoFollowStreaming = false;
+      state.ui.userScrolling = true;
+      state.ui.lastUserScrollAt = Date.now();
+      updateScrollToBottomButton(true);
+    } else {
+      state.ui.autoFollowStreaming = true;
+      state.ui.userScrolling = false;
+      updateScrollToBottomButton(false);
+    }
+  }
+
+  function updateScrollToBottomButton(show) {
+    var btn = document.getElementById('scrollToBottomBtn');
+    if (show && state.isStreaming) {
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'scrollToBottomBtn';
+        btn.innerHTML = '↓ 回到底部';
+        btn.title = '回到底部并恢复自动跟随';
+        btn.style.cssText = 'position:fixed;bottom:160px;right:16px;z-index:60;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:rgba(30,20,40,0.85);color:#fff;font-size:12px;cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:opacity 200ms ease;';
+        btn.addEventListener('click', function() {
+          state.ui.autoFollowStreaming = true;
+          state.ui.userScrolling = false;
+          scrollToBottomIfNeeded({ force: true, smooth: true });
+          updateScrollToBottomButton(false);
+        });
+        document.body.appendChild(btn);
+      }
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    } else if (btn) {
+      btn.style.opacity = '0';
+      btn.style.pointerEvents = 'none';
+    }
   }
 
   // =========================================================================
@@ -3827,6 +3919,9 @@ function handleMessageAction(action, msgIndex) {
     // Create abort controller
     state.abortController = new AbortController();
     state.isStreaming = true;
+    state.ui.autoFollowStreaming = true;
+    state.ui.userScrolling = false;
+    updateScrollToBottomButton(false);
     updateSendUI();
 
     const pConf = getProviderConfig(conv.provider);
@@ -4142,7 +4237,12 @@ function handleMessageAction(action, msgIndex) {
       updateTopBar();
       // Full render needed: sceneSnapshot may have been updated in finally block
       // and the diff-based renderMessages would skip re-rendering the bubble.
-      preserveScrollPosition(function () { fullRenderMessages(conv.messages); });
+      // Only auto-scroll if user is still near bottom; don't pull them back.
+      fullRenderMessages(conv.messages);
+      if (state.ui.autoFollowStreaming) {
+        scrollToBottomIfNeeded({ smooth: false });
+      }
+      updateScrollToBottomButton(false);
       debouncedSave();
     }
   }
@@ -4158,14 +4258,22 @@ function handleMessageAction(action, msgIndex) {
 
     let renderScheduled = false;
     let lastRenderAt = 0;
-    const minRenderGap = 45;
+    const minRenderGap = 80;
     const scheduleRender = () => {
       if (renderScheduled) return;
       renderScheduled = true;
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
-          preserveScrollPosition(renderMessages);
+          // Update DOM without forcing scroll position
+          renderMessages();
+          // Only auto-scroll if user hasn't manually scrolled away
+          if (state.ui.autoFollowStreaming) {
+            var sc = getScrollContainer();
+            if (sc && isNearBottom(sc, 120)) {
+              sc.scrollTop = sc.scrollHeight;
+            }
+          }
           lastRenderAt = performance.now();
           renderScheduled = false;
         });
@@ -4905,17 +5013,22 @@ function handleMessageAction(action, msgIndex) {
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
     });
 
-    // Scroll tracking (rAF-throttled)
-    let scrollTick = false;
-    dom.mainContent.addEventListener('scroll', () => {
+    // Smart scroll tracking — auto-follow unless user manually scrolls away
+    var scrollTick = false;
+    var onScrollEvent = function() {
       if (!scrollTick) {
         scrollTick = true;
-        requestAnimationFrame(() => {
-          checkUserScroll();
+        requestAnimationFrame(function() {
+          onUserScrollIntent();
           scrollTick = false;
         });
       }
-    }, { passive: true });
+    };
+    dom.mainContent.addEventListener('scroll', onScrollEvent, { passive: true });
+    dom.mainContent.addEventListener('wheel', onScrollEvent, { passive: true });
+    dom.mainContent.addEventListener('touchstart', function() { state.ui.programmaticScroll = false; }, { passive: true });
+    dom.mainContent.addEventListener('touchmove', onScrollEvent, { passive: true });
+    dom.mainContent.addEventListener('pointerdown', function() { state.ui.programmaticScroll = false; }, { passive: true });
 
     // Quick actions
     $('#btnQuickNew').addEventListener('click', () => newConversation());
