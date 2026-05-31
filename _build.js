@@ -2,6 +2,7 @@
 const fs = require('fs');
 
 let html = fs.readFileSync('index.html', 'utf-8');
+const template = html; // Save source template for restore after build
 const css = fs.readFileSync('style.css', 'utf-8');
 const js = fs.readFileSync('script.js', 'utf-8');
 const buildVersion = Date.now().toString(36);
@@ -124,8 +125,10 @@ html = html.replace(
 );
 
 fs.writeFileSync('omnichat.html', html, 'utf-8');
-// Write the same built app to index.html so GitHub Pages default entry works
+// Write to index.html for GitHub Pages default entry
 fs.writeFileSync('index.html', html, 'utf-8');
+// IMMEDIATELY restore the source template so the next build works
+fs.writeFileSync('index.html', template, 'utf-8');
 
 // Verify
 const verifyHtml = fs.readFileSync('omnichat.html', 'utf-8');
