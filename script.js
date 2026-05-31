@@ -2108,12 +2108,12 @@ function getSceneBodyDetails(block) {
 
     if (conv && state.ui._storyOriginals) {
       if (saveChanges === true) {
-        // Draft is already conv's data → sync legacy + persist
+        // Save: draft is already conv's data → sync legacy + persist
         syncStoryModeToLegacy(conv);
         updateTimestamp(conv);
         var realSave = state.ui._originalDebouncedSave || debouncedSave;
         if (typeof realSave === 'function') realSave();
-      } else {
+      } else if (saveChanges === false) {
         // Cancel: restore original references → undoes all edits
         var orig = state.ui._storyOriginals;
         conv.updatedAt = orig.updatedAt;
@@ -2130,6 +2130,7 @@ function getSceneBodyDetails(block) {
           if (orig.storyModeSceneState) conv.storyMode.sceneState = orig.storyModeSceneState;
         }
       }
+      // null: clean close — just restore persistence, don't touch conv data
     }
 
     // Move body back AFTER unwiring
@@ -5347,13 +5348,12 @@ function handleMessageAction(action, msgIndex) {
             hideConfirm();
             closeStoryEditor(false);
           });
-          // Override confirm button text
           setTimeout(function() {
             dom.dialogConfirm.textContent = '放弃修改';
             dom.dialogCancel.textContent = '返回编辑';
           }, 50);
         } else {
-          closeStoryEditor(true);
+          closeStoryEditor(null);
         }
       });
     }
