@@ -619,6 +619,7 @@
 
     // Save original references so we can restore on cancel
     state.ui._storyOriginals = {
+      updatedAt: conv.updatedAt,
       sceneWorld: conv.sceneWorld,
       sceneCharacter: conv.sceneCharacter,
       sceneNpcs: conv.sceneNpcs,
@@ -693,10 +694,12 @@
         // Draft is already conv's data → sync legacy + persist
         syncStoryModeToLegacy(conv);
         updateTimestamp(conv);
-        debouncedSave();
+        var realSave = state.ui._originalDebouncedSave || debouncedSave;
+        if (typeof realSave === 'function') realSave();
       } else {
         // Cancel: restore original references → undoes all edits
         var orig = state.ui._storyOriginals;
+        conv.updatedAt = orig.updatedAt;
         conv.sceneWorld = orig.sceneWorld;
         conv.sceneCharacter = orig.sceneCharacter;
         conv.sceneNpcs = orig.sceneNpcs;
