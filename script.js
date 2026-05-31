@@ -1440,6 +1440,9 @@ function getSceneBodyDetails(block) {
       userScrolling: false,
       lastUserScrollAt: 0,
       programmaticScroll: false,
+      detachedDuringStreaming: false,
+      pendingStreamRender: false,
+      detachedContentDirty: false,
     },
   };
 
@@ -2541,35 +2544,72 @@ function getSceneBodyDetails(block) {
     if (state.ui.programmaticScroll) return;
     var el = getScrollContainer();
     if (!el) return;
-    if (!isNearBottom(el, 80)) {
+    var nearBottom = isNearBottom(el, 80);
+
+    if (!nearBottom) {
       state.ui.autoFollowStreaming = false;
       state.ui.userScrolling = true;
       state.ui.lastUserScrollAt = Date.now();
+      // Enter detached mode: stop DOM updates during streaming
+      if (state.isStreaming) {
+        state.ui.detachedDuringStreaming = true;
+      }
       updateScrollToBottomButton(true);
     } else {
       state.ui.autoFollowStreaming = true;
       state.ui.userScrolling = false;
+      // Exit detached mode: sync accumulated content to DOM
+      if (state.ui.detachedDuringStreaming) {
+        state.ui.detachedDuringStreaming = false;
+        if (state.ui.detachedContentDirty) {
+          state.ui.detachedContentDirty = false;
+          renderMessages();
+          el.scrollTop = el.scrollHeight;
+        }
+      }
       updateScrollToBottomButton(false);
     }
   }
 
   function updateScrollToBottomButton(show) {
     var btn = document.getElementById('scrollToBottomBtn');
-    if (show && state.isStreaming) {
+    var active = show && (state.isStreaming || state.ui.detachedContentDirty);
+    // Also show when streaming ended but user is detached
+    if (!active && !state.isStreaming && state.ui.detachedContentDirty) active = true;
+
+    if (active) {
       if (!btn) {
         btn = document.createElement('button');
         btn.id = 'scrollToBottomBtn';
-        btn.innerHTML = '↓ 回到底部';
-        btn.title = '回到底部并恢复自动跟随';
+        btn.title = '回到底部查看最新内容';
         btn.style.cssText = 'position:fixed;bottom:160px;right:16px;z-index:60;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:rgba(30,20,40,0.85);color:#fff;font-size:12px;cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:opacity 200ms ease;';
         btn.addEventListener('click', function() {
+          // Exit detached mode
+          state.ui.detachedDuringStreaming = false;
           state.ui.autoFollowStreaming = true;
           state.ui.userScrolling = false;
-          scrollToBottomIfNeeded({ force: true, smooth: true });
+          state.ui.programmaticScroll = true;
+
+          if (state.ui.detachedContentDirty) {
+            state.ui.detachedContentDirty = false;
+            // Full render to pick up sceneSnapshot, chips, token usage, action buttons
+            var conv = getCurrentConv();
+            if (conv && conv.messages.length) {
+              fullRenderMessages(conv.messages);
+            }
+          }
+
+          var sc = getScrollContainer();
+          if (sc) sc.scrollTop = sc.scrollHeight;
+          requestAnimationFrame(function() {
+            state.ui.programmaticScroll = false;
+          });
           updateScrollToBottomButton(false);
         });
         document.body.appendChild(btn);
       }
+      // Update button text
+      btn.innerHTML = state.isStreaming ? '↓ AI 正在生成' : '↓ 查看最新回复';
       btn.style.opacity = '1';
       btn.style.pointerEvents = 'auto';
     } else if (btn) {
@@ -4235,13 +4275,20 @@ function handleMessageAction(action, msgIndex) {
 
       updateTimestamp(conv);
       updateTopBar();
-      // Full render needed: sceneSnapshot may have been updated in finally block
-      // and the diff-based renderMessages would skip re-rendering the bubble.
-      // Only auto-scroll if user is still near bottom; don't pull them back.
-      fullRenderMessages(conv.messages);
-      if (state.ui.autoFollowStreaming) {
-        scrollToBottomIfNeeded({ smooth: false });
+
+      // If user is detached (scrolled away during streaming), defer full render.
+      // Don't force DOM rebuild that would interrupt their scrolling.
+      // The "↓ 查看最新回复" button will trigger the final render on click.
+      if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+        state.ui.detachedContentDirty = true;
+        updateScrollToBottomButton(true);
+        debouncedSave();
+        return;
       }
+
+      // User is at bottom — normal full render
+      fullRenderMessages(conv.messages);
+      scrollToBottomIfNeeded({ smooth: false });
       updateScrollToBottomButton(false);
       debouncedSave();
     }
@@ -4261,13 +4308,21 @@ function handleMessageAction(action, msgIndex) {
     const minRenderGap = 80;
     const scheduleRender = () => {
       if (renderScheduled) return;
+
+      // Detached mode: user scrolled away — accumulate content in memory only.
+      // Do NOT touch the DOM to avoid reflow interrupting user scroll.
+      if (state.ui.detachedDuringStreaming) {
+        state.ui.detachedContentDirty = true;
+        updateScrollToBottomButton(true);
+        return;
+      }
+
       renderScheduled = true;
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
-          // Update DOM without forcing scroll position
+          // Only update DOM when user is at bottom (auto-follow)
           renderMessages();
-          // Only auto-scroll if user hasn't manually scrolled away
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
             if (sc && isNearBottom(sc, 120)) {
