@@ -3406,3 +3406,59 @@ html.is-standalone .bottom-bar::after {
 }
 
 /* Bottom input area is globally unified — normal and story mode share the same purple-black aesthetic */
+
+/* ============================================================
+   Glass UI — incremental polish (d1f9839+)
+   ============================================================ */
+
+/* --- Quick-action chips: add subtle hover lift --- */
+.btn-quick {
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 140ms ease,
+    box-shadow 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-quick:hover { transform: translateY(-1px); }
+}
+
+/* --- Message bubble: smooth entry / glass transition --- */
+.message-bubble {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+/* --- Input message: transition harmony --- */
+.input-message {
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 200ms ease;
+}
+
+/* --- Choice chips: consistent inset glow on hover --- */
+.dir-choice-chip:hover {
+  box-shadow:
+    0 6px 18px rgba(220, 92, 145, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* --- Scene tab: subtle active inset highlight --- */
+.scene-tab.active {
+  box-shadow:
+    0 0 0 1px rgba(220, 92, 145, 0.08),
+    0 4px 16px rgba(220, 92, 145, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* --- Char status cards: glass touch --- */
+.char-status-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    rgba(18, 12, 28, 0.70);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
