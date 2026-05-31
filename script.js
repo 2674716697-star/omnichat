@@ -2839,16 +2839,16 @@ function handleMessageAction(action, msgIndex) {
       ].concat(sceneStateRef).concat(settingRefs).concat([
         '写文模式规则：',
         '0. 【角色视角强制】@@SCENE 中所有字段只描述”剧情内的人物/世界”，禁止描述 AI 自身、模型状态、用户操作、写作过程、生成过程、输出流畅度、叙事技巧、处理负载。精神状态是剧情人物（默认为主角）的心理/情绪/意志状态，不是 AI 或写作者的创作状态。身体细节是剧情人物的姿态、动作、感官、伤痛、疲劳、衣着随身状态，不是”打字、输出、模拟书写、键盘敲击”。剧情总结只总结剧情内发生的事件。剧情走向是剧情内人物可采取的行动或外部变化，不是”用户可以要求/调整/改写/让 AI 继续”。如果角色不明确，优先使用角色卡里的主角；没有角色卡则用最近剧情中的主视角人物。',
-        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 2–4 个剧情选项，使用 A/B/C/D 选项标号（如只有两个选项则只写 A/B，三个则只写 A/B/C）。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含"行动 + 可能收益/风险/情绪变化"。不允许只在正文里写后续可能而不写入 @@SCENE。',
+        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 4 个剧情选项，使用 A/B/C/D 选项标号。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含"行动 + 可能收益/风险/情绪变化"。不允许只在正文里写后续可能而不写入 @@SCENE。',
         '2. 剧情走向必须以 A/B/C/D 选项形式输出。用户下一轮如果只输入 A、B、C 或 D（或其变体如”选A””选择B”），应视为用户选择了对应剧情分支，并沿该分支继续创作，不得忽略或自行发挥；如果用户自由输入其他内容，则按用户新要求继续，不要强行套用已有选项。',
         '3. 每次回复后必须维护剧情人物的精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
         '4. 精神评分使用 1-10 的整数，评价剧情人物的心理稳定/压力/清醒程度。评分要跟剧情变化一致，但不要无理由持续降低。',
         '5. 身体细节要具体到剧情人物的姿态、感官、疲劳、伤痛、动作变化或衣着状态，避免只写空泛形容词。',
-        '6. 每次 @@SCENE 中的状态与走向必须基于本次回复刚刚写出的剧情片段更新。禁止直接复用上一轮状态卡或上一轮 A/B/C/D。即使剧情推进较小，也必须根据当前片段结尾生成新的 2–4 个可行动分支。',
+        '6. 每次 @@SCENE 中的状态与走向必须基于本次回复刚刚写出的剧情片段更新。禁止直接复用上一轮状态卡或上一轮 A/B/C/D。即使剧情推进较小，也必须根据当前片段结尾生成新的 4 个可行动分支。',
         '7. 防止绝望循环：除非用户明确要求悲剧，不要让所有走向都通向崩溃、死亡或无解；至少保留一个可修复、可喘息或可转机的路径。',
         '8. 如果剧情停滞，主动加入温和变量、外部线索、角色选择或可行动机会，减少重复。',
         '9. 应用会自动把场景记忆渲染到本次回答框里；正文里不要重复输出状态表。',
-        '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向2-4条，每条16-32字，含行动+可能收益/风险/情绪变化。',
+        '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向4条，每条16-32字，含行动+可能收益/风险/情绪变化。',
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
         '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
@@ -2870,8 +2870,8 @@ function handleMessageAction(action, msgIndex) {
         '走向:',
         'A. <行动 + 可能后果/风险，16-32字>',
         'B. <明显不同的行动 + 后果/风险>',
-        'C. <可选>',
-        'D. <可选>',
+        'C. <行动 + 可能后果/风险，16-32字>',
+        'D. <行动 + 可能后果/风险，16-32字>',
         '@@END',
       ]).filter(Boolean).join('\n');
       var sceneBlockFinal = (effectiveSystemPrompt || '') + sceneBlock;
@@ -3453,7 +3453,8 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // Strip API keys and hidden request content from export
+    // Strip API keys from export. Preserve story-mode _requestContent
+    // so world-story backups can be restored with full character card intact.
     const data = {
       version: STORAGE_VERSION,
       exportedAt: nowISO(),
@@ -3461,7 +3462,11 @@ function handleMessageAction(action, msgIndex) {
         var copy = Object.assign({}, c);
         copy.messages = copy.messages.map(function(m) {
           var msg = Object.assign({}, m);
-          delete msg._requestContent;
+          var isStoryStarted = c.storyMode && c.storyMode.started;
+          var isFirstUser = msg.role === 'user' && msg.displayContent && msg._requestContent;
+          if (!(isStoryStarted && isFirstUser)) {
+            delete msg._requestContent;
+          }
           return msg;
         });
         return copy;
@@ -3522,10 +3527,15 @@ function handleMessageAction(action, msgIndex) {
           c.sceneNpcs = normalizeSceneNpcs(c.sceneNpcs);
           // Migrate old scene/world data to unified storyMode
           migrateStoryMode(c);
-          // Strip hidden request content from imported messages
+          // Preserve story-mode hidden request content so restored
+          // world-story conversations keep their full character card.
           c.messages = (c.messages || []).map(function(m) {
             var msg = Object.assign({}, m);
-            delete msg._requestContent;
+            var isStoryStarted = c.storyMode && c.storyMode.started;
+            var isFirstUser = msg.role === 'user' && msg.displayContent && msg._requestContent;
+            if (!(isStoryStarted && isFirstUser)) {
+              delete msg._requestContent;
+            }
             return msg;
           }).filter(function(m) { return m.role && m.content !== undefined; });
           // Normalize imported conversation to current display model

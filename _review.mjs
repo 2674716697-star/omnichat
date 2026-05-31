@@ -122,6 +122,11 @@ check('story response completeness warning', /Story response missing/.test(js));
 check('completeness checks sceneSnapshot (not visible @@SCENE)', /scene\s*=\s*assistantMsg\.sceneSnapshot/.test(js));
 check('completeness uses parseDirectionOptions for A/B/C/D count', /dirsParsed\.length\s*<\s*4/.test(js));
 check('visible text mental/body/npc checks retained', /assistantMsg\.content\).*missing\.push\('mental/.test(js));
+check('export JSON preserves story _requestContent', /isStoryStarted\s*&&\s*isFirstUser/.test(js));
+check('import JSON does not unconditionally delete _requestContent', new RegExp('c\\.storyMode\\s*&&\\s*c\\.storyMode\\.started').test(js));
+check('story prompt requires 4 A/B/C/D options consistently', /必须给出 4 个剧情选项/.test(js) && !/2–4/.test(js) && !/<可选>/.test(js));
+check('story prompt requires 4 branches in directions', /新的 4 个可行动分支/.test(js) && /剧情走向4条/.test(js));
+check('C/D template not marked as optional', !/<可选>/.test(js));
 
 // =========================================================================
 // 8. BUILD VERSION
