@@ -2420,7 +2420,10 @@ function getSceneBodyDetails(block) {
 
     const charCount = countApproxChars(conv);
     const msgCount = conv.messages.length;
-    dom.contextStats.textContent = `${msgCount} 条消息 · ~${charCount.toLocaleString()} 字符`;
+    // Short format: "8条 · 10k". Full data in title tooltip.
+    var charLabel = charCount >= 1000 ? Math.round(charCount / 100) / 10 + 'k' : charCount;
+    dom.contextStats.textContent = msgCount + '条 · ' + charLabel;
+    dom.contextStats.title = msgCount + ' 条消息 · ~' + charCount.toLocaleString() + ' 字符';
   }
 
   function updateWelcomeUI() {
@@ -2769,12 +2772,21 @@ function getSceneBodyDetails(block) {
     if (bg.type === 'none') {
       overlay.style.backgroundImage = '';
       overlay.style.display = 'none';
+      overlay.style.backgroundSize = '';
+      overlay.style.backgroundPosition = '';
+      document.documentElement.classList.remove('has-custom-bg');
     } else if (bg.type === 'gradient') {
       overlay.style.backgroundImage = bg.value;
       overlay.style.display = '';
+      overlay.style.backgroundSize = '';
+      overlay.style.backgroundPosition = '';
+      document.documentElement.classList.remove('has-custom-bg');
     } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
       overlay.style.backgroundImage = 'url(' + bg.value + ')';
+      overlay.style.backgroundSize = 'cover';
+      overlay.style.backgroundPosition = 'center';
       overlay.style.display = '';
+      document.documentElement.classList.add('has-custom-bg');
     }
   }
 
@@ -5084,6 +5096,19 @@ function handleMessageAction(action, msgIndex) {
     dom.mainContent.addEventListener('pointerdown', function() { state.ui.programmaticScroll = false; }, { passive: true });
 
     // Quick actions
+    // "更多" toggle for secondary quick actions
+    var moreBtn = $('#btnQuickMore');
+    if (moreBtn) {
+      moreBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var qa = document.getElementById('quickActions');
+        if (qa) { qa.classList.toggle('expanded'); }
+        var expanded = qa && qa.classList.contains('expanded');
+        moreBtn.setAttribute('aria-expanded', expanded);
+        moreBtn.innerHTML = expanded ? '▾ 收起' : '▸ 更多';
+      });
+    }
+
     $('#btnQuickNew').addEventListener('click', () => newConversation());
     $('#btnQuickClear').addEventListener('click', () => clearCurrentConversation());
     $('#btnQuickDeleteLast').addEventListener('click', () => deleteLastRound());

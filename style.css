@@ -3665,12 +3665,25 @@ html.is-standalone .bottom-bar::after {
   max-width: 82%;
   margin-left: auto;
 }
-/* Background image mode: raise bubble opacity for readability */
-.chat-bg-overlay:not([style*="display:none"]) ~ .app-container .assistant .message-bubble {
-  background: rgba(20,12,30,0.82);
+/* Custom background image: cover + center + dark unified overlay for readability */
+html.has-custom-bg .chat-bg-overlay {
+  background-size: cover;
+  background-position: center;
 }
-.chat-bg-overlay:not([style*="display:none"]) ~ .app-container .message-content {
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+/* Extra dark scrim over custom bg images */
+html.has-custom-bg .chat-bg-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,calc(var(--bg-opacity, 0.35) * 0.7));
+  pointer-events: none;
+  z-index: 0;
+}
+html.has-custom-bg .assistant .message-bubble {
+  background: rgba(16,8,24,0.88);
+}
+html.has-custom-bg .user .message-bubble {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
 /* Long-form Chinese readability */
@@ -3708,6 +3721,12 @@ html.is-standalone .bottom-bar::after {
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* Bottom toolbar: secondary buttons hidden behind "更多" */
+.btn-quick-secondary { display: none; }
+.quick-actions.expanded .btn-quick-secondary { display: inline-flex; }
+#btnQuickMore { font-weight: 500; }
+.quick-actions.expanded #btnQuickMore { opacity: 0.6; }
+
 /* World story status pill — distinct from action buttons */
 .scene-capsule {
   display: inline-flex !important;
@@ -3742,9 +3761,9 @@ html.is-standalone .bottom-bar::after {
   padding: 9px 14px;
 }
 #btnSend:not(:disabled) {
-  opacity: 0.6;
+  opacity: 0.95;
 }
-#btnSend:disabled { opacity: 0.3; }
+#btnSend:disabled { opacity: 0.35; }
 #btnStop {
   background: rgba(255,69,58,0.15);
   border-color: rgba(255,69,58,0.3);

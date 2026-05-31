@@ -471,14 +471,15 @@
     <!-- Bottom Bar -->
     <footer class="bottom-bar" id="bottomBar">
       <div class="quick-actions" id="quickActions">
-        <button class="btn-quick" id="btnQuickNew" title="新建独立对话，保留当前模型">新对话</button>
-        <button class="btn-quick" id="btnQuickClear" title="清空当前会话消息，保留参数">清空本聊</button>
-        <button class="btn-quick" id="btnQuickDeleteLast" title="删除最后一轮用户与 AI 回复">撤回一轮</button>
-        <button class="btn-quick" id="btnQuickCopy" title="复制最后一条 AI 回复">复制回复</button>
-        <button class="btn-quick" id="btnQuickPrecise" title="精确模式：低温输出 + 防幻觉 Prompt">精确</button>
-        <button class="btn-quick" id="btnQuickExport" title="导出当前会话 Markdown">导出本聊</button>
-        <button class="btn-quick" id="btnGenHints" title="基于当前剧情生成提示词，填入输入框" style="display:none">生成提示词</button>
-        <span class="scene-capsule" id="sceneCapsule" style="display:none" aria-label="世界故事模式已开启">世界故事 · ON</span>
+        <button class="btn-quick" id="btnQuickNew" title="新建独立对话">新对话</button>
+        <button class="btn-quick" id="btnQuickDeleteLast" title="删除最后一轮">撤回一轮</button>
+        <span class="scene-capsule" id="sceneCapsule" style="display:none">世界故事 · ON</span>
+        <button class="btn-quick btn-quick-more" id="btnQuickMore" title="更多操作" aria-expanded="false">▸ 更多</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickClear" title="清空当前会话消息">清空本聊</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickCopy" title="复制最后 AI 回复">复制回复</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickPrecise" title="精确模式：低温 + 防幻觉">精确</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickExport" title="导出 Markdown">导出本聊</button>
+        <button class="btn-quick btn-quick-secondary" id="btnGenHints" title="生成提示词" style="display:none">生成提示词</button>
       </div>
       <div class="input-row">
         <textarea class="input-message" id="inputMessage" rows="1" placeholder="输入消息…" autocomplete="off"></textarea>
