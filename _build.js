@@ -93,7 +93,12 @@ function minifyJS(js) {
 const cssMin = minifyCSS(css);
 const jsMin = minifyJS(js);
 
-// Add build version meta tag
+// Strip previous build meta tags (prevents accumulation across builds)
+html = html.replace(/\s*<meta name="build-version"[^>]*>/g, '');
+html = html.replace(/\s*<meta name="build-commit"[^>]*>/g, '');
+html = html.replace(/\s*<link rel="apple-touch-icon"[^>]*>/g, '');
+
+// Add fresh build version meta tags
 html = html.replace(
   '<meta name="theme-color" content="#000000">',
   '<meta name="theme-color" content="#000000">\n  <meta name="build-version" content="' + buildVersion + '">\n  <meta name="build-commit" content="' + commitHash + '">'

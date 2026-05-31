@@ -601,78 +601,71 @@
 
   function openStoryEditor() {
     var overlay = document.getElementById('storyEditorOverlay');
-    var body = document.getElementById('storyEditorBody');
+    var editorBody = document.getElementById('storyEditorBody');
     var sourceBody = document.getElementById('scenePanelBody');
-    if (!overlay || !body || !sourceBody) return;
+    if (!overlay || !editorBody || !sourceBody) return;
 
-    // Clone the scene panel body content into the editor
-    body.innerHTML = sourceBody.innerHTML;
+    // Move the actual scenePanelBody DOM into the editor (no clone, no duplicate IDs)
+    editorBody.appendChild(sourceBody);
+    sourceBody.style.display = '';
 
-    // Re-bind tab switching inside editor
-    var tabs = body.querySelectorAll('.scene-tab');
-    for (var ti = 0; ti < tabs.length; ti++) {
-      (function(tab) {
-        tab.addEventListener('click', function() {
-          var tn = tab.dataset.tab;
-          body.querySelectorAll('.scene-tab').forEach(function(t) { t.classList.remove('active'); });
-          tab.classList.add('active');
-          body.querySelectorAll('.scene-tab-content').forEach(function(c) {
-            c.classList.toggle('active', c.id === 'tab' + tn.charAt(0).toUpperCase() + tn.slice(1));
-          });
-        });
-      })(tabs[ti]);
-    }
-
-    // Re-bind mood/species/trait/genre chips
+    // Re-render chips inside editor (they bind to their own container)
     if (typeof renderMoodChips === 'function') renderMoodChips();
     if (typeof renderSpeciesChips === 'function') renderSpeciesChips();
     if (typeof renderRoleChips === 'function') renderRoleChips();
     if (typeof renderTraitChips === 'function') renderTraitChips();
     if (typeof renderGenreChips === 'function') renderGenreChips();
+    if (typeof renderNpcGrid === 'function') renderNpcGrid();
+
+    // Update header title to include opening name if set
+    var titleEl = document.getElementById('storyEditorTitle');
+    if (titleEl) {
+      var conv = getCurrentConv();
+      var name = (conv && conv.sceneWorld && conv.sceneWorld.openingName) || '';
+      titleEl.textContent = name ? '世界故事 · ' + name : '世界故事编辑器';
+    }
 
     // Show overlay
     overlay.style.display = 'flex';
     state.ui.storyEditorOpen = true;
     document.documentElement.classList.add('story-editor-open');
+    // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
     updateBottomBarHeight();
   }
 
-  function closeStoryEditor() {
+  function closeStoryEditor(saveChanges) {
     var overlay = document.getElementById('storyEditorOverlay');
-    if (!overlay) return;
-
-    // Sync editor inputs back to scenePanelBody inputs
     var editorBody = document.getElementById('storyEditorBody');
     var sourceBody = document.getElementById('scenePanelBody');
-    if (editorBody && sourceBody) {
-      syncEditorInputsBack(editorBody);
+    var scenePanel = document.getElementById('scenePanel');
+    if (!overlay) return;
+
+    if (saveChanges !== false) {
+      // Trigger save on all inputs in editor to persist changes
+      var allInputs = editorBody.querySelectorAll('input, textarea, select');
+      for (var ei = 0; ei < allInputs.length; ei++) {
+        allInputs[ei].dispatchEvent(new Event('input', { bubbles: true }));
+        allInputs[ei].dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+
+    // Move scenePanelBody back to its original location
+    if (sourceBody && scenePanel && scenePanel.contains(editorBody)) {
+      // sourceBody is inside editorBody — move back to scenePanel
+      if (sourceBody.parentNode === editorBody) {
+        scenePanel.insertBefore(sourceBody, scenePanel.querySelector('.scene-panel-header').nextSibling);
+      }
+      // Re-collapse after editor close
+      scenePanel.classList.add('collapsed');
     }
 
     overlay.style.display = 'none';
     state.ui.storyEditorOpen = false;
     document.documentElement.classList.remove('story-editor-open');
+    document.body.style.overflow = '';
     updateBottomBarHeight();
     updateScenePanelUI();
-  }
-
-  function syncEditorInputsBack(editorBody) {
-    // Copy values from editor inputs back to the source scene panel inputs
-    var sourceBody = document.getElementById('scenePanelBody');
-    if (!sourceBody) return;
-    var editorInputs = editorBody.querySelectorAll('input, textarea, select');
-    for (var ei = 0; ei < editorInputs.length; ei++) {
-      var eInput = editorInputs[ei];
-      if (!eInput.id) continue;
-      var sInput = sourceBody.querySelector('#' + eInput.id);
-      if (sInput && (sInput.tagName === 'INPUT' || sInput.tagName === 'TEXTAREA')) {
-        sInput.value = eInput.value;
-        sInput.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-      if (sInput && sInput.tagName === 'SELECT') {
-        sInput.value = eInput.value;
-        sInput.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    }
   }
 
   // =========================================================================
@@ -3790,24 +3783,23 @@ function handleMessageAction(action, msgIndex) {
       dom.sceneCapsule.style.cursor = 'pointer';
     }
 
-    // Story editor close / cancel / start buttons
+    // Story editor buttons: close=save+close, cancel=discard, start=save+close+startWorld
     var storyEditorClose = document.getElementById('storyEditorClose');
     var storyEditorCancel = document.getElementById('storyEditorCancel');
     var storyEditorStart = document.getElementById('storyEditorStart');
     var storyEditorOverlay = document.getElementById('storyEditorOverlay');
-    if (storyEditorClose) storyEditorClose.addEventListener('click', closeStoryEditor);
-    if (storyEditorCancel) storyEditorCancel.addEventListener('click', closeStoryEditor);
+    if (storyEditorClose) storyEditorClose.addEventListener('click', function() { closeStoryEditor(true); });
+    if (storyEditorCancel) storyEditorCancel.addEventListener('click', function() { closeStoryEditor(false); });
     if (storyEditorStart) {
       storyEditorStart.addEventListener('click', function() {
-        syncEditorInputsBack(document.getElementById('storyEditorBody'));
-        closeStoryEditor();
+        closeStoryEditor(true);
         if (typeof startWorldMode === 'function') startWorldMode();
       });
     }
-    // Click overlay background to close
+    // Click overlay background to close (save)
     if (storyEditorOverlay) {
       storyEditorOverlay.addEventListener('click', function(e) {
-        if (e.target === storyEditorOverlay) closeStoryEditor();
+        if (e.target === storyEditorOverlay) closeStoryEditor(true);
       });
     }
 
