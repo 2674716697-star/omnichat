@@ -790,6 +790,27 @@ function getSceneBodyDetails(block) {
     return true;
   }
 
+  function buildSceneFallbackDirections(conv, contextSnippet) {
+    // Conservative story directions when the model omits @@SCENE.
+    // Uses NPC names and context to produce more relevant options.
+    var npcName = '';
+    if (conv && conv.sceneNpcs && conv.sceneNpcs.length) {
+      npcName = conv.sceneNpcs[0].name || '';
+    }
+    var lines = [
+      'A. 继续深入调查，主动寻找更多线索和突破口',
+      'B. 暂时退一步观察局势变化，寻找更安全的切入点'
+    ];
+    if (npcName) {
+      lines.push('C. 与' + npcName + '进一步接触，试探对方真实意图和掌握的信息');
+      lines.push('D. 改变行动节奏，采取' + npcName + '意料之外的行动来试探隐藏风险');
+    } else {
+      lines.push('C. 与关键人物接触，试探对方真实意图和掌握的信息');
+      lines.push('D. 改变行动节奏，采取意料之外的行动来试探隐藏风险');
+    }
+    return lines.join('\n');
+  }
+
   function renderSceneStatusTable(msg, msgIndex) {
     var ss = createSceneState(msg.sceneSnapshot);
     var st = msg.sceneStatusSnapshot;
@@ -3092,6 +3113,21 @@ function handleMessageAction(action, msgIndex) {
         else if (dirsParsed.length < 4) missing.push('A/B/C/D<' + dirsParsed.length);
         if (missing.length) {
           console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
+        }
+
+        // Fallback: if directions are missing or incomplete, provide safe story chips
+        // so user experience doesn't break even when the model omits @@SCENE.
+        // Guard: run once per assistant message, only in story mode.
+        if (!assistantMsg._sceneFallbackAttempted && (dirsParsed.length < 4)) {
+          assistantMsg._sceneFallbackAttempted = true;
+          var plotContext = (assistantMsg.content || '').slice(-300);
+          var fallbackDirs = buildSceneFallbackDirections(conv, plotContext);
+          if (!scene) {
+            assistantMsg.sceneSnapshot = createSceneState({ directions: fallbackDirs });
+          } else {
+            assistantMsg.sceneSnapshot.directions = fallbackDirs;
+          }
+          console.warn('[OmniChat] Scene directions fallback applied (' + dirsParsed.length + ' → 4).');
         }
       }
 
