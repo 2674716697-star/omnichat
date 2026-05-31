@@ -2281,6 +2281,10 @@ function getSceneBodyDetails(block) {
         html += ' (含 ' + u.completion_tokens_details.reasoning_tokens.toLocaleString() + ' 思考)';
       }
       html += '</div>';
+      // Truncated by output limit warning
+      if (msg.finishReason === 'length') {
+        html += '<div class="token-usage" style="color:var(--scene-gold, #e0b060)">⚠️ 回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。</div>';
+      }
     }
 
     // Post-response action buttons
@@ -3288,43 +3292,65 @@ function handleMessageAction(action, msgIndex) {
       elaborate: state.actionPrompts.elaborate || '请对上一个回答进行更深入、更详细的探讨，补充更多背景和细节。',
     };
 
-    // Hide actions on the current last message
-    const lastMsg = conv.messages[conv.messages.length - 1];
-    if (lastMsg) lastMsg._showActions = false;
-
-    let sendText = '';
-
     switch (action) {
-      case 'regenerate':
-        // Remove last assistant response
+      case 'regenerate': {
+        // True regenerate: remove last assistant, reuse existing last user message.
+        // Do NOT push a duplicate user message.
+        var lastMsg = conv.messages[conv.messages.length - 1];
         if (lastMsg && lastMsg.role === 'assistant') conv.messages.pop();
-        if (prompts.regenerate) {
-          sendText = prompts.regenerate;
-        } else {
-          // Default: resend last user message
-          const lastUser = [...conv.messages].reverse().find((m) => m.role === 'user');
-          if (!lastUser) return;
-          sendText = lastUser.content;
+        lastMsg && lastMsg._showActions = false;
+
+        // Find target assistant's preceding user message (msgIndex-aware)
+        var targetUser = null;
+        if (msgIndex != null && msgIndex >= 0 && conv.messages[msgIndex] && conv.messages[msgIndex].role === 'assistant') {
+          // Walk backwards from msgIndex to find the user message that triggered it
+          for (var ui = msgIndex - 1; ui >= 0; ui--) {
+            if (conv.messages[ui].role === 'user') { targetUser = conv.messages[ui]; break; }
+          }
         }
+        // Fallback: use last user message
+        if (!targetUser) {
+          targetUser = [...conv.messages].reverse().find(function(m) { return m.role === 'user'; });
+        }
+        if (!targetUser) return;
+
+        // Preserve _requestContent so world-story hidden card is re-sent
+        if (targetUser._requestContent) {
+          state.pendingHiddenRequest = targetUser._requestContent;
+        }
+
+        // Determine the visible send text for the regenerated request
+        var sendText = prompts.regenerate || targetUser.content;
+
+        // Story mode: inject hard system reminder for @@SCENE completeness
+        var storyEnabled = isStoryEnabled(conv);
+        if (storyEnabled) {
+          conv.messages.push({
+            role: 'system',
+            content: '[系统提示] 这是重新生成。必须输出完整 @@SCENE ... @@END，必须包含 [角色: 主角] 状态块和 A/B/C/D 走向。',
+          });
+        }
+
+        updateTimestamp(conv);
+        renderAll();
+        dom.inputMessage.value = sendText;
+        sendMessage();
+        dom.inputMessage.value = '';
         break;
+      }
 
       case 'continue':
-        sendText = prompts.continue;
-        break;
-
       case 'summarize':
-        sendText = prompts.summarize;
+      case 'elaborate': {
+        var lastMsg2 = conv.messages[conv.messages.length - 1];
+        if (lastMsg2) lastMsg2._showActions = false;
+        var actText = prompts[action];
+        updateTimestamp(conv);
+        renderAll();
+        sendMessageContent(actText);
         break;
-
-      case 'elaborate':
-        sendText = prompts.elaborate;
-        break;
+      }
     }
-
-    updateTimestamp(conv);
-    renderAll();
-    // sendMessageContent -> sendMessage handles pushing the user message
-    sendMessageContent(sendText);
   }
 
   // =========================================================================
@@ -3891,13 +3917,64 @@ function handleMessageAction(action, msgIndex) {
           assistantMsg._sceneFallbackAttempted = true;
           var plotContext = (assistantMsg.content || '').slice(-300);
           var fallbackDirs = buildSceneFallbackDirections(conv, plotContext);
+
+          // Build a basic character status card from character card data so the
+          // UI always shows a status card even when @@SCENE was completely absent.
+          var ch = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
+          var fallbackCharName = (ch && ch.name) || '主角';
+          var fallbackStatuses = [{
+            name: fallbackCharName,
+            relation: '主角',
+            isMain: true,
+            mental: '暂未明确',
+            mentalScore: '',
+            physical: '暂未明确',
+            goal: (ch && ch.currentGoal) || '暂未明确',
+            posture: '暂未明确',
+            innerVoice: '',
+          }];
+
           if (!scene) {
-            assistantMsg.sceneSnapshot = createSceneState({ directions: fallbackDirs });
+            assistantMsg.sceneSnapshot = createSceneState({
+              directions: fallbackDirs,
+              characterStatuses: fallbackStatuses,
+            });
           } else {
             assistantMsg.sceneSnapshot.directions = fallbackDirs;
+            if (!assistantMsg.sceneSnapshot.characterStatuses || !assistantMsg.sceneSnapshot.characterStatuses.length) {
+              assistantMsg.sceneSnapshot.characterStatuses = fallbackStatuses;
+            }
           }
           console.warn('[OmniChat] Scene directions fallback applied (' + dirsParsed.length + ' → 4).');
         }
+
+        // Extra guard: even if directions were fine, if sceneSnapshot is null
+        // but story is enabled, create a minimal snapshot so the status card renders.
+        if (storyEnabled && assistantMsg.content && !assistantMsg.sceneSnapshot) {
+          var ch2 = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
+          var minDirs = buildSceneFallbackDirections(conv, (assistantMsg.content || '').slice(-300));
+          assistantMsg.sceneSnapshot = createSceneState({
+            directions: minDirs,
+            characterStatuses: [{
+              name: (ch2 && ch2.name) || '主角',
+              relation: '主角',
+              isMain: true,
+              mental: '暂未明确',
+              mentalScore: '',
+              physical: '暂未明确',
+              goal: (ch2 && ch2.currentGoal) || '暂未明确',
+              posture: '暂未明确',
+              innerVoice: '',
+            }],
+          });
+          assistantMsg._sceneFallbackAttempted = true;
+          console.warn('[OmniChat] Scene snapshot was null; created minimal fallback snapshot.');
+        }
+      }
+
+      // --- Truncation warning (visible to all users, not just debug) ---
+      if (assistantMsg.finishReason === 'length') {
+        showToast('回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。', 'warning');
       }
 
       // --- Story output completeness diagnostics (debug only) ---
@@ -3915,10 +3992,6 @@ function handleMessageAction(action, msgIndex) {
         };
         console.group('%c[OmniChat Story Diagnostics]', 'color:#0af;font-weight:bold');
         console.table(diagScene);
-        if (diagScene.truncated) {
-          console.warn('[OmniChat] ⚠️ 回复被输出上限截断 (finish_reason=length)，可能缺失 @@SCENE/A/B/C/D。');
-          showToast('回复被输出上限截断，可能缺失 @@SCENE/A/B/C/D。', 'warning');
-        }
         console.groupEnd();
       }
 
