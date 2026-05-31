@@ -4068,10 +4068,19 @@ function handleMessageAction(action, msgIndex) {
           });
         }
 
-        dom.inputMessage.value = '选' + letter;
-        dom.inputMessage.style.height = 'auto';
-        dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
-        sendMessage();
+        sendMessageContent('选' + letter).catch(function (err) {
+          console.error('[OmniChat] Failed to send scene choice:', err);
+          if (list) list.dataset.locked = '';
+          chip.classList.remove('loading');
+          chip.removeAttribute('aria-disabled');
+          if (list) {
+            list.querySelectorAll('.dir-choice-chip').forEach(function (btn) {
+              btn.classList.remove('disabled');
+              btn.removeAttribute('aria-disabled');
+            });
+          }
+          showToast('发送选项失败，请重试', 'error');
+        });
         return;
       }
 
