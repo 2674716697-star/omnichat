@@ -2909,6 +2909,22 @@ function handleMessageAction(action, msgIndex) {
       }
     }
 
+    // World story mode: inject lightweight format reminder near request end
+    // Ensures model doesn't forget @@SCENE / mental / body / NPC / A/B/C/D in long convos
+    if (storyEnabled) {
+      var reminder = '\n[本轮世界故事硬性格式要求]';
+      reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。';
+      reminder += '\n@@SCENE 内必须包含：精神、精神评分、身体、身体细节（至少2条可感知细节）、情节、走向（A/B/C/D 各一条，16-32字）。';
+      if (conv.sceneNpcs && conv.sceneNpcs.length) {
+        reminder += '\n必须给出至少1个与当前剧情相关的 NPC 状态块（格式：[角色: NPC名]）。';
+      }
+      reminder += '\n不得省略 @@END。';
+      if (conv.sceneDetailLevel === 'ultra') {
+        reminder += '\n详细度高但不能牺牲完整性：优先保证精神/身体/NPC/A/B/C/D/@@END 完整。';
+      }
+      messages.push({ role: 'system', content: reminder });
+    }
+
     // Add placeholder assistant message for streaming
     const assistantMsg = { role: 'assistant', content: '', _streaming: true };
     conv.messages.push(assistantMsg);
@@ -3051,6 +3067,26 @@ function handleMessageAction(action, msgIndex) {
           assistantMsg.sceneSnapshot = null;
           assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
           assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
+        }
+      }
+
+      // Completeness warnings for story mode responses (non-blocking)
+      if (storyEnabled && assistantMsg.content) {
+        var missing = [];
+        if (!/@@SCENE/.test(assistantMsg.content)) missing.push('@@SCENE');
+        if (!/mental|精神|心理/.test(assistantMsg.content)) missing.push('mental/心理');
+        if (!/身体|physical|感官|姿态|姿势|呼吸|肌肉/.test(assistantMsg.content)) missing.push('body/身体');
+        if (conv.sceneNpcs && conv.sceneNpcs.length) {
+          var npcNames = conv.sceneNpcs.map(function (n) { return n.name; });
+          var hasNpc = npcNames.some(function (name) { return assistantMsg.content.indexOf(name) >= 0; });
+          if (!hasNpc) missing.push('NPC');
+        }
+        var snapshotDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
+        var dirsParsed = snapshotDirs ? parseDirectionOptions(snapshotDirs) : [];
+        if (!snapshotDirs) missing.push('directions');
+        else if (dirsParsed.length < 2) missing.push('directions<' + dirsParsed.length);
+        if (missing.length) {
+          console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
         }
       }
 
