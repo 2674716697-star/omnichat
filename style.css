@@ -3632,3 +3632,134 @@ html.is-standalone .bottom-bar::after {
   border-radius: 10px;
   margin: 8px 0;
 }
+
+/* ---- UI Polish v2 ---- */
+
+/* Top bar: tighter, more compact */
+.top-bar {
+  padding: 6px 12px;
+  padding-top: calc(6px + var(--safe-top));
+  gap: 6px;
+}
+.top-bar button { width: 34px; height: 34px; }
+.top-bar-info { padding: 2px 6px; }
+.top-bar-info .conv-title { font-size: 13.5px; }
+#badgeProvider, #badgeModel {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+#contextStats { font-size: 9px; opacity: 0.4; }
+
+/* Message area: stable padding, bubble max-width, less edge-hugging */
+.main-content {
+  padding: 8px 12px;
+}
+.message {
+  max-width: 100%;
+}
+.assistant .message-bubble {
+  max-width: 94%;
+}
+.user .message-bubble {
+  max-width: 82%;
+  margin-left: auto;
+}
+/* Background image mode: raise bubble opacity for readability */
+.chat-bg-overlay:not([style*="display:none"]) ~ .app-container .assistant .message-bubble {
+  background: rgba(20,12,30,0.82);
+}
+.chat-bg-overlay:not([style*="display:none"]) ~ .app-container .message-content {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Long-form Chinese readability */
+.message-content {
+  font-size: 14.5px;
+  line-height: 1.72;
+}
+.message-content h1, .message-content h2, .message-content h3, .message-content h4 {
+  margin: 8px 0 3px;
+}
+.message-content hr {
+  opacity: 0.15;
+  margin: 10px 0;
+}
+.message-content ul, .message-content ol {
+  padding-left: 18px;
+  margin: 4px 0;
+}
+.message-content li {
+  margin-bottom: 2px;
+}
+
+/* Bottom toolbar: compact, single row scrollable chips */
+.quick-actions {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 4px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.btn-quick {
+  font-size: 11px;
+  padding: 4px 10px;
+  min-height: 28px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* World story status pill — distinct from action buttons */
+.scene-capsule {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(220,92,145,0.3);
+  background: rgba(220,92,145,0.1);
+  color: #e090b0;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.scene-capsule::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #e06090;
+  box-shadow: 0 0 6px rgba(220,92,145,0.5);
+}
+
+/* Input area: slightly tighter, send button dim when empty */
+.bottom-bar {
+  padding: 4px 12px;
+  padding-bottom: calc(4px + var(--safe-bottom) + var(--keyboard-inset, 0px));
+}
+#inputMessage {
+  font-size: 14px;
+  padding: 9px 14px;
+}
+#btnSend:not(:disabled) {
+  opacity: 0.6;
+}
+#btnSend:disabled { opacity: 0.3; }
+#btnStop {
+  background: rgba(255,69,58,0.15);
+  border-color: rgba(255,69,58,0.3);
+  color: #FF6961;
+}
+
+/* Story scene panel: cleaner collapsed toggle */
+#scenePanelToggle {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+/* Divider / separator in settings */
+.setting-divider {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 10px 0;
+}
