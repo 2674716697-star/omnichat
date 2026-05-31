@@ -1,10 +1,10 @@
 # OmniChat
 
-iOS 移动端优先的多模型 AI 聊天网页客户端。支持 xAI / Grok 与 DeepSeek，流式输出，完整多轮上下文，历史会话管理。
+iOS 移动端优先的多模型 AI 聊天网页客户端。支持 OpenAI、xAI / Grok、DeepSeek、OpenRouter、Groq、Moonshot (Kimi)、智谱 GLM、SiliconFlow，流式输出，完整多轮上下文，历史会话管理，世界故事写作模式。
 
 ## 功能
 
-- 支持 xAI (Grok) 和 DeepSeek 双服务商
+- 支持 OpenAI / xAI / DeepSeek / OpenRouter / Groq / Moonshot / 智谱 / SiliconFlow 八大服务商
 - 自动获取 API Key 对应的可用模型列表
 - 流式输出（SSE），逐字显示
 - 完整多轮上下文，不压缩、不截断
@@ -63,13 +63,16 @@ omnichat/
 
 ## API Key 配置
 
-### xAI API Key
+打开设置面板，选择服务商后填入对应 API Key。各服务商 Key 获取地址：
 
-在 [xAI Console](https://console.x.ai/) 生成 API Key。打开设置面板，填入「xAI API Key」输入框。Key 以 `xai-` 开头。
-
-### DeepSeek API Key
-
-在 [DeepSeek Platform](https://platform.deepseek.com/) 生成 API Key。打开设置面板，填入「DeepSeek API Key」输入框。Key 以 `sk-` 开头。
+- **OpenAI**：[platform.openai.com](https://platform.openai.com/) — Key 以 `sk-` 开头
+- **xAI / Grok**：[console.x.ai](https://console.x.ai/) — Key 以 `xai-` 开头
+- **DeepSeek**：[platform.deepseek.com](https://platform.deepseek.com/) — Key 以 `sk-` 开头
+- **OpenRouter**：[openrouter.ai](https://openrouter.ai/) — Key 以 `sk-or-` 开头
+- **Groq**：[console.groq.com](https://console.groq.com/) — Key 以 `gsk_` 开头
+- **Moonshot (Kimi)**：[platform.moonshot.cn](https://platform.moonshot.cn/) — Key 以 `sk-` 开头
+- **智谱 GLM**：[open.bigmodel.cn](https://open.bigmodel.cn/) — Key 以 `.` 结尾
+- **SiliconFlow**：[siliconflow.cn](https://siliconflow.cn/) — Key 以 `sk-` 开头
 
 ## 模型管理
 
@@ -146,7 +149,7 @@ omnichat/
 
 ## CORS 说明
 
-浏览器直接请求 xAI / DeepSeek API 可能被 CORS 策略阻止。这是浏览器安全机制，不是 Bug。
+浏览器直接请求各服务商 API 可能被 CORS 策略阻止。这是浏览器安全机制，不是 Bug。
 
 ### 解决方案
 
@@ -165,6 +168,8 @@ http.createServer((req, res) => {
 然后将 script.js 中的 API URL 改为 `http://localhost:3000/v1/chat/completions`。
 
 ## 安全
+
+本项目是纯前端客户端，API Key 保存在浏览器 localStorage，请用户自行注意设备安全。
 
 - API Key 仅保存在浏览器 localStorage
 - 导出数据不包含 API Key
