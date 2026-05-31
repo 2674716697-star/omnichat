@@ -512,7 +512,7 @@
       .map(cloneRequestMessage);
 
     let requestMessages = rawMessages;
-    const shouldCompact = conv.autoCompress || countApproxChars(conv) > REQUEST_CHAR_SOFT_LIMIT;
+    const shouldCompact = !!conv.autoCompress;
 
     if (shouldCompact && rawMessages.length > REQUEST_RECENT_MSG_LIMIT) {
       let recentStart = rawMessages.length;
@@ -1947,8 +1947,10 @@ function handleMessageAction(action, msgIndex) {
     }
     var totalRequestChars = systemChars + historyChars + hiddenChars;
 
-    var shouldCompact = conv.autoCompress || countApproxChars(conv) > REQUEST_CHAR_SOFT_LIMIT;
-    var compactTriggered = shouldCompact && conv.messages.length > REQUEST_RECENT_MSG_LIMIT;
+    var fullContextChars = countApproxChars(conv);
+    var overSoftLimit = fullContextChars > REQUEST_CHAR_SOFT_LIMIT;
+    var wouldCompact = !!conv.autoCompress && conv.messages.length > REQUEST_RECENT_MSG_LIMIT;
+    var compactTriggered = wouldCompact;
     var recentCount = messages.filter(function(m) { return m.role !== 'system'; }).length;
 
     return {
@@ -1973,8 +1975,10 @@ function handleMessageAction(action, msgIndex) {
       hasWorldCard: hasWorldCard,
       hasHiddenRequestContent: hiddenChars > 0,
       autoCompressEnabled: !!conv.autoCompress,
-      shouldCompact: shouldCompact,
+      wouldCompact: wouldCompact,
       compactTriggered: compactTriggered,
+      overSoftLimit: overSoftLimit,
+      fullContextChars: fullContextChars,
       recentMessageCountAfterBuild: recentCount,
     };
   }
@@ -1996,7 +2000,7 @@ function handleMessageAction(action, msgIndex) {
     console.log('Est tokens — input:', diag.estimatedInputTokens, 'total:', diag.estimatedTotalTokens);
     console.log('Body JSON:', diag.bodyJsonBytes, 'bytes');
     console.log('ScenePrompt:', diag.hasScenePrompt, 'WorldCard:', diag.hasWorldCard, 'HiddenContent:', diag.hasHiddenRequestContent);
-    console.log('AutoCompress:', diag.autoCompressEnabled, '| ShouldCompact:', diag.shouldCompact, '| CompactTriggered:', diag.compactTriggered, '| RecentMsgs:', diag.recentMessageCountAfterBuild);
+    console.log('AutoCompress:', diag.autoCompressEnabled, '| WouldCompact:', diag.wouldCompact, '| OverSoftLimit:', diag.overSoftLimit, '| FullCtxChars:', diag.fullContextChars, '| CompactTriggered:', diag.compactTriggered, '| RecentMsgs:', diag.recentMessageCountAfterBuild);
     console.groupEnd();
     window.__OMNICHAT_LAST_BUDGET_DEBUG = diag;
   }
@@ -2255,6 +2259,11 @@ function handleMessageAction(action, msgIndex) {
 
     const pConf = getProviderConfig(conv.provider);
 
+    // --- Non-blocking context-length hint when auto-compress is off ---
+    if (!conv.autoCompress && countApproxChars(conv) > REQUEST_CHAR_SOFT_LIMIT) {
+      showToast('上下文较长，可能被服务商拒绝。你可以手动开启自动压缩或清理历史。', 'warning', 4000);
+    }
+
     // --- Debug budget diagnostics (before fetch) ---
     var _dbgBodyPreview = null;
     if (isDebugBudget()) {
@@ -2293,6 +2302,8 @@ function handleMessageAction(action, msgIndex) {
           var budgetToast = '';
           if (conv.provider === 'deepseek' && /invalid.*max_tokens/i.test(errText)) {
             budgetToast = 'DeepSeek 拒绝了 max_tokens 参数。当前值过大，请调低到 ' + cap.toLocaleString() + ' 以下。';
+          } else if (/context|length|too long/i.test(errText) && !conv.autoCompress) {
+            budgetToast = '上下文过长，服务商拒绝了请求。你可以开启自动压缩、删除部分历史，或新建会话。';
           } else {
             budgetToast = '服务商拒绝了请求预算，可能是 Max Tokens 或上下文过大。';
           }
@@ -2308,7 +2319,8 @@ function handleMessageAction(action, msgIndex) {
           if (isDebugBudget()) {
             console.warn('[OmniChat Budget Error 413]', errDetail);
           }
-          throw new Error('请求体过大，服务商拒绝接收。');
+          var compactHint = !conv.autoCompress ? ' 你可以开启自动压缩、删除部分历史，或新建会话。' : ' 请尝试删除部分历史或新建会话。';
+          throw new Error('上下文过长，服务商拒绝了请求。' + compactHint);
         }
         if (isDebugBudget()) {
           console.warn('[OmniChat Request Error]', errDetail);
