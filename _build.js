@@ -119,6 +119,8 @@ html = html.replace(
 );
 
 fs.writeFileSync('omnichat.html', html, 'utf-8');
+// Write the same built app to index.html so GitHub Pages default entry works
+fs.writeFileSync('index.html', html, 'utf-8');
 
 // Verify
 const verifyHtml = fs.readFileSync('omnichat.html', 'utf-8');

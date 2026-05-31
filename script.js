@@ -5367,9 +5367,30 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       document.body.appendChild(versionFloat);
     }
 
+    // Reload guard: prevent infinite refresh loops
+    var now = Date.now();
+    var lastReload = parseInt(sessionStorage.getItem('omnichat_reload_ts') || '0', 10);
+    var reloadCount = parseInt(sessionStorage.getItem('omnichat_reload_cnt') || '0', 10);
+    if (lastReload && (now - lastReload) < 5000) {
+      reloadCount++;
+      if (reloadCount >= 3) {
+        sessionStorage.removeItem('omnichat_reload_ts');
+        sessionStorage.removeItem('omnichat_reload_cnt');
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;font-family:sans-serif;text-align:center;padding:20px"><div><h2>应用更新失败</h2><p>请手动清理缓存后刷新。</p><p style="font-size:12px;opacity:0.5">设置 → Safari → 清除历史记录与网站数据<br>或 Chrome → 设置 → 隐私 → 清除浏览数据</p></div></div>';
+        return; // Stop execution — prevent further reloads
+      }
+    } else {
+      reloadCount = 0;
+    }
+    sessionStorage.setItem('omnichat_reload_ts', now);
+    sessionStorage.setItem('omnichat_reload_cnt', reloadCount);
+
     // Clear cache mechanism (?clearCache=1 or localStorage flag)
     if (window.location.search.indexOf('clearCache=1') !== -1 || window.localStorage.getItem('omnichat_clear_cache') === '1') {
       window.localStorage.removeItem('omnichat_clear_cache');
+      // Reset reload guard for this intentional reload
+      sessionStorage.removeItem('omnichat_reload_ts');
+      sessionStorage.removeItem('omnichat_reload_cnt');
       Promise.resolve().then(function() {
         if (navigator.serviceWorker) {
           return navigator.serviceWorker.getRegistrations().then(function(regs) {
