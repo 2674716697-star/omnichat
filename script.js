@@ -2610,11 +2610,9 @@ function getSceneBodyDetails(block) {
       }
       // Update button text
       btn.innerHTML = state.isStreaming ? '↓ AI 正在生成' : '↓ 查看最新回复';
-      btn.style.opacity = '1';
-      btn.style.pointerEvents = 'auto';
+      btn.classList.add('show');
     } else if (btn) {
-      btn.style.opacity = '0';
-      btn.style.pointerEvents = 'none';
+      btn.classList.remove('show');
     }
   }
 

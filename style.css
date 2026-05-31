@@ -13,8 +13,8 @@
   --bg-input: rgba(28, 28, 30, 0.6);
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.65);
-  --text-tertiary: rgba(255, 255, 255, 0.35);
-  --border-color: rgba(255, 255, 255, 0.1);
+  --text-tertiary: rgba(255, 255, 255, 0.50);
+  --border-color: rgba(255, 255, 255, 0.10);
   --border-light: rgba(255, 255, 255, 0.06);
   --accent: #0A84FF;
   --accent-bright: #409CFF;
@@ -749,6 +749,25 @@ html.is-splashing .bottom-bar::after {
   line-height: 1.45;
   word-break: break-word;
 }
+
+/* Settings section cards */
+.settings-section-card {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+.settings-section-title {
+  padding: 10px 14px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-tertiary);
+}
+.settings-section-body { padding: 4px 14px 12px; }
+.settings-section-body .setting-group:last-child { margin-bottom: 0; }
 
 /* Story mode settings row — copy + toggle layout */
 .story-mode-setting .setting-copy {
@@ -3461,4 +3480,155 @@ html.is-standalone .bottom-bar::after {
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
     rgba(18, 12, 28, 0.70);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+/* ---- UI Polish Round: 2026-06-01 ---- */
+
+/* Bottom bar: softer, cleaner input area */
+.bottom-bar .input-row {
+  display: flex; align-items: flex-end; gap: 8px;
+}
+#inputMessage {
+  font-size: 14.5px;
+  padding: 10px 14px;
+  border-radius: 22px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+#inputMessage:focus {
+  border-color: rgba(10,132,255,0.35);
+  box-shadow: 0 0 0 2px rgba(10,132,255,0.12);
+}
+#btnSend, #btnStop {
+  border-radius: 22px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Action chips (regenerate / continue / summarize / elaborate) */
+.msg-actions {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.btn-msg-action {
+  padding: 5px 12px;
+  font-size: 11.5px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.btn-msg-action:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-primary);
+}
+.btn-msg-action:active {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Story status card: game-UI feel */
+.char-status-card {
+  margin: 10px 0;
+  border-radius: 14px;
+}
+.char-card-header {
+  padding: 8px 12px;
+}
+.char-card-name { font-size: 13px; }
+.char-card-rows { padding: 4px 12px; }
+.char-row { font-size: 12px; line-height: 1.6; }
+.char-row-l { width: 40px; font-size: 10.5px; }
+.char-body-item { font-size: 11.5px; padding: 3px 0 3px 14px; }
+.char-inner-voice { font-size: 11px; margin: 4px 12px 8px; }
+.char-body-item[data-fallback="true"],
+.char-row:has(.char-row-v:empty) { opacity: 0.55; }
+
+/* A/B/C/D choice chips: larger touch targets */
+.dir-choice-chip {
+  padding: 10px 14px;
+  border-radius: 12px;
+  min-height: 44px;
+}
+.dir-chip-badge {
+  font-size: 12px;
+  min-width: 20px;
+}
+.dir-chip-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.dir-choices-list { gap: 8px; }
+.dir-choices-list.locked .dir-choice-chip {
+  opacity: 0.45;
+}
+.dir-choice-chip:not(.disabled):not([disabled]):hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+}
+.dir-choice-chip:not(.disabled):not([disabled]):active {
+  background: rgba(255,255,255,0.10);
+}
+
+/* Token usage: subtle */
+.token-usage {
+  font-size: 10.5px;
+  opacity: 0.65;
+}
+.token-usage:empty { display: none; }
+
+/* Thinking section: cleaner */
+.thinking-header {
+  font-size: 11.5px;
+  padding: 8px 14px;
+}
+.thinking-content {
+  font-size: 13px;
+  color: rgba(255,255,255,0.60);
+}
+
+/* Top bar badges */
+#badgeProvider, #badgeModel {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+#contextStats { font-size: 10px; opacity: 0.5; }
+
+/* Scroll-to-bottom button: integrate with UI */
+#scrollToBottomBtn {
+  right: 50%;
+  transform: translateX(50%);
+  bottom: calc(160px + var(--safe-bottom));
+  font-size: 11.5px;
+  padding: 8px 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+#scrollToBottomBtn.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Toast: softer, bottom-positioned */
+.toast {
+  bottom: 100px;
+  top: auto;
+  border-radius: 12px;
+  font-size: 12.5px;
+  padding: 10px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* Message bubble: long-form readability */
+.message-content {
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+.message-content p {
+  margin-bottom: 0.75em;
+}
+.assistant .message-bubble pre {
+  border-radius: 10px;
+  margin: 8px 0;
 }
