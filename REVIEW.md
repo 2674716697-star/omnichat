@@ -32,6 +32,25 @@ node _review.mjs
 git status --short
 ```
 
+## 修改 src/ 源文件后
+
+修改 `src/` 目录下的源文件后，需先拼接 `script.js`：
+
+```bash
+node _build_script.js
+```
+
+然后再走标准流程：
+
+```bash
+node _review.mjs
+node _check_stability.mjs
+node _build.js
+node _check_stability.mjs
+node _review.mjs
+git status --short
+```
+
 ## 失败处理
 
 如果任何一步失败：
