@@ -269,18 +269,60 @@ html.is-splashing .bottom-bar::after {
   gap: 10px;
   padding: 8px 14px;
   padding-top: calc(8px + var(--safe-top));
-  background: rgba(28,28,30,0.85);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 0.5px solid var(--border-color);
+  background:
+    linear-gradient(180deg, rgba(30, 20, 42, 0.72), rgba(16, 10, 26, 0.55));
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   min-height: var(--top-bar-h);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .top-bar-info {
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 160ms ease;
+}
+
+.top-bar-info:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.top-bar-info:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.top-bar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 140ms ease;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.top-bar button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.top-bar button:active {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(0.94);
 }
 
 .conv-title {
@@ -946,11 +988,6 @@ html.is-splashing .bottom-bar::after {
 }
 
 /* Glass bars on top of background */
-.top-bar {
-  position: relative;
-  z-index: 10;
-}
-
 /* Background preset swatches */
 .bg-presets {
   display: flex;
@@ -1763,13 +1800,20 @@ html.is-splashing .bottom-bar::after {
   margin: 0 auto;
   z-index: 50;
   background: #100a18;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 45%),
+    linear-gradient(180deg, rgba(26, 18, 38, 0.68), rgba(14, 8, 20, 0.90));
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   border: 1px solid rgba(220, 92, 145, 0.2);
   border-bottom: none;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(220,92,145,0.06);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(220, 92, 145, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
   padding: 6px 14px;
   padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
+  border-radius: 16px 16px 0 0;
 }
 
 .quick-actions {
@@ -1779,6 +1823,7 @@ html.is-splashing .bottom-bar::after {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
+  padding-top: 2px;
 }
 
 .quick-actions::-webkit-scrollbar {
@@ -1788,28 +1833,31 @@ html.is-splashing .bottom-bar::after {
 .btn-quick {
   flex-shrink: 0;
   padding: 5px 11px;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 10px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   min-height: 30px;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 140ms ease, box-shadow 160ms ease;
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .btn-quick:hover {
-  background: rgba(220, 92, 145, 0.08);
-  border-color: rgba(220, 92, 145, 0.16);
-  box-shadow: 0 4px 12px rgba(220, 92, 145, 0.06);
+  background: rgba(220, 92, 145, 0.10);
+  border-color: rgba(220, 92, 145, 0.20);
+  box-shadow: 0 4px 14px rgba(220, 92, 145, 0.08);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .btn-quick:active {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-color: var(--accent);
-  transform: scale(0.97);
+  background: rgba(220, 92, 145, 0.16);
+  color: #fff;
+  border-color: rgba(220, 92, 145, 0.30);
+  transform: scale(0.96);
 }
 
 .input-row {
@@ -1824,17 +1872,21 @@ html.is-splashing .bottom-bar::after {
   border: 1px solid rgba(180, 130, 160, 0.18);
   border-radius: 22px;
   background: rgba(14, 8, 22, 0.6);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   color: var(--text-primary);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 6px 20px rgba(0,0,0,0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 6px 20px rgba(0, 0, 0, 0.18);
   font-size: 15px;
   resize: none;
   outline: none;
   max-height: 120px;
   min-height: 40px;
   line-height: 1.4;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
   -webkit-appearance: none;
   user-select: text;
   -webkit-user-select: text;
@@ -1843,7 +1895,11 @@ html.is-splashing .bottom-bar::after {
 .input-message:focus {
   border-color: var(--scene-accent);
   background: rgba(18, 10, 28, 0.75);
-  box-shadow: 0 0 0 3px rgba(220, 92, 145, 0.10), 0 8px 24px rgba(220, 92, 145, 0.08);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow:
+    0 0 0 2px rgba(220, 92, 145, 0.10),
+    0 8px 24px rgba(220, 92, 145, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .input-message::placeholder {
@@ -1860,32 +1916,47 @@ html.is-splashing .bottom-bar::after {
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform var(--transition-fast), background var(--transition-fast);
+  transition: transform 150ms var(--spring), box-shadow 150ms var(--spring), background 150ms var(--spring);
   -webkit-tap-highlight-color: transparent;
 }
 
 .btn-send {
-  background: var(--accent);
+  background: linear-gradient(135deg, rgba(180, 77, 124, 0.92), rgba(120, 65, 160, 0.88));
   color: #fff;
-  box-shadow: 0 2px 8px rgba(10,132,255,0.3);
+  box-shadow:
+    0 4px 16px rgba(180, 77, 124, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: transform 150ms var(--spring), box-shadow 150ms var(--spring);
 }
 
+.btn-send:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 22px rgba(180, 77, 124, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
 .btn-send:active {
-  transform: scale(0.88);
-  box-shadow: 0 1px 4px rgba(10,132,255,0.15);
+  transform: scale(0.90);
+  box-shadow:
+    0 2px 8px rgba(180, 77, 124, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-stop {
-  background: var(--danger);
+  background: linear-gradient(135deg, rgba(255, 69, 58, 0.88), rgba(200, 40, 30, 0.84));
   color: #fff;
-  box-shadow: 0 2px 8px rgba(255,69,58,0.3);
+  box-shadow:
+    0 4px 16px rgba(255, 69, 58, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   transition: transform 150ms var(--spring), box-shadow 150ms var(--spring);
 }
 
 .btn-stop:active {
-  transform: scale(0.88);
-  box-shadow: 0 1px 4px rgba(255,69,58,0.15);
+  transform: scale(0.90);
+  box-shadow:
+    0 2px 8px rgba(255, 69, 58, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* --- Toast --- */
@@ -2229,10 +2300,13 @@ html.is-splashing .bottom-bar::after {
 
 /* -- Quick button active state (Precise ON) -- */
 .btn-quick-active {
-  background: var(--accent-dim) !important;
-  color: var(--accent-bright) !important;
-  border-color: var(--accent) !important;
+  background: linear-gradient(135deg, rgba(180, 77, 124, 0.22), rgba(120, 65, 160, 0.18)) !important;
+  border-color: rgba(220, 92, 145, 0.40) !important;
+  color: #fff !important;
   font-weight: 600;
+  box-shadow:
+    0 0 0 1px rgba(220, 92, 145, 0.10),
+    0 4px 14px rgba(220, 92, 145, 0.12);
 }
 
 /* ============================================================
@@ -2260,8 +2334,8 @@ html.is-splashing .bottom-bar::after {
 
 /* -- Top bar: glass, flush with story column -- */
 .scene-immersive .top-bar {
-  background: rgba(18, 12, 26, 0.78);
-  border-bottom: 1px solid var(--scene-card-border);
+  background: linear-gradient(180deg, rgba(26, 16, 38, 0.78), rgba(14, 10, 22, 0.60));
+  border-bottom: 1px solid rgba(220, 92, 145, 0.12);
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
