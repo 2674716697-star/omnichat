@@ -1184,16 +1184,79 @@ function createSceneWorld(seed) {
     return requestMessages;
   }
 
-  function getApiKey(provider) {
-    return state.apiKeys[provider] || '';
-  }
+  // =========================================================================
+  // PROVIDER ADAPTER LAYER
+  // All 8 providers use OpenAI-compatible Chat Completions format.
+  // Per-provider overrides are isolated here so sendMessage stays clean.
+  // =========================================================================
 
   function getProviderConfig(provider) {
     return PROVIDERS[provider] || PROVIDERS.xai;
   }
 
+  function getApiKey(provider) {
+    return state.apiKeys[provider] || '';
+  }
+
   function resolveModel(conv) {
     return conv.customModel || conv.model || '';
+  }
+
+  // -- Adapter helpers: headers, body, parsing -------------------------------
+
+  function buildRequestHeaders(provider, apiKey, conv) {
+    var headers = {
+      Authorization: 'Bearer ' + apiKey,
+      'Content-Type': 'application/json',
+      Accept: conv.stream ? 'text/event-stream' : 'application/json',
+    };
+    // OpenRouter-specific headers
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = location.origin || 'http://localhost';
+      headers['X-Title'] = 'OmniChat';
+    }
+    return headers;
+  }
+
+  function buildRequestBody(conv, model, messages) {
+    // Default OpenAI-compatible body — works for all 8 providers
+    return {
+      model: model,
+      messages: messages,
+      temperature: conv.temperature,
+      top_p: conv.topP,
+      max_tokens: conv.maxTokens,
+      stream: conv.stream,
+    };
+  }
+
+  function parseModelList(provider, data) {
+    // Default: OpenAI-compatible { data: [{ id }] }
+    var rawModels = data.data || data.models || [];
+    return rawModels.map(function (m) {
+      return { id: m.id || m.name || String(m), object: m.object || 'model' };
+    });
+  }
+
+  function parseStreamDelta(provider, parsed) {
+    // Default: OpenAI-compatible choices[0].delta
+    var delta = parsed.choices && parsed.choices[0] ? parsed.choices[0].delta : null;
+    if (!delta) return { content: '', reasoning: '', usage: null };
+    return {
+      content: delta.content || '',
+      reasoning: delta.reasoning_content || delta.thinking || '',
+      usage: parsed.usage || null,
+    };
+  }
+
+  function parseNonStreamResponse(provider, data) {
+    // Default: OpenAI-compatible choices[0].message
+    var msg = data.choices && data.choices[0] ? data.choices[0].message : {};
+    return {
+      content: msg.content || '',
+      reasoning: msg.reasoning_content || msg.thinking || '',
+      usage: data.usage || null,
+    };
   }
 
   function isAnthropicModel(modelId) {
@@ -2686,11 +2749,9 @@ function handleMessageAction(action, msgIndex) {
     dom.btnRefreshModels.disabled = true;
 
     try {
+      const headers = buildRequestHeaders(provider, apiKey, { stream: false });
       const resp = await fetch(pConf.modelsUrl, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: headers.Authorization, 'Content-Type': 'application/json' },
       });
 
       if (!resp.ok) {
@@ -2700,12 +2761,7 @@ function handleMessageAction(action, msgIndex) {
       }
 
       const data = await resp.json();
-      const rawModels = data.data || data.models || [];
-
-      state.models[provider] = rawModels.map((m) => ({
-        id: m.id || m.name || String(m),
-        object: m.object || 'model',
-      }));
+      state.models[provider] = parseModelList(provider, data);
 
       saveToStorage();
       populateModelSelect();
@@ -2959,21 +3015,13 @@ function handleMessageAction(action, msgIndex) {
     const pConf = getProviderConfig(conv.provider);
 
     try {
+      const headers = buildRequestHeaders(conv.provider, apiKey, conv);
+      const body = buildRequestBody(conv, model, messages);
+
       const resp = await fetch(pConf.apiUrl, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: conv.stream ? 'text/event-stream' : 'application/json',
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: messages,
-          temperature: conv.temperature,
-          top_p: conv.topP,
-          max_tokens: conv.maxTokens,
-          stream: conv.stream,
-        }),
+        headers: headers,
+        body: JSON.stringify(body),
         signal: state.abortController.signal,
       });
 
@@ -2991,11 +3039,11 @@ function handleMessageAction(action, msgIndex) {
         await processStream(resp, assistantMsg, conv);
       } else {
         const data = await resp.json();
-        const msg = data.choices?.[0]?.message || {};
-        assistantMsg.content = msg.content || '';
-        assistantMsg.reasoning = msg.reasoning_content || msg.thinking || '';
-        if (data.usage) {
-          assistantMsg.usage = data.usage;
+        const parsed = parseNonStreamResponse(conv.provider, data);
+        assistantMsg.content = parsed.content;
+        assistantMsg.reasoning = parsed.reasoning;
+        if (parsed.usage) {
+          assistantMsg.usage = parsed.usage;
         }
       }
     } catch (e) {
@@ -3193,29 +3241,20 @@ function handleMessageAction(action, msgIndex) {
 
           try {
             const parsed = JSON.parse(dataStr);
-            const delta = parsed.choices?.[0]?.delta;
+            const delta = parseStreamDelta(conv.provider, parsed);
 
-            if (delta) {
-              // Capture reasoning/thinking content
-              const reasoning = delta.reasoning_content || delta.thinking || '';
-              if (reasoning) {
-                assistantMsg.reasoning = (assistantMsg.reasoning || '') + reasoning;
+            if (delta.content || delta.reasoning) {
+              if (delta.reasoning) {
+                assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
               }
-
-              // Capture main content
-              const content = delta.content || '';
-              if (content) {
-                assistantMsg.content += content;
+              if (delta.content) {
+                assistantMsg.content += delta.content;
               }
-
-              if (reasoning || content) {
-                scheduleRender();
-              }
+              scheduleRender();
             }
 
-            // Capture usage from final chunk
-            if (parsed.usage) {
-              assistantMsg.usage = parsed.usage;
+            if (delta.usage) {
+              assistantMsg.usage = delta.usage;
             }
           } catch (_) {
             // Skip unparseable chunks
@@ -3230,17 +3269,13 @@ function handleMessageAction(action, msgIndex) {
         if (trimmed.startsWith('data:') && trimmed !== 'data:[DONE]') {
           try {
             const parsed = JSON.parse(trimmed.slice(5).trim());
-            const delta = parsed.choices?.[0]?.delta;
-            if (delta) {
-              const reasoning = delta.reasoning_content || delta.thinking || '';
-              if (reasoning) {
-                assistantMsg.reasoning = (assistantMsg.reasoning || '') + reasoning;
-              }
-              const content = delta.content || '';
-              if (content) assistantMsg.content += content;
+            const delta = parseStreamDelta(conv.provider, parsed);
+            if (delta.reasoning) {
+              assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
             }
-            if (parsed.usage) {
-              assistantMsg.usage = parsed.usage;
+            if (delta.content) assistantMsg.content += delta.content;
+            if (delta.usage) {
+              assistantMsg.usage = delta.usage;
             }
           } catch (_) { /* skip */ }
         }
