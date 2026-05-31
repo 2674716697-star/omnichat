@@ -2,7 +2,26 @@
 
 每次修改代码后，**必须在提交前**执行完整审核流程。
 
-## 执行顺序
+## 快速执行（推荐）
+
+```bash
+node _safe_check.mjs
+```
+
+等价于手动执行：
+
+```bash
+node _review.mjs
+node _check_stability.mjs
+node _build.js
+node _check_stability.mjs
+node _review.mjs
+git status --short
+```
+
+任意一步失败即停止，通过后显示 `SAFE CHECK PASSED`。
+
+## 手动执行顺序
 
 ```bash
 node _review.mjs
