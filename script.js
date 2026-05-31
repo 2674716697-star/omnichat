@@ -816,7 +816,7 @@ function getSceneBodyDetails(block) {
       var dirOpts = parseDirectionOptions(ss.directions);
       if (dirOpts.length) {
         var conv = getCurrentConv();
-        var interactive = (msgIndex != null) ? isLatestInteractiveDirectionMessage(conv, msgIndex) : true;
+        var interactive = (msgIndex != null && msgIndex >= 0) ? isLatestInteractiveDirectionMessage(conv, msgIndex) : false;
         var listClass = 'dir-choices-list' + (interactive ? '' : ' locked');
         var listLocked = interactive ? '' : ' data-locked="1"';
         var chips = [];
@@ -1596,6 +1596,11 @@ function createSceneWorld(seed) {
     const bubble = lastItem.querySelector('.message-bubble');
     if (!bubble) return;
 
+    const conv = getCurrentConv();
+    const msgIndex = conv && Array.isArray(conv.messages)
+      ? conv.messages.indexOf(msg)
+      : parseInt(lastItem.dataset.index, 10);
+
     if (msg._streaming) {
       // Fast path: only update text content, skip full DOM rebuild
       let contentDiv = bubble.querySelector('.message-content');
@@ -1608,7 +1613,7 @@ function createSceneWorld(seed) {
         let thinkDiv = bubble.querySelector('.thinking-content');
         if (!thinkDiv) {
           // Thinking section doesn't exist yet, need full rebuild
-          bubble.innerHTML = renderBubbleHTML(msg);
+          bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
         } else {
           thinkDiv.innerHTML = renderContentFast(reasoning);
           // Ensure details is open during reasoning
@@ -1619,9 +1624,8 @@ function createSceneWorld(seed) {
       bubble.classList.add('streaming-cursor');
     } else {
       // Full render when streaming ends — proper markdown everywhere
-      bubble.innerHTML = renderBubbleHTML(msg);
+      bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
       const details = bubble.querySelector('.thinking-section');
-      const conv = getCurrentConv();
       const keepOpen = msg._keepThinkingOpen !== undefined
         ? msg._keepThinkingOpen
         : conv && conv.keepThinkingOpen !== false;
