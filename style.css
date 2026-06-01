@@ -3058,8 +3058,8 @@ html.is-splashing .bottom-bar::after {
   transform: rotateY(180deg);
   align-items: stretch;
   justify-content: flex-start;
-  padding: 8px;
-  gap: 4px;
+  padding: 10px;
+  gap: 6px;
   overflow-y: auto;
 }
 
@@ -3093,12 +3093,25 @@ html.is-splashing .bottom-bar::after {
   margin-bottom: 2px;
 }
 
-.npc-edit-field { font-size: 11px !important; padding: 4px 6px !important; }
+.npc-card-back .npc-edit-field {
+  font-size: 13px !important;
+  padding: 8px 10px !important;
+  min-height: 38px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.npc-card-back .npc-edit-field[data-field="notes"] {
+  min-height: 72px;
+  line-height: 1.5;
+  resize: vertical;
+}
 
 .npc-delete-btn {
-  margin-top: auto;
-  padding: 4px 10px;
-  font-size: 10px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  min-height: 32px;
   align-self: flex-end;
 }
 
@@ -3110,9 +3123,30 @@ html.is-splashing .bottom-bar::after {
 
 @media (max-width: 600px) {
   .scene-npc-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .npc-card { min-height: 120px; }
-  .npc-card-inner { min-height: 120px; }
+  .npc-card { min-height: auto; }
+  .npc-card-inner { min-height: auto; }
+  .npc-card-front, .npc-card-back { min-height: auto; position: relative; }
   .npc-card-avatar { width: 32px; height: 32px; font-size: 15px; }
+
+  /* NPC form fields: larger on mobile for comfortable typing */
+  .npc-card-back .npc-edit-field {
+    min-height: 40px;
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+  .npc-card-back .npc-edit-field[data-field="notes"] {
+    min-height: 76px;
+    line-height: 1.5;
+    padding: 10px 12px !important;
+  }
+  .npc-back-name { font-size: 14px; margin-bottom: 4px; }
+  .npc-card-back { padding: 12px; gap: 8px; }
+  .npc-delete-btn {
+    min-height: 34px;
+    padding: 6px 14px;
+    font-size: 12px;
+    margin-top: 8px;
+  }
 }
 
 /* -- Scene-immersive responsive: mobile full-width -- */
