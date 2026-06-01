@@ -195,7 +195,7 @@
     }
   }
 
-  const debouncedSave = debounce(saveToStorage, 500);
+  let debouncedSave = debounce(saveToStorage, 500);
 
   function loadFromStorage() {
     try {
