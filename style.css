@@ -472,6 +472,8 @@ html.is-splashing .bottom-bar::after {
 .drawer-right {
   right: 0;
   transform: translateX(100%);
+  width: min(94vw, 440px);
+  max-width: 440px;
 }
 
 .drawer-right.open {
@@ -734,6 +736,7 @@ html.is-splashing .bottom-bar::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .setting-range-val {
@@ -770,9 +773,14 @@ html.is-splashing .bottom-bar::after {
 .settings-section-body .setting-group:last-child { margin-bottom: 0; }
 
 /* Story mode settings row — copy + toggle layout */
+.story-mode-setting {
+  align-items: flex-start;
+}
+
 .story-mode-setting .setting-copy {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  padding-right: 8px;
 }
 
 .story-mode-setting .setting-title {
@@ -781,16 +789,18 @@ html.is-splashing .bottom-bar::after {
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 2px;
+  line-height: 1.35;
+}
+
+.story-mode-setting .setting-hint {
+  line-height: 1.45;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .story-mode-setting .toggle {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 640px) {
-  .story-mode-setting {
-    align-items: flex-start;
-  }
+  flex: 0 0 46px;
+  margin-top: 2px;
 }
 
 .tool-warning {
@@ -3309,9 +3319,29 @@ html.is-splashing .bottom-bar::after {
   }
 }
 
+/* Mobile: settings drawer full-width with tighter padding */
+@media (max-width: 480px) {
+  .drawer-right {
+    width: 100vw;
+    max-width: none;
+  }
+  .settings-content {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .settings-section-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
 @media (min-width: 800px) {
   .drawer {
     width: 340px;
+  }
+  .drawer-right {
+    width: 440px;
+    max-width: 440px;
   }
 }
 
