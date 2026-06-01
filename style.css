@@ -3924,11 +3924,26 @@ html.has-custom-bg .user .message-bubble {
 .story-editor-body .scene-chips { gap: 6px; margin: 4px 0 8px; }
 
 /* Scene panel inline: make it scrollable with proper bottom spacing */
-.scene-panel:not([style*="display:none"]) .scene-panel-body {
+.scene-panel:not(.collapsed):not([style*="display:none"]) .scene-panel-body {
   max-height: calc(100dvh - var(--top-bar-h, 52px) - var(--bottom-bar-h, 150px) - 80px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px));
+}
+
+.scene-panel.collapsed .scene-panel-body {
+  max-height: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+}
+
+.scene-panel.collapsed .scene-panel-actions {
+  display: none !important;
 }
 
 /* Mobile: editor fullscreen */
