@@ -130,7 +130,7 @@ check('C/D template not marked as optional', !/<可选>/.test(js));
 check('buildSceneFallbackDirections still defined (offline tool)', /function\s+buildSceneFallbackDirections/.test(js));
 check('repairSceneBlock exists for real scene repair', /function\s+repairSceneBlock/.test(js));
 check('scene repair called on parse failure', /_sceneRepairAttempted\s*=\s*true/.test(js));
-check('detail level never reduces A/B/C/D to < 4', /A\/B\/C\/D 仍然必须 4 条/.test(js));
+check('detail level never reduces A/B/C/D to < 4', /A\/B\/C\/D 走向仍然必须 4 条/.test(js));
 check('repairStoryModeFlags exists', /function\s+repairStoryModeFlags/.test(js));
 check('migrateStoryMode calls repairStoryModeFlags', /function\s+migrateStoryMode[\s\S]*repairStoryModeFlags/.test(js));
 // migrateStoryMode must NOT skip repair based on storyMode.enabled

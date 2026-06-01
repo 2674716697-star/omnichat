@@ -195,7 +195,7 @@
     }
   }
 
-  const debouncedSave = debounce(saveToStorage, 500);
+  let debouncedSave = debounce(saveToStorage, 500);
 
   function loadFromStorage() {
     try {
@@ -865,9 +865,20 @@ function getSceneBodyDetails(block) {
     return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
   }
 
-  function getVisibleAssistantContent(text, isStreaming) {
+  function getVisibleAssistantContent(text, isStreaming, storyEnabled) {
     const value = String(text || '');
-    return isStreaming ? value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd() : value;
+    // Only strip story protocol markers when world-story mode is active.
+    // Normal chat must pass through unchanged (e.g. user discussing @@END, 精神: etc.).
+    if (!storyEnabled) return value;
+    // Streaming: fast path — strip @@SCENE to end, plus any isolated @@ markers.
+    // Non-streaming: full strip via shared helper.
+    if (isStreaming) {
+      var s = value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd();
+      s = s.replace(/@@END/g, '');
+      s = s.replace(/@@\w+/g, '');
+      return s;
+    }
+    return stripStoryMetaFromVisibleContent(value);
   }
 
   function renderMarkdown(text) {
@@ -2069,7 +2080,16 @@ function getSceneBodyDetails(block) {
 
     // Move scenePanelBody into editor
     editorBody.appendChild(sourceBody);
+    // Reset all inline collapse styles so editor renders fully
     sourceBody.style.display = '';
+    sourceBody.style.height = '';
+    sourceBody.style.maxHeight = '';
+    sourceBody.style.minHeight = '';
+    sourceBody.style.paddingTop = '';
+    sourceBody.style.paddingBottom = '';
+    sourceBody.style.overflow = '';
+    var editorActions = scenePanel.querySelector('.scene-panel-actions');
+    if (editorActions) editorActions.style.display = '';
 
     // Re-render chips and NPCs inside editor
     if (typeof renderMoodChips === 'function') renderMoodChips();
@@ -2137,6 +2157,17 @@ function getSceneBodyDetails(block) {
     if (sourceBody && scenePanel && sourceBody.parentNode === editorBody) {
       scenePanel.insertBefore(sourceBody, scenePanel.querySelector('.scene-panel-header').nextSibling);
       scenePanel.classList.add('collapsed');
+
+      // Force inline collapse to rule out CSS specificity issues
+      sourceBody.style.display = 'none';
+      sourceBody.style.height = '0';
+      sourceBody.style.maxHeight = '0';
+      sourceBody.style.minHeight = '0';
+      sourceBody.style.paddingTop = '0';
+      sourceBody.style.paddingBottom = '0';
+      sourceBody.style.overflow = 'hidden';
+      var actions = scenePanel.querySelector('.scene-panel-actions');
+      if (actions) actions.style.display = 'none';
     }
 
     // Restore persistence
@@ -2152,6 +2183,19 @@ function getSceneBodyDetails(block) {
     document.body.style.overflow = '';
     updateBottomBarHeight();
     updateScenePanelUI();
+
+    // Protect collapsed state from updateScenePanelUI re-expansion
+    if (scenePanel && scenePanel.classList.contains('collapsed') && sourceBody) {
+      sourceBody.style.display = 'none';
+      sourceBody.style.height = '0';
+      sourceBody.style.maxHeight = '0';
+      sourceBody.style.minHeight = '0';
+      sourceBody.style.paddingTop = '0';
+      sourceBody.style.paddingBottom = '0';
+      sourceBody.style.overflow = 'hidden';
+      var postActions = scenePanel.querySelector('.scene-panel-actions');
+      if (postActions) postActions.style.display = 'none';
+    }
   }
 
   function _setEditorDirty(dirty) {
@@ -2450,9 +2494,10 @@ function getSceneBodyDetails(block) {
     let html = '';
 
     // Thinking / reasoning section
+    const conv = getCurrentConv();
+    const storyEnabled = isStoryEnabled(conv);
     const reasoning = msg.reasoning || '';
     if (reasoning) {
-      const conv = getCurrentConv();
       const isStreamingReasoning = msg._streaming && !msg.content;
       const keepOpen = msg._keepThinkingOpen !== undefined
         ? msg._keepThinkingOpen
@@ -2467,7 +2512,7 @@ function getSceneBodyDetails(block) {
     }
 
     // Main content - fast path during streaming, full markdown when done
-    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
+    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming, storyEnabled);
     const contentHTML = msg._streaming
       ? renderContentFast(visibleContent)
       : renderMarkdown(visibleContent);
@@ -2571,7 +2616,7 @@ function getSceneBodyDetails(block) {
           msg._lastRenderedContentLength = newContentLen;
           msg._lastRenderedReasoningLength = newReasonLen;
         } else {
-          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
+          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true, isStoryEnabled(conv)));
           msg._lastRenderedContentLength = newContentLen;
         }
       }
@@ -3835,6 +3880,64 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
+  // STORY SCENE REPAIR — ask model to output missing @@SCENE block
+  // =========================================================================
+
+  async function repairSceneBlock(conv, narrativeText, providerId, modelId, apiKey, baseUrl) {
+    if (!narrativeText || narrativeText.trim().length < 20) return null;
+    try {
+      var repairPrompt = [
+        '以下是一段已生成的剧情正文。请基于这段正文输出完整的 @@SCENE 状态块。',
+        '只输出 @@SCENE ... @@END，不要输出任何其他文字。',
+        '',
+        '剧情正文：',
+        narrativeText.slice(-2000),
+        '',
+        '要求：',
+        '- 必须包含 [角色: 主角名] 状态块',
+        '- 必须包含：精神、精神评分(1-10)、身体、身体细节(≥2条)、情节、走向',
+        '- 走向必须 A/B/C/D 四个选项，每个16-32字，基于正文生成具体行动+后果',
+        '- 禁止"暂无明确""尚未显露""暂未明确"等占位符',
+        '- 禁止"继续深入调查""暂时退一步观察"等泛化模板',
+        '',
+        '@@SCENE',
+      ].join('\n');
+
+      var resp = await fetch(buildAPIUrl(providerId, baseUrl), {
+        method: 'POST',
+        headers: buildAPIHeaders(providerId, apiKey),
+        body: JSON.stringify(buildAPIRequestBody(providerId, modelId, [
+          { role: 'user', content: repairPrompt }
+        ], conv)),
+        signal: state.abortController ? state.abortController.signal : undefined,
+      });
+
+      if (!resp.ok) return null;
+      var data = await resp.json();
+      var repairContent = extractAssistantContent(data, providerId);
+      if (!repairContent) return null;
+
+      var sceneMatch = repairContent.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
+      if (!sceneMatch) return null;
+      var block = sceneMatch[1];
+
+      var dirs = parseDirectionOptions(block);
+      if (!dirs || dirs.length < 4) return null;
+
+      var statuses = parseSceneStatuses(block, conv);
+      if (!statuses || !statuses.length) return null;
+
+      return {
+        directions: dirs.map(function(d) { return d.content; }).join('\n'),
+        characterStatuses: statuses
+      };
+    } catch (e) {
+      console.warn('[OmniChat] Scene repair failed:', e.message || e);
+      return null;
+    }
+  }
+
+  // =========================================================================
   // STORY META STRIPPER — remove @@SCENE / 状态卡 / A/B/C/D from visible content
   // =========================================================================
 
@@ -3852,6 +3955,18 @@ function handleMessageAction(action, msgIndex) {
     if (lastSceneIdx >= 0) {
       text = text.slice(0, lastSceneIdx);
     }
+
+    // B2. Isolated @@END (orphaned, without a preceding @@SCENE)
+    text = text.replace(/@@END/g, '');
+
+    // B3. Any remaining @@ markers (belt-and-suspenders)
+    text = text.replace(/@@\w+/g, '');
+
+    // B4. Incomplete state-block lines: [角色: ...], 精神:, 身体:, etc.
+    //    Only strip them when they appear as trailing structured lines
+    //    (looks like a broken state block after the natural narrative)
+    var stateLineRe = /(?:^|\n)\s*(?:\[角色[:：][^\]]*\]|精神[:：]|精神评分[:：]|身体[:：]|身体细节[:：]|情节[:：]|风险[:：]|内心[:：]|目标[:：]|姿势[:：]|当前目标[:：]|当前姿势[:：]|限制[:：]|约束[:：])\s*$/gm;
+    text = text.replace(stateLineRe, '');
 
     // C. Chinese status-block headers — strip from the LAST occurrence
     // (only within trailing ~2000 chars to avoid false positives)
@@ -4017,6 +4132,11 @@ function handleMessageAction(action, msgIndex) {
     // Re-evaluate story flags from message history and legacy data
     repairStoryModeFlags(conv);
 
+    // Story mode: warn if maxTokens is too low for reliable @@SCENE output
+    if (isStoryEnabled(conv) && conv.maxTokens < 1200) {
+      showToast('世界故事模式建议 Max Tokens ≥ 2000（当前 ' + conv.maxTokens + '），否则状态卡和选项可能被截断。', 'warning');
+    }
+
     // Build messages array with caching support
     const supportsCaching = conv.enableCaching && isAnthropicModel(model);
     const messages = [];
@@ -4095,7 +4215,7 @@ function handleMessageAction(action, msgIndex) {
       ].concat(sceneStateRef).concat(settingRefs).concat([
         '写文模式规则：',
         '0. 【角色视角强制】@@SCENE 中所有字段只描述”剧情内的人物/世界”，禁止描述 AI 自身、模型状态、用户操作、写作过程、生成过程、输出流畅度、叙事技巧、处理负载。精神状态是剧情人物（默认为主角）的心理/情绪/意志状态，不是 AI 或写作者的创作状态。身体细节是剧情人物的姿态、动作、感官、伤痛、疲劳、衣着随身状态，不是”打字、输出、模拟书写、键盘敲击”。剧情总结只总结剧情内发生的事件。剧情走向是剧情内人物可采取的行动或外部变化，不是”用户可以要求/调整/改写/让 AI 继续”。如果角色不明确，优先使用角色卡里的主角；没有角色卡则用最近剧情中的主视角人物。',
-        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 4 个剧情选项，使用 A/B/C/D 选项标号。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含"行动 + 可能收益/风险/情绪变化"。不允许只在正文里写后续可能而不写入 @@SCENE。',
+        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 4 个剧情选项，使用 A/B/C/D 选项标号。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含”行动 + 可能收益/风险/情绪变化”。不允许只在正文里写后续可能而不写入 @@SCENE。@@SCENE 是内部程序协议，必须单独放在回复末尾，不得混入正文叙事中。正文部分必须是纯自然语言，不得包含任何 @@ 标记、状态块标签、或结构化控制符。',
         '2. 剧情走向必须以 A/B/C/D 选项形式输出。用户下一轮如果只输入 A、B、C 或 D（或其变体如”选A””选择B”），应视为用户选择了对应剧情分支，并沿该分支继续创作，不得忽略或自行发挥；如果用户自由输入其他内容，则按用户新要求继续，不要强行套用已有选项。',
         '3. 每次回复后必须维护剧情人物的精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
         '4. 精神评分使用 1-10 的整数，评价剧情人物的心理稳定/压力/清醒程度。评分要跟剧情变化一致，但不要无理由持续降低。',
@@ -4107,8 +4227,10 @@ function handleMessageAction(action, msgIndex) {
         '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向4条，每条16-32字，含行动+可能收益/风险/情绪变化。',
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
-        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
-        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足写尚未显露。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
+        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。禁止使用"暂无明确""尚未显露""暂未明确"等占位符——如果正文确实没涉及某个字段，也要基于上下文合理推断一个具体描述，哪怕只有一句话。例如没写身体细节，至少写"呼吸平稳，站姿放松"。没写目标，至少写"继续前行"。不得让任何字段留空或填占位符。',
+        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '状态字段更短，身体细节1-2条，但 A/B/C/D 走向仍然必须 4 条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，A/B/C/D 走向仍然必须 4 条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，A/B/C/D 走向仍然必须 4 条并含后果/代价/机会。角色心理和风险更深入。禁止凭空编造，信息不足就合理推断。' : '每项1-2句，身体细节2-3条，A/B/C/D 走向仍然必须 4 条。'),
+        '15. 详细度只影响状态卡文字长度和身体细节条数，不影响协议完整性。无论任何详细度，@@SCENE、@@END、[角色]、精神、身体、情节、走向、A/B/C/D 四项都必须完整输出。',
+        '16. A/B/C/D 走向必须基于本轮剧情正文和当前场景生成，禁止使用"继续深入调查""暂时退一步观察"等泛化模板。每个走向要具体到当前剧情场景，体现当前人物关系和冲突。',
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '[角色: 主角名]',
@@ -4169,12 +4291,14 @@ function handleMessageAction(action, msgIndex) {
     // Ensures model doesn't forget @@SCENE / mental / body / NPC / A/B/C/D in long convos
     if (storyEnabled) {
       var reminder = '\n[本轮世界故事硬性格式要求]';
-      reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。';
+      reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。@@SCENE 是内部协议，必须单独放在回复末尾，禁止混入正文叙事。正文只包含纯自然语言剧情。';
       reminder += '\n@@SCENE 内必须包含：精神、精神评分、身体、身体细节（至少2条可感知细节）、情节、走向（A/B/C/D 各一条，16-32字）。';
+      reminder += '\n所有状态字段必须填写基于本轮剧情的具体描述，禁止使用"暂无明确""尚未显露""暂未明确"等占位符。如果某字段正文未涉及，也要基于上下文合理推断。';
+      reminder += '\nA/B/C/D 必须基于本轮剧情正文生成，禁止使用"继续深入调查""暂时退一步观察"等泛化模板。每个走向要具体到当前场景。';
       if (conv.sceneNpcs && conv.sceneNpcs.length) {
         reminder += '\n必须给出至少1个与当前剧情相关的 NPC 状态块（格式：[角色: NPC名]）。';
       }
-      reminder += '\n不得省略 @@END。';
+      reminder += '\n不得省略 @@END。不得在正文内使用 @@ 标记。';
       if (conv.sceneDetailLevel === 'ultra') {
         reminder += '\n详细度高但不能牺牲完整性：优先保证精神/身体/NPC/A/B/C/D/@@END 完整。';
       }
@@ -4412,71 +4536,47 @@ function handleMessageAction(action, msgIndex) {
           console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
         }
 
-        // Fallback: if directions are missing or incomplete, provide safe story chips
-        // so user experience doesn't break even when the model omits @@SCENE.
-        // Guard: run once per assistant message, only in story mode.
-        if (!assistantMsg._sceneFallbackAttempted && (dirsParsed.length < 4)) {
-          assistantMsg._sceneFallbackAttempted = true;
-          var plotContext = (assistantMsg.content || '').slice(-300);
-          var fallbackDirs = buildSceneFallbackDirections(conv, plotContext);
-
-          // Build a basic character status card from character card data so the
-          // UI always shows a status card even when @@SCENE was completely absent.
-          var ch = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var fallbackCharName = (ch && ch.name) || '主角';
-          var fallbackStatuses = [{
-            name: fallbackCharName,
-            relation: '主角',
-            isMain: true,
-            mental: '暂未明确',
-            mentalScore: '',
-            physical: '暂未明确',
-            goal: (ch && ch.currentGoal) || '暂未明确',
-            posture: '暂未明确',
-            innerVoice: '',
-          }];
-
-          if (!scene) {
-            assistantMsg.sceneSnapshot = createSceneState({
-              directions: fallbackDirs,
-              characterStatuses: fallbackStatuses,
-            });
-          } else {
-            assistantMsg.sceneSnapshot.directions = fallbackDirs;
-            if (!assistantMsg.sceneSnapshot.characterStatuses || !assistantMsg.sceneSnapshot.characterStatuses.length) {
-              assistantMsg.sceneSnapshot.characterStatuses = fallbackStatuses;
+        // Scene repair: if model didn't output a valid @@SCENE block,
+        // ask it to generate one based on the narrative it just wrote.
+        if (!assistantMsg._sceneRepairAttempted && (dirsParsed.length < 4 || !scene)) {
+          assistantMsg._sceneRepairAttempted = true;
+          try {
+            var narrativeForRepair = assistantMsg.content || '';
+            if (narrativeForRepair.length > 20) {
+              console.warn('[OmniChat] Scene data missing — attempting repair (dirs=' + dirsParsed.length + ', snapshot=' + !!scene + ').');
+              var prov = state.provider;
+              var mId = state.model;
+              var key = state.apiKeys ? state.apiKeys[prov] : '';
+              var provCfg = getProvider(prov);
+              var repairResult = await repairSceneBlock(conv, narrativeForRepair, prov, mId, key, provCfg ? provCfg.baseUrl : '');
+              if (repairResult) {
+                if (!scene) {
+                  assistantMsg.sceneSnapshot = createSceneState({
+                    directions: repairResult.directions,
+                    characterStatuses: repairResult.characterStatuses,
+                  });
+                } else {
+                  if (!scene.directions || parseDirectionOptions(scene.directions).length < 4) {
+                    scene.directions = repairResult.directions;
+                  }
+                  if (!scene.characterStatuses || !scene.characterStatuses.length) {
+                    scene.characterStatuses = repairResult.characterStatuses;
+                  }
+                }
+                console.warn('[OmniChat] Scene repair succeeded.');
+              } else {
+                console.warn('[OmniChat] Scene repair failed — no status card or chips for this reply.');
+              }
             }
+          } catch (repairErr) {
+            console.warn('[OmniChat] Scene repair error:', repairErr.message || repairErr);
           }
-          console.warn('[OmniChat] Scene directions fallback applied (' + dirsParsed.length + ' → 4).');
-        }
-
-        // Extra guard: even if directions were fine, if sceneSnapshot is null
-        // but story is enabled, create a minimal snapshot so the status card renders.
-        if (storyEnabled && assistantMsg.content && !assistantMsg.sceneSnapshot) {
-          var ch2 = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var minDirs = buildSceneFallbackDirections(conv, (assistantMsg.content || '').slice(-300));
-          assistantMsg.sceneSnapshot = createSceneState({
-            directions: minDirs,
-            characterStatuses: [{
-              name: (ch2 && ch2.name) || '主角',
-              relation: '主角',
-              isMain: true,
-              mental: '暂未明确',
-              mentalScore: '',
-              physical: '暂未明确',
-              goal: (ch2 && ch2.currentGoal) || '暂未明确',
-              posture: '暂未明确',
-              innerVoice: '',
-            }],
-          });
-          assistantMsg._sceneFallbackAttempted = true;
-          console.warn('[OmniChat] Scene snapshot was null; created minimal fallback snapshot.');
         }
       }
 
       // --- Truncation warning (visible to all users, not just debug) ---
       if (assistantMsg.finishReason === 'length') {
-        showToast('回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。', 'warning');
+        showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000 以确保状态卡输出完整。', 'warning');
       }
 
       // --- Story output completeness diagnostics (debug only) ---
@@ -4490,7 +4590,7 @@ function handleMessageAction(action, msgIndex) {
           reasoningLength: (assistantMsg.reasoning || '').length,
           finishReason: assistantMsg.finishReason || null,
           truncated: assistantMsg.finishReason === 'length',
-          fallbackApplied: !!assistantMsg._sceneFallbackAttempted,
+          repairAttempted: !!assistantMsg._sceneRepairAttempted,
         };
         console.group('%c[OmniChat Story Diagnostics]', 'color:#0af;font-weight:bold');
         console.table(diagScene);
@@ -4964,6 +5064,33 @@ function handleMessageAction(action, msgIndex) {
     // Scene panel
     dom.scenePanelToggle.addEventListener('click', () => {
       dom.scenePanel.classList.toggle('collapsed');
+      var body = document.getElementById('scenePanelBody');
+      var actions = dom.scenePanel.querySelector('.scene-panel-actions');
+      if (dom.scenePanel.classList.contains('collapsed')) {
+        // Collapse: force hide body and actions
+        if (body) {
+          body.style.display = 'none';
+          body.style.height = '0';
+          body.style.maxHeight = '0';
+          body.style.minHeight = '0';
+          body.style.paddingTop = '0';
+          body.style.paddingBottom = '0';
+          body.style.overflow = 'hidden';
+        }
+        if (actions) actions.style.display = 'none';
+      } else {
+        // Expand: clear inline styles
+        if (body) {
+          body.style.display = '';
+          body.style.height = '';
+          body.style.maxHeight = '';
+          body.style.minHeight = '';
+          body.style.paddingTop = '';
+          body.style.paddingBottom = '';
+          body.style.overflow = '';
+        }
+        if (actions) actions.style.display = '';
+      }
     });
     if (dom.sceneMental) dom.sceneMental.addEventListener('input', () => {
       const conv = getCurrentConv();
