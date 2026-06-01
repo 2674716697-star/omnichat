@@ -3035,15 +3035,15 @@ html.is-splashing .bottom-bar::after {
   transform-style: preserve-3d;
 }
 
-.npc-card.flipped .npc-card-inner { transform: rotateY(180deg); }
-
-/* Flipped card: let back face expand naturally, hide front */
+/* Flipped card: let back face expand naturally, hide front, kill 3D rotation */
 .npc-card.flipped {
   min-height: 0;
 }
 .npc-card.flipped .npc-card-inner {
   height: auto;
   min-height: 0;
+  transform: none;
+  transform-style: flat;
 }
 .npc-card.flipped .npc-card-front {
   display: none;
