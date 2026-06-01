@@ -2136,8 +2136,7 @@ function getSceneBodyDetails(block) {
     // Move body back AFTER unwiring
     if (sourceBody && scenePanel && sourceBody.parentNode === editorBody) {
       scenePanel.insertBefore(sourceBody, scenePanel.querySelector('.scene-panel-header').nextSibling);
-      // Keep panel expanded after editor close so user can see settings
-      scenePanel.classList.remove('collapsed');
+      scenePanel.classList.add('collapsed');
     }
 
     // Restore persistence
