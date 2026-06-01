@@ -865,9 +865,11 @@ function getSceneBodyDetails(block) {
     return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
   }
 
-  function getVisibleAssistantContent(text, isStreaming) {
+  function getVisibleAssistantContent(text, isStreaming, storyEnabled) {
     const value = String(text || '');
-    // Always strip protocol markers so @@END / @@SCENE never leak to UI.
+    // Only strip story protocol markers when world-story mode is active.
+    // Normal chat must pass through unchanged (e.g. user discussing @@END, 精神: etc.).
+    if (!storyEnabled) return value;
     // Streaming: fast path — strip @@SCENE to end, plus any isolated @@ markers.
     // Non-streaming: full strip via shared helper.
     if (isStreaming) {
@@ -2492,9 +2494,10 @@ function getSceneBodyDetails(block) {
     let html = '';
 
     // Thinking / reasoning section
+    const conv = getCurrentConv();
+    const storyEnabled = isStoryEnabled(conv);
     const reasoning = msg.reasoning || '';
     if (reasoning) {
-      const conv = getCurrentConv();
       const isStreamingReasoning = msg._streaming && !msg.content;
       const keepOpen = msg._keepThinkingOpen !== undefined
         ? msg._keepThinkingOpen
@@ -2509,7 +2512,7 @@ function getSceneBodyDetails(block) {
     }
 
     // Main content - fast path during streaming, full markdown when done
-    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
+    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming, storyEnabled);
     const contentHTML = msg._streaming
       ? renderContentFast(visibleContent)
       : renderMarkdown(visibleContent);
@@ -2613,7 +2616,7 @@ function getSceneBodyDetails(block) {
           msg._lastRenderedContentLength = newContentLen;
           msg._lastRenderedReasoningLength = newReasonLen;
         } else {
-          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
+          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true, isStoryEnabled(conv)));
           msg._lastRenderedContentLength = newContentLen;
         }
       }
