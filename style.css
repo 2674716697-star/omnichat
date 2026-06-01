@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    OmniChat — Mobile-First AI Chat Client
    Dark mode, clean, production-grade styles
    ============================================================ */
@@ -1213,12 +1213,10 @@ html.is-splashing .bottom-bar::after {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at 20% 0%, rgba(10, 132, 255, 0.08), transparent 40%),
-    linear-gradient(160deg, rgba(22, 14, 32, 0.90), rgba(12, 8, 16, 0.94));
+    radial-gradient(circle at 20% 0%, var(--accent-glow), transparent 40%),
+    var(--glass-bg);
   overflow: hidden;
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   animation: sceneIn 300ms var(--spring);
   display: flex;
   flex-direction: column;
@@ -1276,7 +1274,7 @@ html.is-splashing .bottom-bar::after {
 .scene-panel-actions {
   flex-shrink: 0;
   padding: 10px 12px 12px;
-  background: rgba(14, 8, 22, 0.94);
+  background: var(--glass-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--glass-border);
@@ -1633,7 +1631,7 @@ html.is-splashing .bottom-bar::after {
 
 .scene-immersive .scene-npc-item {
   border-color: var(--glass-border);
-  background: rgba(18, 12, 28, 0.4);
+  background: var(--glass-bg);
 }
 
 .scene-immersive .scene-npc-del {
@@ -2396,8 +2394,8 @@ html.is-splashing .bottom-bar::after {
 
 /* -- Top bar: glass, flush with story column -- */
 .scene-immersive .top-bar {
-  background: linear-gradient(180deg, rgba(26, 16, 38, 0.78), rgba(14, 10, 22, 0.60));
-  border-bottom: 1px solid rgba(10, 132, 255, 0.10);
+  background: var(--glass-bg-strong);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
@@ -2406,14 +2404,11 @@ html.is-splashing .bottom-bar::after {
   width: 100%;
   padding: 14px 16px;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(10, 132, 255, 0.04), transparent 60%),
-    linear-gradient(160deg, rgba(24, 14, 36, 0.88), rgba(14, 10, 22, 0.92));
-  border: 1px solid rgba(10, 132, 255, 0.12);
+    radial-gradient(ellipse at 50% 0%, var(--accent-glow), transparent 60%),
+    var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: var(--scene-radius);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.30),
-    0 0 18px rgba(10, 132, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   font-size: 15px;
   line-height: 1.75;
   letter-spacing: 0.08px;
@@ -2442,13 +2437,11 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .message.user .message-bubble {
-  background: linear-gradient(135deg, rgba(200, 82, 140, 0.82), rgba(128, 72, 240, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--scene-radius);
   border-bottom-right-radius: 4px;
-  box-shadow:
-    0 8px 24px rgba(180, 77, 124, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.22);
   max-width: 78%;
 }
 
@@ -2457,13 +2450,8 @@ html.is-splashing .bottom-bar::after {
   margin: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--scene-radius);
-  background:
-    radial-gradient(circle at 30% 0%, rgba(10, 132, 255, 0.04), transparent 50%),
-    rgba(14, 8, 22, 0.90);
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(10, 132, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg-strong);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2527,7 +2515,7 @@ html.is-splashing .bottom-bar::after {
   color: var(--scene-gold-bright);
   letter-spacing: 0.3px;
   border-bottom: 0.5px solid var(--glass-border);
-  background: rgba(30, 16, 40, 0.35);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .scene-immersive .scene-status-table {
@@ -2542,7 +2530,7 @@ html.is-splashing .bottom-bar::after {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  background: rgba(30, 16, 40, 0.2);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .scene-immersive .scene-status-table th,
@@ -2575,7 +2563,7 @@ html.is-splashing .bottom-bar::after {
 
 /* -- Direction choice chips: story branch buttons -- */
 .scene-immersive .dir-choice-chip {
-  background: rgba(30, 16, 40, 0.55);
+  background: rgba(255, 255, 255, 0.03);
   border-color: rgba(10, 132, 255, 0.18);
   color: rgba(255, 255, 255, 0.72);
   padding: 9px 12px;
@@ -2584,10 +2572,10 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .dir-choice-chip:active {
-  background: rgba(200, 120, 160, 0.18);
+  background: var(--accent-soft);
   border-color: var(--scene-accent-bright);
   color: #fff;
-  box-shadow: 0 0 12px rgba(200, 120, 160, 0.15);
+  box-shadow: 0 0 12px rgba(10, 132, 255, 0.12);
 }
 
 /* -- Code blocks -- */
@@ -2611,11 +2599,11 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .thinking-header {
-  background: rgba(30, 20, 40, 0.4);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .scene-immersive .thinking-content {
-  background: rgba(30, 20, 40, 0.25);
+  background: rgba(255, 255, 255, 0.02);
   border-color: var(--glass-border);
 }
 
@@ -2747,10 +2735,10 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .scene-body-details li {
-  background: rgba(18, 12, 28, 0.3);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 3px;
   margin-bottom: 2px;
-  border-left: 2px solid rgba(200, 120, 160, 0.25);
+  border-left: 2px solid rgba(10, 132, 255, 0.20);
 }
 
 .scene-immersive .scene-body-details li.scene-body-more {
@@ -2783,8 +2771,8 @@ html.is-splashing .bottom-bar::after {
   line-height: 1.5;
   margin: 0;
   padding: 4px 8px;
-  background: rgba(200, 160, 60, 0.06);
-  border-left: 2px solid rgba(200, 160, 60, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(10, 132, 255, 0.22);
   border-radius: 0 4px 4px 0;
 }
 
@@ -2877,8 +2865,8 @@ html.is-splashing .bottom-bar::after {
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
   line-height: 1.5;
-  border-left: 2px solid rgba(200, 160, 220, 0.2);
-  background: rgba(30, 20, 40, 0.3);
+  border-left: 2px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 0 4px 4px 0;
 }
 
@@ -3881,7 +3869,7 @@ html.has-custom-bg .user .message-bubble {
   margin: 20px;
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.12);
-  background: linear-gradient(180deg, rgba(24,14,36,0.96), rgba(14,8,22,0.98));
+  background: var(--glass-bg-strong);
   box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   overflow: hidden;
 }
