@@ -127,9 +127,9 @@ check('import JSON does not unconditionally delete _requestContent', new RegExp(
 check('story prompt requires 4 A/B/C/D options consistently', /必须给出 4 个剧情选项/.test(js) && !/2–4/.test(js) && !/<可选>/.test(js));
 check('story prompt requires 4 branches in directions', /新的 4 个可行动分支/.test(js) && /剧情走向4条/.test(js));
 check('C/D template not marked as optional', !/<可选>/.test(js));
-check('scene directions fallback for missing output', /buildSceneFallbackDirections/.test(js));
-check('fallback only in storyEnabled context', /if\s*\(\s*!assistantMsg\._sceneFallbackAttempted\s*&&\s*\(dirsParsed/.test(js));
-check('fallback guard prevents loops', /_sceneFallbackAttempted\s*=\s*true/.test(js));
+check('buildSceneFallbackDirections still defined (offline tool)', /function\s+buildSceneFallbackDirections/.test(js));
+check('no auto-fallback — fake status/options disabled', /No auto-fallback/.test(js));
+check('existing _sceneFallbackAttempted guard removed', !/_sceneFallbackAttempted\s*=\s*true/.test(js));
 check('repairStoryModeFlags exists', /function\s+repairStoryModeFlags/.test(js));
 check('migrateStoryMode calls repairStoryModeFlags', /function\s+migrateStoryMode[\s\S]*repairStoryModeFlags/.test(js));
 // migrateStoryMode must NOT skip repair based on storyMode.enabled

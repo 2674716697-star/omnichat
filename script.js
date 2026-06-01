@@ -867,7 +867,16 @@ function getSceneBodyDetails(block) {
 
   function getVisibleAssistantContent(text, isStreaming) {
     const value = String(text || '');
-    return isStreaming ? value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd() : value;
+    // Always strip protocol markers so @@END / @@SCENE never leak to UI.
+    // Streaming: fast path — strip @@SCENE to end, plus any isolated @@ markers.
+    // Non-streaming: full strip via shared helper.
+    if (isStreaming) {
+      var s = value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd();
+      s = s.replace(/@@END/g, '');
+      s = s.replace(/@@\w+/g, '');
+      return s;
+    }
+    return stripStoryMetaFromVisibleContent(value);
   }
 
   function renderMarkdown(text) {
@@ -4152,8 +4161,9 @@ function handleMessageAction(action, msgIndex) {
         '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向4条，每条16-32字，含行动+可能收益/风险/情绪变化。',
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
-        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
-        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足写尚未显露。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
+        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。禁止使用"暂无明确""尚未显露""暂未明确"等占位符——如果正文确实没涉及某个字段，也要基于上下文合理推断一个具体描述，哪怕只有一句话。例如没写身体细节，至少写"呼吸平稳，站姿放松"。没写目标，至少写"继续前行"。不得让任何字段留空或填占位符。',
+        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足就合理推断。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
+        '15. A/B/C/D 走向必须基于本轮剧情正文和当前场景生成，禁止使用"继续深入调查""暂时退一步观察"等泛化模板。每个走向要具体到当前剧情场景，体现当前人物关系和冲突。',
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '[角色: 主角名]',
@@ -4216,10 +4226,12 @@ function handleMessageAction(action, msgIndex) {
       var reminder = '\n[本轮世界故事硬性格式要求]';
       reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。@@SCENE 是内部协议，必须单独放在回复末尾，禁止混入正文叙事。正文只包含纯自然语言剧情。';
       reminder += '\n@@SCENE 内必须包含：精神、精神评分、身体、身体细节（至少2条可感知细节）、情节、走向（A/B/C/D 各一条，16-32字）。';
+      reminder += '\n所有状态字段必须填写基于本轮剧情的具体描述，禁止使用"暂无明确""尚未显露""暂未明确"等占位符。如果某字段正文未涉及，也要基于上下文合理推断。';
+      reminder += '\nA/B/C/D 必须基于本轮剧情正文生成，禁止使用"继续深入调查""暂时退一步观察"等泛化模板。每个走向要具体到当前场景。';
       if (conv.sceneNpcs && conv.sceneNpcs.length) {
         reminder += '\n必须给出至少1个与当前剧情相关的 NPC 状态块（格式：[角色: NPC名]）。';
       }
-      reminder += '\n不得省略 @@END。';
+      reminder += '\n不得省略 @@END。不得在正文内使用 @@ 标记。';
       if (conv.sceneDetailLevel === 'ultra') {
         reminder += '\n详细度高但不能牺牲完整性：优先保证精神/身体/NPC/A/B/C/D/@@END 完整。';
       }
@@ -4457,71 +4469,18 @@ function handleMessageAction(action, msgIndex) {
           console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
         }
 
-        // Fallback: if directions are missing or incomplete, provide safe story chips
-        // so user experience doesn't break even when the model omits @@SCENE.
-        // Guard: run once per assistant message, only in story mode.
-        if (!assistantMsg._sceneFallbackAttempted && (dirsParsed.length < 4)) {
-          assistantMsg._sceneFallbackAttempted = true;
-          var plotContext = (assistantMsg.content || '').slice(-300);
-          var fallbackDirs = buildSceneFallbackDirections(conv, plotContext);
-
-          // Build a basic character status card from character card data so the
-          // UI always shows a status card even when @@SCENE was completely absent.
-          var ch = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var fallbackCharName = (ch && ch.name) || '主角';
-          var fallbackStatuses = [{
-            name: fallbackCharName,
-            relation: '主角',
-            isMain: true,
-            mental: '暂未明确',
-            mentalScore: '',
-            physical: '暂未明确',
-            goal: (ch && ch.currentGoal) || '暂未明确',
-            posture: '暂未明确',
-            innerVoice: '',
-          }];
-
-          if (!scene) {
-            assistantMsg.sceneSnapshot = createSceneState({
-              directions: fallbackDirs,
-              characterStatuses: fallbackStatuses,
-            });
-          } else {
-            assistantMsg.sceneSnapshot.directions = fallbackDirs;
-            if (!assistantMsg.sceneSnapshot.characterStatuses || !assistantMsg.sceneSnapshot.characterStatuses.length) {
-              assistantMsg.sceneSnapshot.characterStatuses = fallbackStatuses;
-            }
-          }
-          console.warn('[OmniChat] Scene directions fallback applied (' + dirsParsed.length + ' → 4).');
-        }
-
-        // Extra guard: even if directions were fine, if sceneSnapshot is null
-        // but story is enabled, create a minimal snapshot so the status card renders.
-        if (storyEnabled && assistantMsg.content && !assistantMsg.sceneSnapshot) {
-          var ch2 = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var minDirs = buildSceneFallbackDirections(conv, (assistantMsg.content || '').slice(-300));
-          assistantMsg.sceneSnapshot = createSceneState({
-            directions: minDirs,
-            characterStatuses: [{
-              name: (ch2 && ch2.name) || '主角',
-              relation: '主角',
-              isMain: true,
-              mental: '暂未明确',
-              mentalScore: '',
-              physical: '暂未明确',
-              goal: (ch2 && ch2.currentGoal) || '暂未明确',
-              posture: '暂未明确',
-              innerVoice: '',
-            }],
-          });
-          assistantMsg._sceneFallbackAttempted = true;
-          console.warn('[OmniChat] Scene snapshot was null; created minimal fallback snapshot.');
+        // No auto-fallback. If the model doesn't output a valid @@SCENE block,
+        // we show only the natural-language narrative — no fake status card,
+        // no generic A/B/C/D options. The user sees the model's real output,
+        // not placeholder filler.
+        if (dirsParsed.length < 4 || !scene) {
+          console.warn('[OmniChat] Story response missing scene data (dirs=' + dirsParsed.length + ', snapshot=' + !!scene + '). No fallback applied — status card and chips will not render for this reply.');
         }
       }
 
       // --- Truncation warning (visible to all users, not just debug) ---
       if (assistantMsg.finishReason === 'length') {
-        showToast('回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。', 'warning');
+        showToast('回复被 Max Tokens 截断。如果状态卡未显示，说明模型本轮未完整输出状态块。', 'warning');
       }
 
       // --- Story output completeness diagnostics (debug only) ---
