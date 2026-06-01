@@ -2839,7 +2839,7 @@ function getSceneBodyDetails(block) {
         document.body.appendChild(btn);
       }
       // Update button text
-      btn.innerHTML = state.isStreaming ? '↓ AI 正在生成' : '↓ 查看最新回复';
+      btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
       btn.classList.add('show');
     } else if (btn) {
       btn.classList.remove('show');

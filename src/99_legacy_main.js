@@ -1422,7 +1422,7 @@
         document.body.appendChild(btn);
       }
       // Update button text
-      btn.innerHTML = state.isStreaming ? '↓ AI 正在生成' : '↓ 查看最新回复';
+      btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
       btn.classList.add('show');
     } else if (btn) {
       btn.classList.remove('show');
@@ -2598,6 +2598,11 @@ function handleMessageAction(action, msgIndex) {
     syncLegacyToStoryMode(conv);
     // Re-evaluate story flags from message history and legacy data
     repairStoryModeFlags(conv);
+
+    // Story mode: warn if maxTokens too low for reliable @@SCENE output
+    if (isStoryEnabled(conv) && conv.maxTokens < 1200) {
+      showToast('世界故事模式建议 Max Tokens ≥ 2000（当前 ' + conv.maxTokens + '），否则状态卡和选项可能被截断。', 'warning');
+    }
 
     // Build messages array with caching support
     const supportsCaching = conv.enableCaching && isAnthropicModel(model);
