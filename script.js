@@ -3834,6 +3834,74 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
+  // STORY SCENE REPAIR — ask model to output missing @@SCENE block
+  // =========================================================================
+
+  async function repairSceneBlock(conv, narrativeText) {
+    if (!narrativeText || narrativeText.trim().length < 20) return null;
+    try {
+      var pConf = getProviderConfig(conv.provider);
+      var apiKey = getApiKey(conv.provider);
+      var model = resolveModel(conv);
+      if (!apiKey || !model || !pConf.apiUrl) return null;
+
+      var repairPrompt = [
+        '以下是一段已生成的剧情正文。请基于这段正文输出完整的 @@SCENE 状态块。',
+        '只输出 @@SCENE ... @@END，不要输出任何其他文字。',
+        '',
+        '剧情正文：',
+        narrativeText.slice(-2000),
+        '',
+        '要求：',
+        '- 必须包含 [角色: 主角名] 状态块',
+        '- 必须包含：精神、精神评分(1-10)、身体、身体细节(≥2条)、情节、走向',
+        '- 走向必须 A/B/C/D 四个选项，每个16-32字，基于正文生成具体行动+后果',
+        '- 禁止"暂无明确""尚未显露""暂未明确"等占位符',
+        '- 禁止"继续深入调查""暂时退一步观察"等泛化模板',
+        '',
+        '@@SCENE',
+      ].join('
+');
+
+      var repairMessages = [{ role: "user", content: repairPrompt }];
+      var headers = buildRequestHeaders(conv.provider, apiKey, conv);
+      var body = buildRequestBody(conv, model, repairMessages);
+
+      var resp = await fetch(pConf.apiUrl, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(body),
+        signal: state.abortController ? state.abortController.signal : undefined,
+      });
+
+      if (!resp.ok) return null;
+      var data = await resp.json();
+      var choice = data.choices && data.choices[0] ? data.choices[0] : null;
+      if (!choice || !choice.message || !choice.message.content) return null;
+      var repairContent = choice.message.content;
+
+      var sceneMatch = repairContent.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
+      if (!sceneMatch) return null;
+      var block = sceneMatch[1];
+
+      var dirs = parseDirectionOptions(block);
+      if (!dirs || dirs.length < 4) return null;
+
+      var statuses = parseSceneStatuses(block, conv);
+      if (!statuses || !statuses.length) return null;
+
+      return {
+        directions: dirs.map(function(d) { return d.content; }).join("
+"),
+        characterStatuses: statuses
+      };
+    } catch (e) {
+      console.warn("[OmniChat] Scene repair failed:", e.message || e);
+      return null;
+    }
+  }
+
+  // =========================================================================
   // STORY META STRIPPER — remove @@SCENE / 状态卡 / A/B/C/D from visible content
   // =========================================================================
 
@@ -4111,8 +4179,10 @@ function handleMessageAction(action, msgIndex) {
         '10. 必须按人物分别输出状态：先输出主角完整状态块，再输出与主角当前强相关的1-3个NPC状态块。每个状态块用[角色: 名称]开头。每块包含精神、精神评分、身体、身体细节（bullet列表）、目标、姿势、内心。描述要贴剧情、贴人物，不要像AI总结自己。剧情走向4条，每条16-32字，含行动+可能收益/风险/情绪变化。',
         '11. 精神状态要写具体触发原因，如"因听见脚步声而警觉升高"，不要只写"紧张"。身体细节要写可感知的具体细节：呼吸、肌肉、视线、手指、步伐、伤口、衣物/装备、环境接触等，必须和刚生成的剧情正文一致，不要套模板。',
         '12. 剧情走向每条必须包含行动 + 可能后果/情绪变化/风险，不能只是泛泛标题。至少包含一个主动推进、一个观察/试探、一个关系互动或外部事件；避免全是逃跑/崩溃/死亡。每个走向要明显不同。文案中自然体现可能…/但…/因此…等故事感。',
-        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。如果正文信息不足以填写某个字段，写"尚未显露"或"暂未明确"，不得编造。',
-        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '每项1短句，身体细节1-2条，走向2条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，走向3-4条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，走向4条并含后果/代价/机会，角色心理和风险更深入。但仍禁止凭空编造，信息不足写尚未显露。' : '每项1-2句，身体细节2-3条，走向2-3条。'),
+        '13. 状态字段必须来自刚刚正文中已出现或合理可承接的细节。禁止凭空编造正文未涉及的伤口、道具、关系、人物、地点。禁止使用"暂无明确""尚未显露""暂未明确"等占位符——如果正文确实没涉及某个字段，也要基于上下文合理推断一个具体描述，哪怕只有一句话。例如没写身体细节，至少写"呼吸平稳，站姿放松"。没写目标，至少写"继续前行"。不得让任何字段留空或填占位符。',
+        '14. 当前剧情状态详细度：' + (conv.sceneDetailLevel || 'medium') + '。' + (conv.sceneDetailLevel === 'low' ? '状态字段更短，身体细节1-2条，但 A/B/C/D 走向仍然必须 4 条。' : conv.sceneDetailLevel === 'high' ? '更详细：身体细节3-4条，剧情总结2句，A/B/C/D 走向仍然必须 4 条。' : conv.sceneDetailLevel === 'ultra' ? '极致详细：身体细节4-6条，剧情总结2-3句，A/B/C/D 走向仍然必须 4 条并含后果/代价/机会。角色心理和风险更深入。禁止凭空编造，信息不足就合理推断。' : '每项1-2句，身体细节2-3条，A/B/C/D 走向仍然必须 4 条。'),
+        '15. 详细度只影响状态卡文字长度和身体细节条数，不影响协议完整性。无论任何详细度，@@SCENE、@@END、[角色]、精神、身体、情节、走向、A/B/C/D 四项都必须完整输出。',
+        '16. A/B/C/D 走向必须基于本轮剧情正文和当前场景生成，禁止使用"继续深入调查""暂时退一步观察"等泛化模板。每个走向要具体到当前剧情场景，体现当前人物关系和冲突。',
         '\n请在每次回复末尾用以下格式更新场景状态（内部记录，不要展示给用户）：',
         '@@SCENE',
         '[角色: 主角名]',
@@ -4416,71 +4486,46 @@ function handleMessageAction(action, msgIndex) {
           console.warn('[OmniChat] Story response missing: ' + missing.join(', '));
         }
 
-        // Fallback: if directions are missing or incomplete, provide safe story chips
-        // so user experience doesn't break even when the model omits @@SCENE.
-        // Guard: run once per assistant message, only in story mode.
-        if (!assistantMsg._sceneFallbackAttempted && (dirsParsed.length < 4)) {
-          assistantMsg._sceneFallbackAttempted = true;
-          var plotContext = (assistantMsg.content || '').slice(-300);
-          var fallbackDirs = buildSceneFallbackDirections(conv, plotContext);
-
-          // Build a basic character status card from character card data so the
-          // UI always shows a status card even when @@SCENE was completely absent.
-          var ch = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var fallbackCharName = (ch && ch.name) || '主角';
-          var fallbackStatuses = [{
-            name: fallbackCharName,
-            relation: '主角',
-            isMain: true,
-            mental: '暂未明确',
-            mentalScore: '',
-            physical: '暂未明确',
-            goal: (ch && ch.currentGoal) || '暂未明确',
-            posture: '暂未明确',
-            innerVoice: '',
-          }];
-
-          if (!scene) {
-            assistantMsg.sceneSnapshot = createSceneState({
-              directions: fallbackDirs,
-              characterStatuses: fallbackStatuses,
-            });
-          } else {
-            assistantMsg.sceneSnapshot.directions = fallbackDirs;
-            if (!assistantMsg.sceneSnapshot.characterStatuses || !assistantMsg.sceneSnapshot.characterStatuses.length) {
-              assistantMsg.sceneSnapshot.characterStatuses = fallbackStatuses;
+        // Scene repair: if model didn't output a valid @@SCENE block,
+        // ask it to generate one based on the narrative it just wrote.
+        if (!assistantMsg._sceneRepairAttempted && (dirsParsed.length < 4 || !scene)) {
+          assistantMsg._sceneRepairAttempted = true;
+          try {
+            var narrativeForRepair = assistantMsg.content || '';
+            if (narrativeForRepair.length > 20) {
+              console.warn('[OmniChat] Scene data missing — attempting repair (dirs=' + dirsParsed.length + ', snapshot=' + !!scene + ').');
+              var repairResult = await repairSceneBlock(conv, narrativeForRepair);
+              if (repairResult) {
+                if (!scene) {
+                  assistantMsg.sceneSnapshot = createSceneState({
+                    directions: repairResult.directions,
+                    characterStatuses: repairResult.characterStatuses,
+                  });
+                } else {
+                  if (!scene.directions || parseDirectionOptions(scene.directions).length < 4) {
+                    scene.directions = repairResult.directions;
+                  }
+                  if (!scene.characterStatuses || !scene.characterStatuses.length) {
+                    scene.characterStatuses = repairResult.characterStatuses;
+                  }
+                }
+                scene = assistantMsg.sceneSnapshot;
+                snapshotDirs = scene && scene.directions ? scene.directions : '';
+                dirsParsed = snapshotDirs ? parseDirectionOptions(snapshotDirs) : [];
+                console.warn('[OmniChat] Scene repair succeeded (dirs=' + dirsParsed.length + ').');
+              } else {
+                console.warn('[OmniChat] Scene repair failed — no status card or chips for this reply.');
+              }
             }
+          } catch (repairErr) {
+            console.warn('[OmniChat] Scene repair error:', repairErr.message || repairErr);
           }
-          console.warn('[OmniChat] Scene directions fallback applied (' + dirsParsed.length + ' → 4).');
-        }
-
-        // Extra guard: even if directions were fine, if sceneSnapshot is null
-        // but story is enabled, create a minimal snapshot so the status card renders.
-        if (storyEnabled && assistantMsg.content && !assistantMsg.sceneSnapshot) {
-          var ch2 = (conv.storyMode && conv.storyMode.character) ? conv.storyMode.character : conv.sceneCharacter;
-          var minDirs = buildSceneFallbackDirections(conv, (assistantMsg.content || '').slice(-300));
-          assistantMsg.sceneSnapshot = createSceneState({
-            directions: minDirs,
-            characterStatuses: [{
-              name: (ch2 && ch2.name) || '主角',
-              relation: '主角',
-              isMain: true,
-              mental: '暂未明确',
-              mentalScore: '',
-              physical: '暂未明确',
-              goal: (ch2 && ch2.currentGoal) || '暂未明确',
-              posture: '暂未明确',
-              innerVoice: '',
-            }],
-          });
-          assistantMsg._sceneFallbackAttempted = true;
-          console.warn('[OmniChat] Scene snapshot was null; created minimal fallback snapshot.');
         }
       }
 
       // --- Truncation warning (visible to all users, not just debug) ---
       if (assistantMsg.finishReason === 'length') {
-        showToast('回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。', 'warning');
+        showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。', 'warning');
       }
 
       // --- Story output completeness diagnostics (debug only) ---
@@ -4494,7 +4539,7 @@ function handleMessageAction(action, msgIndex) {
           reasoningLength: (assistantMsg.reasoning || '').length,
           finishReason: assistantMsg.finishReason || null,
           truncated: assistantMsg.finishReason === 'length',
-          fallbackApplied: !!assistantMsg._sceneFallbackAttempted,
+          repairAttempted: !!assistantMsg._sceneRepairAttempted,
         };
         console.group('%c[OmniChat Story Diagnostics]', 'color:#0af;font-weight:bold');
         console.table(diagScene);
