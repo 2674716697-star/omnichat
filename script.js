@@ -2813,7 +2813,6 @@ function getSceneBodyDetails(block) {
         btn = document.createElement('button');
         btn.id = 'scrollToBottomBtn';
         btn.title = '回到底部查看最新内容';
-        btn.style.cssText = 'position:fixed;bottom:160px;right:16px;z-index:60;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:rgba(30,20,40,0.85);color:#fff;font-size:12px;cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:opacity 200ms ease;';
         btn.addEventListener('click', function() {
           // Exit detached mode
           state.ui.detachedDuringStreaming = false;
@@ -4016,6 +4015,11 @@ function handleMessageAction(action, msgIndex) {
     syncLegacyToStoryMode(conv);
     // Re-evaluate story flags from message history and legacy data
     repairStoryModeFlags(conv);
+
+    // Story mode: warn if maxTokens too low for reliable @@SCENE output
+    if (isStoryEnabled(conv) && conv.maxTokens < 1200) {
+      showToast('世界故事模式建议 Max Tokens ≥ 2000（当前 ' + conv.maxTokens + '），否则状态卡和选项可能被截断。', 'warning');
+    }
 
     // Build messages array with caching support
     const supportsCaching = conv.enableCaching && isAnthropicModel(model);
