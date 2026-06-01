@@ -6,37 +6,67 @@
 /* --- CSS Variables --- */
 :root {
   --app-height: 100dvh;
-  --bg-primary: #000000;
-  --bg-secondary: rgba(28, 28, 30, 0.82);
-  --bg-tertiary: #1c1c1e;
-  --bg-elevated: #2c2c2e;
-  --bg-input: rgba(28, 28, 30, 0.6);
+  /* === Base palette === */
+  --bg-base: #000000;
+  --bg-elevated: #1c1c1e;
+  --bg-raised: #2c2c2e;
+  /* === Glass surfaces === */
+  --glass-bg: rgba(28, 28, 30, 0.72);
+  --glass-bg-strong: rgba(28, 28, 30, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  /* === Text === */
   --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.65);
-  --text-tertiary: rgba(255, 255, 255, 0.50);
-  --border-color: rgba(255, 255, 255, 0.10);
-  --border-light: rgba(255, 255, 255, 0.06);
+  --text-secondary: rgba(255, 255, 255, 0.60);
+  --text-muted: rgba(255, 255, 255, 0.38);
+  /* === Accent === */
   --accent: #0A84FF;
   --accent-bright: #409CFF;
-  --accent-dim: rgba(10, 132, 255, 0.18);
+  --accent-soft: rgba(10, 132, 255, 0.15);
+  --accent-glow: rgba(10, 132, 255, 0.08);
+  /* === Semantic === */
   --danger: #FF453A;
-  --danger-bright: #FF6961;
+  --danger-soft: rgba(255, 69, 58, 0.15);
   --success: #30D158;
+  --success-soft: rgba(48, 209, 88, 0.15);
   --warning: #FFD60A;
-  --user-bubble: #0A84FF;
-  --ai-bubble: #1c1c1e;
-  --code-bg: #000000;
-  --code-border: rgba(255, 255, 255, 0.08);
-  --overlay-bg: rgba(0, 0, 0, 0.55);
-  --glass-bg: rgba(28, 28, 30, 0.72);
-  --glass-blur: saturate(180%) blur(20px);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.28);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
+  --warning-soft: rgba(255, 214, 10, 0.12);
+  /* === Radius === */
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 26px;
+  --radius-card: 12px;
+  /* === Shadow === */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.40);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.45);
+  /* === Legacy aliases === */
+  --bg-primary: var(--bg-base);
+  --bg-secondary: var(--glass-bg);
+  --bg-tertiary: var(--bg-elevated);
+  --bg-input: rgba(28, 28, 30, 0.5);
+  --text-tertiary: var(--text-muted);
+  --border-color: var(--glass-border);
+  --border-light: rgba(255, 255, 255, 0.04);
+  --accent-dim: var(--accent-soft);
+  --danger-bright: #FF6961;
+  --user-bubble: var(--accent);
+  --ai-bubble: var(--bg-elevated);
+  --code-bg: #000000;
+  --code-border: rgba(255, 255, 255, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --glass-blur: saturate(180%) blur(20px);
+  /* === Scene variables (aliased to global) === */
+  --scene-accent: var(--accent);
+  --scene-accent-bright: var(--accent-bright);
+  --scene-accent-dim: var(--accent-soft);
+  --scene-gold: var(--text-secondary);
+  --scene-gold-bright: var(--text-primary);
+  --scene-purple: var(--glass-bg);
+  --scene-card-bg: var(--glass-bg);
+  --scene-card-border: var(--glass-border);
+  --scene-radius: var(--radius-card);
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -72,9 +102,8 @@ html {
 body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(10,132,255,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(255,69,58,0.02) 0%, transparent 50%),
-    var(--bg-primary);
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(10,132,255,0.03) 0%, transparent 60%),
+    var(--bg-base);
   color: var(--text-primary);
   line-height: 1.5;
   min-height: -webkit-fill-available;
@@ -269,14 +298,11 @@ html.is-splashing .bottom-bar::after {
   gap: 10px;
   padding: 8px 14px;
   padding-top: calc(8px + var(--safe-top));
-  background:
-    linear-gradient(180deg, rgba(30, 20, 42, 0.72), rgba(16, 10, 26, 0.55));
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 1px 0 var(--glass-highlight) inset;
   min-height: var(--top-bar-h);
   flex-shrink: 0;
   position: relative;
@@ -352,20 +378,16 @@ html.is-splashing .bottom-bar::after {
 }
 
 .badge-provider {
-  background: var(--accent-dim);
-  color: var(--accent-bright);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
   letter-spacing: 0.2px;
 }
 
-/* Provider color accents */
-.badge-provider[data-provider="openai"] { background: rgba(16,163,127,0.15); color: #10a37f; }
-.badge-provider[data-provider="xai"] { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
-.badge-provider[data-provider="deepseek"] { background: rgba(77,107,254,0.15); color: #4d6bfe; }
-.badge-provider[data-provider="openrouter"] { background: rgba(168,85,247,0.12); color: #a855f7; }
-.badge-provider[data-provider="groq"] { background: rgba(249,115,22,0.12); color: #f97316; }
-.badge-provider[data-provider="moonshot"] { background: rgba(99,102,241,0.12); color: #6366f1; }
-.badge-provider[data-provider="zhipu"] { background: rgba(20,184,166,0.12); color: #14b8a6; }
-.badge-provider[data-provider="siliconflow"] { background: rgba(236,72,153,0.12); color: #ec4899; }
+/* Provider color accents — unified muted style */
+.badge-provider[data-provider] {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
 
 .badge-model {
   background: var(--bg-elevated);
@@ -756,9 +778,9 @@ html.is-splashing .bottom-bar::after {
 /* Settings section cards */
 .settings-section-card {
   margin-bottom: 16px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.03);
   overflow: hidden;
 }
 .settings-section-title {
@@ -767,7 +789,7 @@ html.is-splashing .bottom-bar::after {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 .settings-section-body { padding: 4px 14px 12px; }
 .settings-section-body .setting-group:last-child { margin-bottom: 0; }
@@ -1724,40 +1746,26 @@ html.is-splashing .bottom-bar::after {
 }
 
 .message.user .message-bubble {
-  background: linear-gradient(135deg, rgba(210, 82, 135, 0.92), rgba(138, 78, 248, 0.84));
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom-right-radius: 6px;
   color: #ffffff;
-  box-shadow:
-    0 10px 28px rgba(180, 77, 124, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.22);
 }
 
 .message.user .message-bubble:hover {
-  box-shadow:
-    0 14px 34px rgba(180, 77, 124, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 22px rgba(10, 132, 255, 0.30);
 }
 
 .message.assistant .message-bubble {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
-    rgba(20, 12, 30, 0.68);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(28, 28, 30, 0.55);
+  border: 1px solid var(--glass-border);
   border-bottom-left-radius: 6px;
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 }
 
 .message.assistant .message-bubble:hover {
-  box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.16);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
 }
 
 .message.system-info .message-bubble {
@@ -1885,18 +1893,12 @@ html.is-splashing .bottom-bar::after {
   max-width: 800px;
   margin: 0 auto;
   z-index: 50;
-  background: #100a18;
-  background-image:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 45%),
-    linear-gradient(180deg, rgba(26, 18, 38, 0.68), rgba(14, 8, 20, 0.90));
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border: 1px solid rgba(220, 92, 145, 0.2);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-bottom: none;
-  box-shadow:
-    0 -12px 32px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(220, 92, 145, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
   padding: 6px 14px;
   padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
   border-radius: 16px 16px 0 0;
@@ -1933,16 +1935,15 @@ html.is-splashing .bottom-bar::after {
 }
 
 .btn-quick:hover {
-  background: rgba(220, 92, 145, 0.10);
-  border-color: rgba(220, 92, 145, 0.20);
-  box-shadow: 0 4px 14px rgba(220, 92, 145, 0.08);
-  color: rgba(255, 255, 255, 0.85);
+  background: var(--accent-soft);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
 }
 
 .btn-quick:active {
-  background: rgba(220, 92, 145, 0.16);
+  background: rgba(10, 132, 255, 0.22);
   color: #fff;
-  border-color: rgba(220, 92, 145, 0.30);
+  border-color: rgba(10, 132, 255, 0.35);
   transform: scale(0.96);
 }
 
@@ -1955,17 +1956,13 @@ html.is-splashing .bottom-bar::after {
 .input-message {
   flex: 1;
   padding: 10px 16px;
-  border: 1px solid rgba(180, 130, 160, 0.18);
+  border: 1px solid var(--glass-border);
   border-radius: 22px;
-  background: rgba(14, 8, 22, 0.6);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+  background: rgba(28, 28, 30, 0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   color: var(--text-primary);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 6px 20px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   font-size: 15px;
   resize: none;
   outline: none;
@@ -1979,13 +1976,11 @@ html.is-splashing .bottom-bar::after {
 }
 
 .input-message:focus {
-  border-color: var(--scene-accent);
-  background: rgba(18, 10, 28, 0.75);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border-color: rgba(10, 132, 255, 0.40);
+  background: rgba(28, 28, 30, 0.75);
   box-shadow:
-    0 0 0 2px rgba(220, 92, 145, 0.10),
-    0 8px 24px rgba(220, 92, 145, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 0 2px rgba(10, 132, 255, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 .input-message::placeholder {
@@ -2007,42 +2002,34 @@ html.is-splashing .bottom-bar::after {
 }
 
 .btn-send {
-  background: linear-gradient(135deg, rgba(180, 77, 124, 0.92), rgba(120, 65, 160, 0.88));
+  background: var(--accent);
   color: #fff;
-  box-shadow:
-    0 4px 16px rgba(180, 77, 124, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  transition: transform 150ms var(--spring), box-shadow 150ms var(--spring);
+  box-shadow: 0 2px 12px rgba(10, 132, 255, 0.30);
+  transition: transform 150ms var(--spring), box-shadow 150ms var(--spring), background 150ms var(--spring);
 }
 
 .btn-send:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 6px 22px rgba(180, 77, 124, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 18px rgba(10, 132, 255, 0.38);
 }
 
 .btn-send:active {
   transform: scale(0.96);
-  box-shadow:
-    0 2px 8px rgba(180, 77, 124, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  background: #0070E0;
+  box-shadow: 0 1px 6px rgba(10, 132, 255, 0.18);
 }
 
 .btn-stop {
-  background: linear-gradient(135deg, rgba(255, 69, 58, 0.88), rgba(200, 40, 30, 0.84));
+  background: var(--danger);
   color: #fff;
-  box-shadow:
-    0 4px 16px rgba(255, 69, 58, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: transform 150ms var(--spring), box-shadow 150ms var(--spring);
+  box-shadow: 0 2px 12px rgba(255, 69, 58, 0.25);
+  transition: transform 150ms var(--spring), box-shadow 150ms var(--spring), background 150ms var(--spring);
 }
 
 .btn-stop:active {
   transform: scale(0.96);
-  box-shadow:
-    0 2px 8px rgba(255, 69, 58, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: #D93A30;
+  box-shadow: 0 1px 6px rgba(255, 69, 58, 0.12);
 }
 
 /* --- Toast --- */
@@ -2352,18 +2339,7 @@ html.is-splashing .bottom-bar::after {
    Immersive Writing Mode (scene-immersive)
    ============================================================ */
 
-/* -- Scene accent variables (overridable via :root if needed) -- */
-:root {
-  --scene-accent: #d84d84;
-  --scene-accent-bright: #e0528a;
-  --scene-accent-dim: rgba(216, 77, 132, 0.18);
-  --scene-gold: #c9a84f;
-  --scene-gold-bright: #d6b85f;
-  --scene-purple: rgba(22, 14, 32, 0.72);
-  --scene-card-bg: rgba(18, 12, 28, 0.72);
-  --scene-card-border: rgba(220, 92, 145, 0.28);
-  --scene-radius: 8px;
-}
+/* Scene variables — now aliased in the main :root block at top of file */
 
 /* -- Capsule indicator -- */
 .scene-capsule {
@@ -2386,13 +2362,13 @@ html.is-splashing .bottom-bar::after {
 
 /* -- Quick button active state (Precise ON) -- */
 .btn-quick-active {
-  background: linear-gradient(135deg, rgba(180, 77, 124, 0.22), rgba(120, 65, 160, 0.18)) !important;
-  border-color: rgba(220, 92, 145, 0.40) !important;
+  background: var(--accent-soft) !important;
+  border-color: rgba(10, 132, 255, 0.35) !important;
   color: #fff !important;
   font-weight: 600;
   box-shadow:
-    0 0 0 1px rgba(220, 92, 145, 0.10),
-    0 4px 14px rgba(220, 92, 145, 0.12);
+    0 0 0 1px rgba(10, 132, 255, 0.10),
+    0 4px 14px rgba(10, 132, 255, 0.12);
 }
 
 /* ============================================================
@@ -3784,7 +3760,7 @@ html.has-custom-bg .chat-bg-overlay::after {
   z-index: 0;
 }
 html.has-custom-bg .assistant .message-bubble {
-  background: rgba(16,8,24,0.88);
+  background: rgba(28, 28, 30, 0.88);
 }
 html.has-custom-bg .user .message-bubble {
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
@@ -3869,9 +3845,9 @@ html.has-custom-bg .user .message-bubble {
 }
 #btnSend:disabled { opacity: 0.35; }
 #btnStop {
-  background: rgba(255,69,58,0.15);
-  border-color: rgba(255,69,58,0.3);
-  color: #FF6961;
+  background: var(--danger-soft);
+  border-color: rgba(255, 69, 58, 0.25);
+  color: var(--danger);
 }
 
 /* Story scene panel: cleaner collapsed toggle */
