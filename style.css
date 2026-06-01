@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    OmniChat — Mobile-First AI Chat Client
    Dark mode, clean, production-grade styles
    ============================================================ */
@@ -1213,7 +1213,7 @@ html.is-splashing .bottom-bar::after {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at 20% 0%, rgba(220, 92, 145, 0.10), transparent 40%),
+    radial-gradient(circle at 20% 0%, rgba(10, 132, 255, 0.08), transparent 40%),
     linear-gradient(160deg, rgba(22, 14, 32, 0.90), rgba(12, 8, 16, 0.94));
   overflow: hidden;
   box-shadow:
@@ -1248,7 +1248,7 @@ html.is-splashing .bottom-bar::after {
   padding: 9px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #c0a050;
+  color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -1279,7 +1279,7 @@ html.is-splashing .bottom-bar::after {
   background: rgba(14, 8, 22, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(220, 92, 145, 0.15);
+  border-top: 1px solid var(--glass-border);
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -1317,7 +1317,7 @@ html.is-splashing .bottom-bar::after {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: #a08840;
+  color: var(--text-secondary);
   margin-bottom: 3px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1341,7 +1341,7 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-input:focus {
-  border-color: rgba(255, 215, 0, 0.3) !important;
+  border-color: rgba(10, 132, 255, 0.35) !important;
 }
 
 .scene-panel-hint {
@@ -1368,7 +1368,7 @@ html.is-splashing .bottom-bar::after {
   margin-top: 6px;
   line-height: 1.5;
   padding: 8px 11px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(220,92,145,0.035));
+  background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(255,255,255,0.03));
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
@@ -1423,8 +1423,8 @@ html.is-splashing .bottom-bar::after {
 
 /* Immersive mode sub-card overrides */
 .scene-immersive .scene-sub-card {
-  border-color: rgba(220, 92, 145, 0.2);
-  background: rgba(18, 12, 28, 0.55);
+  border-color: rgba(10, 132, 255, 0.15);
+  background: var(--glass-bg);
 }
 
 /* --- NPC List --- */
@@ -1526,9 +1526,9 @@ html.is-splashing .bottom-bar::after {
   border-radius: 8px;
   font-size: 10.5px;
   font-weight: 500;
-  background: rgba(200, 140, 170, 0.12);
+  background: var(--accent-soft);
   color: rgba(255, 255, 255, 0.7);
-  border: 0.5px solid rgba(180, 130, 160, 0.18);
+  border: 0.5px solid rgba(10, 132, 255, 0.14);
   white-space: nowrap;
 }
 
@@ -1540,11 +1540,11 @@ html.is-splashing .bottom-bar::after {
   padding: 8px 10px;
   min-height: 36px;
   margin-bottom: 3px;
-  border: 1px solid rgba(200, 140, 170, 0.16);
+  border: 1px solid var(--accent-soft);
   border-radius: var(--scene-radius);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
-    rgba(200, 140, 170, 0.05);
+    rgba(255, 255, 255, 0.03);
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   line-height: 1.45;
@@ -1561,14 +1561,14 @@ html.is-splashing .bottom-bar::after {
 
 .dir-choice-chip:hover {
   transform: translateY(-1px);
-  border-color: rgba(220, 92, 145, 0.30);
+  border-color: rgba(10, 132, 255, 0.25);
   box-shadow:
-    0 6px 18px rgba(220, 92, 145, 0.08),
+    0 6px 18px rgba(10, 132, 255, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .dir-choice-chip:active {
-  background: rgba(200, 140, 170, 0.16);
+  background: var(--accent-soft);
   border-color: var(--scene-accent);
   color: var(--text-primary);
   transform: scale(0.98);
@@ -1576,12 +1576,12 @@ html.is-splashing .bottom-bar::after {
 
 /* --- Choice chip feedback states --- */
 .dir-choice-chip.selected {
-  border-color: rgba(220, 92, 145, 0.48);
+  border-color: rgba(10, 132, 255, 0.40);
   color: #fff;
-  background: linear-gradient(135deg, rgba(220, 92, 145, 0.26), rgba(128, 76, 180, 0.18));
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.20), rgba(10, 132, 255, 0.14));
   box-shadow:
-    0 0 0 1px rgba(220, 92, 145, 0.14),
-    0 8px 22px rgba(220, 92, 145, 0.14),
+    0 0 0 1px rgba(10, 132, 255, 0.12),
+    0 8px 22px rgba(10, 132, 255, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -1597,8 +1597,8 @@ html.is-splashing .bottom-bar::after {
   cursor: default;
   transform: none !important;
   box-shadow: none !important;
-  background: rgba(200, 140, 170, 0.04);
-  border-color: rgba(200, 140, 170, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--glass-border);
 }
 
 /* Historically locked direction list — all chips non-interactive */
@@ -1616,28 +1616,28 @@ html.is-splashing .bottom-bar::after {
 
 /* Immersive mode overrides */
 .scene-immersive .scene-stat-chip {
-  background: rgba(220, 92, 145, 0.12);
-  border-color: rgba(220, 92, 145, 0.2);
+  background: rgba(10, 132, 255, 0.10);
+  border-color: rgba(10, 132, 255, 0.15);
 }
 
 .scene-immersive .dir-choice-chip {
-  border-color: rgba(220, 92, 145, 0.25);
-  background: rgba(220, 92, 145, 0.06);
+  border-color: rgba(10, 132, 255, 0.20);
+  background: rgba(10, 132, 255, 0.04);
 }
 
 .scene-immersive .dir-choice-chip:active {
-  background: rgba(220, 92, 145, 0.2);
+  background: rgba(10, 132, 255, 0.15);
   border-color: var(--scene-accent-bright);
-  box-shadow: 0 0 12px rgba(220, 92, 145, 0.15);
+  box-shadow: 0 0 12px var(--glass-border);
 }
 
 .scene-immersive .scene-npc-item {
-  border-color: rgba(220, 92, 145, 0.15);
+  border-color: var(--glass-border);
   background: rgba(18, 12, 28, 0.4);
 }
 
 .scene-immersive .scene-npc-del {
-  border-color: rgba(220, 92, 145, 0.25);
+  border-color: rgba(10, 132, 255, 0.20);
 }
 
 .scene-immersive .scene-sub-card-header {
@@ -1646,9 +1646,9 @@ html.is-splashing .bottom-bar::after {
 
 .scene-status-card {
   margin-top: 12px;
-  border: 0.5px solid rgba(255, 215, 0, 0.18);
+  border: 0.5px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 215, 0, 0.035);
+  background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
 }
 
@@ -1656,7 +1656,7 @@ html.is-splashing .bottom-bar::after {
   padding: 8px 10px 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #c0a050;
+  color: var(--text-secondary);
 }
 
 .scene-status-table {
@@ -2347,7 +2347,7 @@ html.is-splashing .bottom-bar::after {
   padding: 4px 10px;
   border: 0.5px solid var(--scene-accent-dim);
   border-radius: 12px;
-  background: rgba(208, 120, 160, 0.12);
+  background: var(--accent-soft);
   color: var(--scene-accent-bright);
   font-size: 11px;
   font-weight: 500;
@@ -2397,7 +2397,7 @@ html.is-splashing .bottom-bar::after {
 /* -- Top bar: glass, flush with story column -- */
 .scene-immersive .top-bar {
   background: linear-gradient(180deg, rgba(26, 16, 38, 0.78), rgba(14, 10, 22, 0.60));
-  border-bottom: 1px solid rgba(220, 92, 145, 0.12);
+  border-bottom: 1px solid rgba(10, 132, 255, 0.10);
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
@@ -2406,13 +2406,13 @@ html.is-splashing .bottom-bar::after {
   width: 100%;
   padding: 14px 16px;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(220, 92, 145, 0.06), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(10, 132, 255, 0.04), transparent 60%),
     linear-gradient(160deg, rgba(24, 14, 36, 0.88), rgba(14, 10, 22, 0.92));
-  border: 1px solid rgba(220, 92, 145, 0.14);
+  border: 1px solid rgba(10, 132, 255, 0.12);
   border-radius: var(--scene-radius);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.30),
-    0 0 18px rgba(220, 92, 145, 0.04),
+    0 0 18px rgba(10, 132, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   font-size: 15px;
   line-height: 1.75;
@@ -2458,11 +2458,11 @@ html.is-splashing .bottom-bar::after {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--scene-radius);
   background:
-    radial-gradient(circle at 30% 0%, rgba(220, 92, 145, 0.06), transparent 50%),
+    radial-gradient(circle at 30% 0%, rgba(10, 132, 255, 0.04), transparent 50%),
     rgba(14, 8, 22, 0.90);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(220, 92, 145, 0.04),
+    0 0 0 1px rgba(10, 132, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   flex: 1;
   display: flex;
@@ -2475,7 +2475,7 @@ html.is-splashing .bottom-bar::after {
 .scene-immersive .scene-panel.collapsed {
   flex: 0 0 auto;
   margin: 4px 8px;
-  background: rgba(18, 12, 28, 0.68);
+  background: var(--glass-bg);
 }
 
 .scene-immersive .scene-panel-header {
@@ -2494,14 +2494,14 @@ html.is-splashing .bottom-bar::after {
 .scene-immersive .scene-input,
 .scene-immersive .scene-score-input {
   background: rgba(255, 255, 255, 0.035) !important;
-  border-color: rgba(180, 130, 160, 0.12) !important;
+  border-color: var(--glass-border) !important;
   border-radius: 6px !important;
   color: rgba(255,255,255,0.8) !important;
 }
 
 .scene-immersive .scene-input:focus,
 .scene-immersive .scene-score-input:focus {
-  border-color: rgba(200, 140, 170, 0.35) !important;
+  border-color: rgba(10, 132, 255, 0.28) !important;
   background: rgba(255, 255, 255, 0.05) !important;
 }
 
@@ -2513,9 +2513,9 @@ html.is-splashing .bottom-bar::after {
 /* -- Scene Status Card: game system panel, softer lines -- */
 .scene-immersive .scene-status-card {
   margin-top: 12px;
-  border: 1px solid rgba(220, 92, 145, 0.22);
+  border: 1px solid rgba(10, 132, 255, 0.18);
   border-radius: var(--scene-radius);
-  background: rgba(18, 12, 28, 0.62);
+  background: var(--glass-bg-strong);
   overflow: hidden;
   box-shadow: 0 1px 8px rgba(0,0,0,0.3);
 }
@@ -2526,7 +2526,7 @@ html.is-splashing .bottom-bar::after {
   font-weight: 600;
   color: var(--scene-gold-bright);
   letter-spacing: 0.3px;
-  border-bottom: 0.5px solid rgba(180, 120, 150, 0.12);
+  border-bottom: 0.5px solid var(--glass-border);
   background: rgba(30, 16, 40, 0.35);
 }
 
@@ -2548,7 +2548,7 @@ html.is-splashing .bottom-bar::after {
 .scene-immersive .scene-status-table th,
 .scene-immersive .scene-status-table td {
   padding: 7px 10px;
-  border-bottom: 0.5px solid rgba(180, 130, 160, 0.08);
+  border-bottom: 0.5px solid var(--glass-border);
   border-top: none;
   vertical-align: top;
 }
@@ -2566,7 +2566,7 @@ html.is-splashing .bottom-bar::after {
 /* -- Compact status block: softer chips -- */
 .scene-immersive .scene-status-compact {
   padding: 6px 10px 4px;
-  border-bottom: 0.5px solid rgba(180, 130, 160, 0.1);
+  border-bottom: 0.5px solid var(--glass-border);
 }
 
 .scene-immersive .scene-compact-label {
@@ -2576,7 +2576,7 @@ html.is-splashing .bottom-bar::after {
 /* -- Direction choice chips: story branch buttons -- */
 .scene-immersive .dir-choice-chip {
   background: rgba(30, 16, 40, 0.55);
-  border-color: rgba(200, 140, 170, 0.2);
+  border-color: rgba(10, 132, 255, 0.18);
   color: rgba(255, 255, 255, 0.72);
   padding: 9px 12px;
   font-size: 12.5px;
@@ -2593,21 +2593,21 @@ html.is-splashing .bottom-bar::after {
 /* -- Code blocks -- */
 .scene-immersive .message-bubble code {
   background: rgba(0, 0, 0, 0.45);
-  color: #d0a0c0;
+  color: var(--accent-bright);
 }
 
 .scene-immersive .message-bubble pre {
   background: rgba(0, 0, 0, 0.45);
-  border-color: rgba(180, 130, 160, 0.1);
+  border-color: var(--glass-border);
 }
 
 /* -- Thinking section -- */
 .scene-immersive .thinking-section {
-  border-color: rgba(180, 130, 160, 0.12);
+  border-color: var(--glass-border);
 }
 
 .scene-immersive .thinking-section[open] {
-  border-color: rgba(200, 140, 170, 0.25);
+  border-color: rgba(10, 132, 255, 0.22);
 }
 
 .scene-immersive .thinking-header {
@@ -2616,7 +2616,7 @@ html.is-splashing .bottom-bar::after {
 
 .scene-immersive .thinking-content {
   background: rgba(30, 20, 40, 0.25);
-  border-color: rgba(180, 130, 160, 0.08);
+  border-color: var(--glass-border);
 }
 
 /* -- Redesigned Scene Status Card -- */
@@ -2647,8 +2647,8 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .scene-stat-score {
-  background: rgba(220, 92, 145, 0.2);
-  border-color: rgba(220, 92, 145, 0.35);
+  background: rgba(10, 132, 255, 0.15);
+  border-color: rgba(10, 132, 255, 0.28);
   color: var(--scene-accent-bright);
   font-weight: 600;
 }
@@ -2678,7 +2678,7 @@ html.is-splashing .bottom-bar::after {
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, rgba(220,92,145,0.6), rgba(220,180,100,0.8));
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
   transition: width 400ms var(--spring);
 }
 
@@ -2743,7 +2743,7 @@ html.is-splashing .bottom-bar::after {
   top: 9px;
   width: 5px;
   height: 1px;
-  background: rgba(220, 92, 145, 0.4);
+  background: rgba(10, 132, 255, 0.35);
 }
 
 .scene-immersive .scene-body-details li {
@@ -2817,9 +2817,9 @@ html.is-splashing .bottom-bar::after {
   width: 100%;
   padding: 8px 10px;
   min-height: 36px;
-  border: 1px solid rgba(220, 92, 145, 0.25);
+  border: 1px solid rgba(10, 132, 255, 0.20);
   border-radius: var(--scene-radius);
-  background: rgba(220, 92, 145, 0.06);
+  background: rgba(10, 132, 255, 0.04);
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   line-height: 1.5;
@@ -2830,16 +2830,16 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .dir-choice-chip:active {
-  background: rgba(220, 92, 145, 0.18);
+  background: rgba(10, 132, 255, 0.14);
   border-color: var(--scene-accent-bright);
   color: #fff;
-  box-shadow: 0 0 14px rgba(220, 92, 145, 0.18);
+  box-shadow: 0 0 14px rgba(10, 132, 255, 0.14);
 }
 @media (hover: hover) and (pointer: fine) {
   .scene-immersive .dir-choice-chip:hover {
     transform: translateY(-1px);
-    border-color: rgba(220, 92, 145, 0.45);
-    box-shadow: 0 2px 12px rgba(220, 92, 145, 0.1);
+    border-color: rgba(10, 132, 255, 0.35);
+    box-shadow: 0 2px 12px rgba(10, 132, 255, 0.08);
   }
 }
 
@@ -2849,7 +2849,7 @@ html.is-splashing .bottom-bar::after {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(220, 92, 145, 0.25);
+  background: rgba(10, 132, 255, 0.20);
   color: var(--scene-accent-bright);
   font-size: 11px;
   font-weight: 700;
@@ -2920,18 +2920,18 @@ html.is-splashing .bottom-bar::after {
 }
 .scene-tab:hover {
   color: #fff;
-  background: rgba(220, 92, 145, 0.12);
-  border-color: rgba(220, 92, 145, 0.22);
+  background: rgba(10, 132, 255, 0.10);
+  border-color: rgba(10, 132, 255, 0.18);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 92, 145, 0.06);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.04);
 }
 .scene-tab.active {
   color: #fff;
-  border-color: rgba(220, 92, 145, 0.48);
-  background: linear-gradient(135deg, rgba(220, 92, 145, 0.24), rgba(128, 76, 180, 0.16));
+  border-color: rgba(10, 132, 255, 0.40);
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.18), rgba(10, 132, 255, 0.12));
   box-shadow:
-    0 0 0 1px rgba(220, 92, 145, 0.08),
-    0 4px 16px rgba(220, 92, 145, 0.10),
+    0 0 0 1px rgba(10, 132, 255, 0.06),
+    0 4px 16px rgba(10, 132, 255, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   font-weight: 600;
 }
@@ -2971,20 +2971,20 @@ html.is-splashing .bottom-bar::after {
 }
 .scene-chip:active { transform: scale(0.98); }
 .scene-chip.active {
-  background: rgba(220,92,145,0.18);
-  border-color: rgba(220,92,145,0.4);
+  background: rgba(10,132,255,0.14);
+  border-color: rgba(10,132,255,0.28);
   color: var(--scene-accent-bright);
   font-weight: 500;
 }
 
 .scene-immersive .scene-tab-desc { color: rgba(255,255,255,0.25); }
 .scene-immersive .scene-chip {
-  border-color: rgba(220,92,145,0.12);
-  background: rgba(30,20,40,0.35);
+  border-color: rgba(10,132,255,0.10);
+  background: rgba(255,255,255,0.03);
 }
 .scene-immersive .scene-chip.active {
-  background: rgba(220,92,145,0.22);
-  border-color: rgba(220,92,145,0.45);
+  background: rgba(10,132,255,0.18);
+  border-color: rgba(10,132,255,0.35);
 }
 
 /* ============================================================
@@ -3050,8 +3050,8 @@ html.is-splashing .bottom-bar::after {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: var(--scene-radius);
-  border: 1px solid rgba(220,92,145,0.18);
-  background: rgba(18,12,28,0.65);
+  border: 1px solid rgba(10,132,255,0.14);
+  background: var(--glass-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3072,7 +3072,7 @@ html.is-splashing .bottom-bar::after {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(220,92,145,0.4), rgba(180,140,200,0.3));
+  background: linear-gradient(135deg, rgba(10,132,255,0.28), var(--accent-soft));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3122,8 +3122,8 @@ html.is-splashing .bottom-bar::after {
 
 .scene-immersive .npc-card-front,
 .scene-immersive .npc-card-back {
-  border-color: rgba(220,92,145,0.22);
-  background: rgba(18,12,28,0.72);
+  border-color: rgba(10,132,255,0.18);
+  background: var(--glass-bg);
 }
 
 @media (max-width: 600px) {
@@ -3328,8 +3328,8 @@ html.is-splashing .bottom-bar::after {
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 12px;
-  background: rgba(18,12,28,0.72);
-  border-top: 1px solid rgba(220,92,145,0.2);
+  background: var(--glass-bg);
+  border-top: 1px solid rgba(10, 132, 255, 0.15);
   animation: hintsIn 200ms ease;
 }
 @keyframes hintsIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -3353,9 +3353,9 @@ html.is-splashing .bottom-bar::after {
   flex-shrink: 0;
   max-width: 100%;
   padding: 6px 12px;
-  border: 1px solid rgba(220,92,145,0.25);
+  border: 1px solid rgba(10,132,255,0.20);
   border-radius: var(--scene-radius);
-  background: rgba(220,92,145,0.06);
+  background: rgba(10,132,255,0.04);
   color: rgba(255,255,255,0.75);
   font-size: 12px;
   line-height: 1.45;
@@ -3365,7 +3365,7 @@ html.is-splashing .bottom-bar::after {
   transition: background var(--transition-fast), border-color var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
-.hints-chip:active { background: rgba(220,92,145,0.18); border-color: var(--scene-accent-bright); }
+.hints-chip:active { background: rgba(10,132,255,0.14); border-color: var(--scene-accent-bright); }
 
 
 /* Scene panel button theme override */
@@ -3382,8 +3382,8 @@ html.is-splashing .bottom-bar::after {
 }
 .scene-immersive .scene-panel .btn-secondary,
 .scene-immersive .scene-tab-content .btn-secondary {
-  background: rgba(30,20,40,0.5);
-  border-color: rgba(220,92,145,0.2);
+  background: var(--glass-bg);
+  border-color: rgba(10, 132, 255, 0.15);
   color: rgba(255,255,255,0.7);
 }
 
@@ -3395,15 +3395,15 @@ html.is-splashing .bottom-bar::after {
   border-radius: var(--scene-radius);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
-    rgba(18, 12, 28, 0.70);
+    var(--glass-bg-strong);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 }
 .char-status-card.char-main {
-  border-color: rgba(220, 92, 145, 0.32);
+  border-color: rgba(10, 132, 255, 0.28);
   box-shadow:
-    0 0 0 1px rgba(220, 92, 145, 0.06),
-    0 4px 20px rgba(220, 92, 145, 0.08);
+    0 0 0 1px rgba(10, 132, 255, 0.04),
+    0 4px 20px rgba(10, 132, 255, 0.06);
 }
 .char-card-header {
   display: flex;
@@ -3420,8 +3420,8 @@ html.is-splashing .bottom-bar::after {
   margin-left: auto;
   padding: 1px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(220, 92, 145, 0.18);
-  background: rgba(220, 92, 145, 0.14);
+  border: 1px solid rgba(10, 132, 255, 0.14);
+  background: rgba(10, 132, 255, 0.12);
   color: var(--scene-accent-bright);
   font-size: 10.5px;
   font-weight: 600;
@@ -3438,7 +3438,7 @@ html.is-splashing .bottom-bar::after {
   color: rgba(255,255,255,0.65);
   line-height: 1.45;
 }
-.char-body-item::before { content:""; position:absolute; left:0; top:8px; width:4px; height:1px; background:rgba(220,92,145,0.35); }
+.char-body-item::before { content:""; position:absolute; left:0; top:8px; width:4px; height:1px; background:rgba(10,132,255,0.28); }
 .char-body-more { font-size: 12px; color: rgba(255,255,255,0.25); text-align: center; padding: 2px 0; }
 .char-inner-voice {
   margin: 2px 10px 6px;
@@ -3446,8 +3446,8 @@ html.is-splashing .bottom-bar::after {
   font-size: 10.5px;
   color: rgba(255,255,255,0.4);
   font-style: italic;
-  border-left: 2px solid rgba(200,160,220,0.15);
-  background: rgba(30,20,40,0.2);
+  border-left: 2px solid var(--glass-border);
+  background: rgba(255,255,255,0.02);
   border-radius: 0 3px 3px 0;
 }
 .scene-plot-footer { padding: 6px 10px; font-size: 11.5px; color: rgba(255,255,255,0.55); line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.06); }
@@ -3472,7 +3472,7 @@ html.is-splashing .bottom-bar::after {
   margin: 0 0 8px;
   line-height: 1.5;
   padding: 9px 11px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(220,92,145,0.04));
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(10,132,255,0.03));
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 10px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
@@ -3539,15 +3539,15 @@ html.is-standalone .bottom-bar::after {
 /* --- Choice chips: consistent inset glow on hover --- */
 .dir-choice-chip:hover {
   box-shadow:
-    0 6px 18px rgba(220, 92, 145, 0.08),
+    0 6px 18px rgba(10, 132, 255, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* --- Scene tab: subtle active inset highlight --- */
 .scene-tab.active {
   box-shadow:
-    0 0 0 1px rgba(220, 92, 145, 0.08),
-    0 4px 16px rgba(220, 92, 145, 0.10),
+    0 0 0 1px rgba(10, 132, 255, 0.06),
+    0 4px 16px rgba(10, 132, 255, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -3555,7 +3555,7 @@ html.is-standalone .bottom-bar::after {
 .char-status-card {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-    rgba(18, 12, 28, 0.70);
+    var(--glass-bg-strong);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 }
 
@@ -3814,9 +3814,9 @@ html.has-custom-bg .user .message-bubble {
   gap: 5px;
   padding: 4px 10px;
   border-radius: 16px;
-  border: 1px solid rgba(220,92,145,0.3);
-  background: rgba(220,92,145,0.1);
-  color: #e090b0;
+  border: 1px solid rgba(10,132,255,0.22);
+  background: rgba(10,132,255,0.08);
+  color: var(--accent-bright);
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
@@ -3827,8 +3827,8 @@ html.has-custom-bg .user .message-bubble {
   display: inline-block;
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #e06090;
-  box-shadow: 0 0 6px rgba(220,92,145,0.5);
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(10,132,255,0.35);
 }
 
 /* Input area: slightly tighter, send button dim when empty */
@@ -3918,7 +3918,7 @@ html.has-custom-bg .user .message-bubble {
 }
 .story-editor-body .scene-tabs {
   position: sticky; top: 0; z-index: 2;
-  background: rgba(18,10,28,0.92);
+  background: var(--glass-bg-strong);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   margin: -16px -18px 12px;
