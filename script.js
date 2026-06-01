@@ -3886,6 +3886,18 @@ function handleMessageAction(action, msgIndex) {
       text = text.slice(0, lastSceneIdx);
     }
 
+    // B2. Isolated @@END (orphaned, without a preceding @@SCENE)
+    text = text.replace(/@@END/g, '');
+
+    // B3. Any remaining @@ markers (belt-and-suspenders)
+    text = text.replace(/@@\w+/g, '');
+
+    // B4. Incomplete state-block lines: [角色: ...], 精神:, 身体:, etc.
+    //    Only strip them when they appear as trailing structured lines
+    //    (looks like a broken state block after the natural narrative)
+    var stateLineRe = /(?:^|\n)\s*(?:\[角色[:：][^\]]*\]|精神[:：]|精神评分[:：]|身体[:：]|身体细节[:：]|情节[:：]|风险[:：]|内心[:：]|目标[:：]|姿势[:：]|当前目标[:：]|当前姿势[:：]|限制[:：]|约束[:：])\s*$/gm;
+    text = text.replace(stateLineRe, '');
+
     // C. Chinese status-block headers — strip from the LAST occurrence
     // (only within trailing ~2000 chars to avoid false positives)
     var scanStart = Math.max(0, text.length - 2000);
@@ -4128,7 +4140,7 @@ function handleMessageAction(action, msgIndex) {
       ].concat(sceneStateRef).concat(settingRefs).concat([
         '写文模式规则：',
         '0. 【角色视角强制】@@SCENE 中所有字段只描述”剧情内的人物/世界”，禁止描述 AI 自身、模型状态、用户操作、写作过程、生成过程、输出流畅度、叙事技巧、处理负载。精神状态是剧情人物（默认为主角）的心理/情绪/意志状态，不是 AI 或写作者的创作状态。身体细节是剧情人物的姿态、动作、感官、伤痛、疲劳、衣着随身状态，不是”打字、输出、模拟书写、键盘敲击”。剧情总结只总结剧情内发生的事件。剧情走向是剧情内人物可采取的行动或外部变化，不是”用户可以要求/调整/改写/让 AI 继续”。如果角色不明确，优先使用角色卡里的主角；没有角色卡则用最近剧情中的主视角人物。',
-        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 4 个剧情选项，使用 A/B/C/D 选项标号。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含"行动 + 可能收益/风险/情绪变化"。不允许只在正文里写后续可能而不写入 @@SCENE。',
+        '1. 每次回复末尾必须输出完整的 @@SCENE 块，且 @@SCENE 块内必须包含”走向:”标签。走向: 后必须给出 4 个剧情选项，使用 A/B/C/D 选项标号。不得使用 1/2/3/4 数字编号。每个选项基于本次刚写出的正文、用户最新要求、最近上下文和当前场景记忆生成，选项之间必须有明显差异，不能泛泛而谈，不能脱离当前剧情，不能重复上一次已给出的走向。每条控制在 16–32 字，必须包含”行动 + 可能收益/风险/情绪变化”。不允许只在正文里写后续可能而不写入 @@SCENE。@@SCENE 是内部程序协议，必须单独放在回复末尾，不得混入正文叙事中。正文部分必须是纯自然语言，不得包含任何 @@ 标记、状态块标签、或结构化控制符。',
         '2. 剧情走向必须以 A/B/C/D 选项形式输出。用户下一轮如果只输入 A、B、C 或 D（或其变体如”选A””选择B”），应视为用户选择了对应剧情分支，并沿该分支继续创作，不得忽略或自行发挥；如果用户自由输入其他内容，则按用户新要求继续，不要强行套用已有选项。',
         '3. 每次回复后必须维护剧情人物的精神状态、身体细节、当前剧情总结和剧情走向，不得省略 @@SCENE 状态块。',
         '4. 精神评分使用 1-10 的整数，评价剧情人物的心理稳定/压力/清醒程度。评分要跟剧情变化一致，但不要无理由持续降低。',
@@ -4202,7 +4214,7 @@ function handleMessageAction(action, msgIndex) {
     // Ensures model doesn't forget @@SCENE / mental / body / NPC / A/B/C/D in long convos
     if (storyEnabled) {
       var reminder = '\n[本轮世界故事硬性格式要求]';
-      reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。';
+      reminder += '\n正文末尾必须输出完整的 @@SCENE ... @@END 块。@@SCENE 是内部协议，必须单独放在回复末尾，禁止混入正文叙事。正文只包含纯自然语言剧情。';
       reminder += '\n@@SCENE 内必须包含：精神、精神评分、身体、身体细节（至少2条可感知细节）、情节、走向（A/B/C/D 各一条，16-32字）。';
       if (conv.sceneNpcs && conv.sceneNpcs.length) {
         reminder += '\n必须给出至少1个与当前剧情相关的 NPC 状态块（格式：[角色: NPC名]）。';
