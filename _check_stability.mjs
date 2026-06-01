@@ -57,11 +57,11 @@ check('is-splashing locks body background', /html\.is-splashing[\s\S]*background
 
 // --- Global purple-black bottom UI ---
 console.log('\n--- Global bottom UI ---');
-check('bottom-bar bg #100a18', /\.bottom-bar\s*\{[\s\S]*background:\s*#100a18/.test(css));
-check('bottom-bar blur saturate(180%)', /\.bottom-bar\s*\{[\s\S]*saturate\(180%\)\s*blur\(24px\)/.test(css));
-check('bottom-bar purple border', /\.bottom-bar\s*\{[\s\S]*border:\s*1px\s+solid\s+rgba\(220,\s*92,\s*145,\s*0\.2\)/.test(css));
-check('input-message bg rgba(14,8,22,0.6)', /\.input-message\s*\{[\s\S]*background:\s*rgba\(14,\s*8,\s*22,\s*0\.6\)/.test(css));
-check('input-message border rgba(180,130,160,0.18)', /\.input-message\s*\{[\s\S]*border:\s*1px\s+solid\s+rgba\(180,\s*130,\s*160,\s*0\.18\)/.test(css));
+check('bottom-bar has glass background', /\.bottom-bar\s*\{[\s\S]*background:\s*var\(--glass-bg/.test(css));
+check('bottom-bar has glass blur', /\.bottom-bar\s*\{[\s\S]*backdrop-filter:\s*var\(--glass-blur\)/.test(css));
+check('bottom-bar has glass border', /\.bottom-bar\s*\{[\s\S]*border:\s*1px\s+solid\s+var\(--glass-border\)/.test(css));
+check('input-message has glass background', /\.input-message\s*\{[\s\S]*background:\s*var\(--glass/.test(css));
+check('input-message has glass border', /\.input-message\s*\{[\s\S]*border:\s*1px\s+solid\s+var\(--glass-border/.test(css));
 check('input-message:focus scene-accent', /\.input-message:focus\s*\{[\s\S]*border-color:\s*var\(--scene-accent\)/.test(css));
 
 // --- Stability features ---
