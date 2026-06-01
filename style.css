@@ -3037,6 +3037,26 @@ html.is-splashing .bottom-bar::after {
 
 .npc-card.flipped .npc-card-inner { transform: rotateY(180deg); }
 
+/* Flipped card: let back face expand naturally, hide front */
+.npc-card.flipped {
+  min-height: 0;
+}
+.npc-card.flipped .npc-card-inner {
+  height: auto;
+  min-height: 0;
+}
+.npc-card.flipped .npc-card-front {
+  display: none;
+}
+.npc-card.flipped .npc-card-back {
+  position: relative;
+  inset: auto;
+  transform: none;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
 .npc-card-front, .npc-card-back {
   position: absolute;
   inset: 0;
@@ -3060,7 +3080,6 @@ html.is-splashing .bottom-bar::after {
   justify-content: flex-start;
   padding: 10px;
   gap: 6px;
-  overflow-y: auto;
 }
 
 .npc-card-avatar {
