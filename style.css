@@ -2951,7 +2951,7 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-tab-content { display: none; padding: 8px 10px 4px; }
-.scene-tab-content.active { display: block; }
+.scene-tab-content.active { display: block; min-height: 0; }
 
 .scene-tab-desc {
   font-size: 10.5px;
@@ -3008,6 +3008,16 @@ html.is-splashing .bottom-bar::after {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+  padding-bottom: 96px;
+}
+
+/* NPC tab content: extra bottom space so "+ 添加 NPC" doesn't occlude fields */
+.scene-tab-content .scene-npc-grid {
+  padding-bottom: 108px;
+}
+
+.scene-tab-content #btnAddNpc {
+  margin-bottom: 12px;
 }
 
 .npc-card {
@@ -3159,14 +3169,15 @@ html.is-splashing .bottom-bar::after {
     margin-top: -2px;
   }
 
-  /* Scene panel: disable internal scroll on mobile — single page scroll */
+  /* Scene panel: keep flex column, let body scroll internally */
   .scene-panel {
-    max-height: none;
-    overflow: visible;
+    max-height: calc(100dvh - var(--top-bar-h, 52px) - var(--bottom-bar-h, 150px) - 60px);
+    overflow: hidden;
   }
   .scene-panel-body {
-    max-height: none;
-    overflow-y: visible;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   /* Scene panel tighter padding */
@@ -3918,14 +3929,20 @@ html.has-custom-bg .user .message-bubble {
 }
 .story-editor-body #btnAddNpc {
   margin-top: 4px;
+  margin-bottom: 12px;
   width: 100%;
+}
+
+.story-editor-body .scene-npc-grid {
+  padding-bottom: 24px;
 }
 .story-editor-body .scene-chip { font-size: 12px; padding: 5px 12px; }
 .story-editor-body .scene-chips { gap: 6px; margin: 4px 0 8px; }
 
-/* Scene panel inline: make it scrollable with proper bottom spacing */
+/* Scene panel inline: flex-based scrollable body with bottom clearance */
 .scene-panel:not(.collapsed):not([style*="display:none"]) .scene-panel-body {
-  max-height: calc(100dvh - var(--top-bar-h, 52px) - var(--bottom-bar-h, 150px) - 80px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px));
