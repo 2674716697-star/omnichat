@@ -566,6 +566,10 @@ check('DEFAULTS.replyCharLimit is 500',
 // HTML select element
 check('index.html has inputReplyCharLimit select',
   /inputReplyCharLimit/.test(idx));
+check('index.html has option value="100"',
+  /value\s*=\s*"100"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="300"',
+  /value\s*=\s*"300"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 check('index.html has option value="500"',
   /value\s*=\s*"500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 check('index.html has option value="1000"',
@@ -574,17 +578,13 @@ check('index.html has option value="1500"',
   /value\s*=\s*"1500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 check('index.html has option value="2000"',
   /value\s*=\s*"2000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
-check('index.html has option value="2500"',
-  /value\s*=\s*"2500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
-check('index.html has option value="3000"',
-  /value\s*=\s*"3000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 // No legacy high options
+check('index.html does NOT have option value="2500"',
+  !/value\s*=\s*"2500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html does NOT have option value="3000"',
+  !/value\s*=\s*"3000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 check('index.html does NOT have option value="4000"',
   !/value\s*=\s*"4000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
-check('index.html does NOT have option value="5000"',
-  !/value\s*=\s*"5000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
-check('index.html does NOT have option value="6000"',
-  !/value\s*=\s*"6000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
 // DOM binding
 check('dom.inputReplyCharLimit bound in script.js',
   /dom\.inputReplyCharLimit\s*=\s*\$\(/.test(js));
@@ -597,21 +597,21 @@ check('syncSettingsToUI writes replyCharLimit',
 // createConversation includes replyCharLimit
 check('createConversation sets replyCharLimit',
   /replyCharLimit:\s*DEFAULTS\.replyCharLimit/.test(js));
-// Migration clamps old >3000 values down to 3000
-check('normalizeConversation clamps replyCharLimit > 3000',
-  /conv\.replyCharLimit\s*=\s*3000/.test(js));
-// Migration defaults missing/<500 values to 500
-check('normalizeConversation defaults replyCharLimit < 500 to 500',
-  /rcl\s*<\s*500/.test(js) && /conv\.replyCharLimit\s*=\s*500/.test(js));
+// Migration clamps old >2000 values down to 2000
+check('normalizeConversation clamps replyCharLimit > 2000',
+  /conv\.replyCharLimit\s*=\s*2000/.test(js));
+// Migration defaults missing/<100 values to 500
+check('normalizeConversation defaults replyCharLimit < 100 to 500',
+  /rcl\s*<\s*100/.test(js) && /conv\.replyCharLimit\s*=\s*500/.test(js));
 // Migration normalizes intermediate values to nearest option
 check('normalizeConversation has REPLY_CHAR_OPTIONS for normalization',
-  /REPLY_CHAR_OPTIONS/.test(js) && /500.*1000.*1500.*2000.*2500.*3000/.test(js));
-// Regular chat constraint has ±200 tolerance
-check('regular chat replyCharLimit constraint mentions ±200',
-  /回复字数约束/.test(js) && /±200/.test(js));
+  /REPLY_CHAR_OPTIONS/.test(js) && /100.*300.*500.*1000.*1500.*2000/.test(js));
+// Regular chat constraint has ±50 tolerance
+check('regular chat replyCharLimit constraint mentions ±50',
+  /回复字数约束/.test(js) && /±50/.test(js));
 // Regular chat constraint mentions upper bound
-check('regular chat constraint mentions do not exceed limit+200',
-  /不要超出/.test(js) && /\+\s*200/.test(js));
+check('regular chat constraint mentions do not exceed limit+50',
+  /不要超出/.test(js) && /\+\s*50/.test(js));
 // World story split: Part1 has target
 check('_buildStoryMessages Part1 split target exists',
   /第一部分目标约/.test(js) && /part1Target/.test(js));
@@ -620,7 +620,7 @@ check('_buildStoryMessages Part2 split target exists',
   /第二部分目标约/.test(js) && /part2Target/.test(js));
 // World story constraint mentions total upper bound
 check('_buildStoryMessages mentions total upper bound',
-  /总计不超过/.test(js) && /\+\s*200/.test(js));
+  /总计不超过/.test(js) && /\+\s*50/.test(js));
 // Minimum per-segment protection at low totals
 check('_buildStoryMessages has minSegTarget protection',
   /minSegTarget/.test(js));

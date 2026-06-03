@@ -3165,9 +3165,9 @@ function handleMessageAction(action, msgIndex) {
       if (part2Target < minSegTarget) part2Target = minSegTarget;
       var stCharMsg;
       if (isPart2) {
-        stCharMsg = '\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±200 字误差，总计不超过 ' + (stCharLimit + 200) + ' 字。';
+        stCharMsg = '\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。';
       } else {
-        stCharMsg = '\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±200 字误差。第一部分目标约 ' + part1Target + ' 字。请确保总字数接近目标，每段至少保证基本叙事完整。';
+        stCharMsg = '\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。请确保总字数接近目标，每段至少保证基本叙事完整。';
       }
       messages.push({ role: 'system', content: stCharMsg });
     }
@@ -3600,7 +3600,7 @@ function handleMessageAction(action, msgIndex) {
     // Reply character count target constraint (regular chat only; story mode has its own in _buildStoryMessages)
     var charLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (charLimit) {
-      var charLimitMsg = '\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±200 字误差（' + (charLimit - 200) + '–' + (charLimit + 200) + ' 字）。除非用户明确要求更短或更长，请尽量控制在此范围内，不要超出 ' + (charLimit + 200) + ' 字。';
+      var charLimitMsg = '\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。除非用户明确要求更短或更长，请尽量控制在此范围内，不要超出 ' + (charLimit + 50) + ' 字。';
       messages.push({ role: 'system', content: charLimitMsg });
     }
 

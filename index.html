@@ -261,15 +261,15 @@
         <div class="setting-group">
           <label class="setting-label">
             回复字数
-            <span class="setting-hint" style="display:block;font-weight:400">每轮回复的中文字数目标，误差约 ±200 字。仅作内容长度提示，不影响 Max Tokens 硬上限。</span>
+            <span class="setting-hint" style="display:block;font-weight:400">每轮回复的中文字数目标，误差约 ±50 字。仅作内容长度提示，不影响 Max Tokens 硬上限。</span>
           </label>
           <select class="select" id="inputReplyCharLimit">
+            <option value="100">100 字</option>
+            <option value="300">300 字</option>
             <option value="500">500 字</option>
             <option value="1000">1000 字</option>
             <option value="1500">1500 字</option>
             <option value="2000">2000 字</option>
-            <option value="2500">2500 字</option>
-            <option value="3000">3000 字</option>
           </select>
         </div>
 
