@@ -3155,6 +3155,7 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // Reply character count constraint for world story (Part1/Part2 split)
+    // Append to last user message for stronger adherence (vs. system message)
     var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (stCharLimit) {
       var part1Target = Math.round(stCharLimit * 0.55);
@@ -3165,11 +3166,21 @@ function handleMessageAction(action, msgIndex) {
       if (part2Target < minSegTarget) part2Target = minSegTarget;
       var stCharMsg;
       if (isPart2) {
-        stCharMsg = '\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。';
+        stCharMsg = '\n\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。不要参考历史回复的长度，每段独立遵守此约束。';
       } else {
-        stCharMsg = '\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。请确保总字数接近目标，每段至少保证基本叙事完整。';
+        stCharMsg = '\n\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。不要参考历史回复的长度，每段独立遵守此约束。请确保总字数接近目标，每段至少保证基本叙事完整。';
       }
-      messages.push({ role: 'system', content: stCharMsg });
+      if (conv._charLimitEscalate) {
+        stCharMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
+        conv._charLimitEscalate = false;
+      }
+      // Append to last user message (stronger weight than system message)
+      for (var smi = messages.length - 1; smi >= 0; smi--) {
+        if (messages[smi].role === 'user') {
+          messages[smi].content += stCharMsg;
+          break;
+        }
+      }
     }
 
     return messages;
@@ -3598,10 +3609,21 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // Reply character count target constraint (regular chat only; story mode has its own in _buildStoryMessages)
+    // Append to last user message for stronger adherence (vs. system message)
     var charLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (charLimit) {
-      var charLimitMsg = '\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。除非用户明确要求更短或更长，请尽量控制在此范围内，不要超出 ' + (charLimit + 50) + ' 字。';
-      messages.push({ role: 'system', content: charLimitMsg });
+      var charLimitMsg = '\n\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。不要参考历史回复的长度，每轮独立遵守此约束。除非用户明确要求更短或更长，请严格控制在范围内，不要超出 ' + (charLimit + 50) + ' 字。';
+      if (conv._charLimitEscalate) {
+        charLimitMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
+        conv._charLimitEscalate = false;
+      }
+      // Append to last user message (stronger weight than system message)
+      for (var umi = messages.length - 1; umi >= 0; umi--) {
+        if (messages[umi].role === 'user') {
+          messages[umi].content += charLimitMsg;
+          break;
+        }
+      }
     }
 
     // Inject extra system messages (API-only, e.g. regenerate reminder).
@@ -3864,6 +3886,7 @@ function handleMessageAction(action, msgIndex) {
                 console.warn('[OmniChat] Scene repair succeeded (dirs=' + dirsParsed.length + ').');
               } else {
                 console.warn('[OmniChat] Scene repair failed — no status card or chips for this reply.');
+                assistantMsg._sceneRepairFailed = true;
               }
             }
           } catch (repairErr) {
@@ -3875,6 +3898,11 @@ function handleMessageAction(action, msgIndex) {
       // --- Truncation warning (visible to all users, not just debug) ---
       if (assistantMsg.finishReason === 'length') {
         showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。', 'warning');
+      }
+
+      // --- Escalate char limit for next turn when response is abnormal ---
+      if (assistantMsg.finishReason === 'length' || assistantMsg._sceneRepairFailed) {
+        conv._charLimitEscalate = true;
       }
 
       // --- Story output completeness diagnostics (debug only) ---

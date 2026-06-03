@@ -4618,11 +4618,17 @@ if (part1Target < minSegTarget) part1Target = minSegTarget;
 if (part2Target < minSegTarget) part2Target = minSegTarget;
 var stCharMsg;
 if (isPart2) {
-stCharMsg = '\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。';
+stCharMsg = '\n\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。不要参考历史回复的长度，每段独立遵守此约束。';
 } else {
-stCharMsg = '\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。请确保总字数接近目标，每段至少保证基本叙事完整。';
+stCharMsg = '\n\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。不要参考历史回复的长度，每段独立遵守此约束。请确保总字数接近目标，每段至少保证基本叙事完整。';
 }
-messages.push({ role: 'system', content: stCharMsg });
+if (conv._charLimitEscalate) {
+stCharMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
+conv._charLimitEscalate = false;
+}
+for (var smi = messages.length - 1; smi >= 0; smi--) {
+if (messages[smi].role === 'user') { messages[smi].content += stCharMsg; break; }
+}
 }
 return messages;
 }
@@ -4964,8 +4970,14 @@ messages.push({ role: 'system', content: reminder });
 }
 var charLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
 if (charLimit) {
-var charLimitMsg = '\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。除非用户明确要求更短或更长，请尽量控制在此范围内，不要超出 ' + (charLimit + 50) + ' 字。';
-messages.push({ role: 'system', content: charLimitMsg });
+var charLimitMsg = '\n\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。不要参考历史回复的长度，每轮独立遵守此约束。除非用户明确要求更短或更长，请严格控制在范围内，不要超出 ' + (charLimit + 50) + ' 字。';
+if (conv._charLimitEscalate) {
+charLimitMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
+conv._charLimitEscalate = false;
+}
+for (var umi = messages.length - 1; umi >= 0; umi--) {
+if (messages[umi].role === 'user') { messages[umi].content += charLimitMsg; break; }
+}
 }
 if (extraSystemMessages.length > 0) {
 for (var esi = 0; esi < extraSystemMessages.length; esi++) {
@@ -5190,6 +5202,7 @@ dirsParsed = snapshotDirs ? parseDirectionOptions(snapshotDirs) : [];
 console.warn('[OmniChat] Scene repair succeeded (dirs=' + dirsParsed.length + ').');
 } else {
 console.warn('[OmniChat] Scene repair failed — no status card or chips for this reply.');
+assistantMsg._sceneRepairFailed = true;
 }
 }
 } catch (repairErr) {
@@ -5199,6 +5212,9 @@ console.warn('[OmniChat] Scene repair error:', repairErr.message || repairErr);
 }
 if (assistantMsg.finishReason === 'length') {
 showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。', 'warning');
+}
+if (assistantMsg.finishReason === 'length' || assistantMsg._sceneRepairFailed) {
+conv._charLimitEscalate = true;
 }
 if (isDebugBudget() && storyEnabled) {
 var diagScene = {

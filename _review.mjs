@@ -627,9 +627,18 @@ check('_buildStoryMessages has minSegTarget protection',
 // Part1 prompt emphasizes total word count + narrative completeness
 check('Part1 prompt emphasizes total word count',
   /请确保总字数接近目标/.test(js) && /每段至少保证基本叙事完整/.test(js));
-// Story constraint message uses system role (not modifying user message)
-check('story char limit is a system message',
-  /回复字数约束/.test(js) && /role:\s*['\"]system['\"]/.test(js));
+// Constraint appends to user message (not system) for stronger adherence
+check('char limit constraint appends to user message',
+  /回复字数约束/.test(js) && /messages\[.*\]\.role\s*===\s*['\"]user['\"]/.test(js));
+// Constraint tells model to ignore historical reply length
+check('char limit constraint says ignore historical reply length',
+  /不要参考历史回复的长度/.test(js));
+// Escalation flag set on truncation or scene repair failure
+check('_charLimitEscalate set on finishReason=length or _sceneRepairFailed',
+  /_charLimitEscalate\s*=\s*true/.test(js));
+// Escalation warning message
+check('escalation adds warning about previous abnormal reply',
+  /上一轮回复异常/.test(js));
 // Must not break aux model parsing
 check('buildAuxMessages does NOT contain char limit constraint',
   !/回复字数约束/.test(js.match(/function\s+buildAuxMessages[\s\S]*?^  \}/m)?.[0] || ''));
