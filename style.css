@@ -185,7 +185,7 @@ html.is-splashing .bottom-bar::after {
 .splash-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+  background: radial-gradient(ellipse 60% 50% at 50% 40%, var(--accent-soft) 0%, rgba(255,255,255,0.03) 35%, transparent 70%);
   animation: splashBgPulse 3s ease-in-out infinite;
 }
 
@@ -224,19 +224,19 @@ html.is-splashing .bottom-bar::after {
   justify-content: center;
   color: var(--text-primary);
   animation: orbPulse 3s ease-in-out infinite;
-  box-shadow: 0 0 32px rgba(255,255,255,0.04);
+  box-shadow: 0 0 32px rgba(255,255,255,0.04), 0 0 60px var(--accent-soft);
 }
 
 @keyframes orbPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 32px rgba(255,255,255,0.04); }
-  50% { transform: scale(1.04); box-shadow: 0 0 40px rgba(255,255,255,0.06); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 32px rgba(255,255,255,0.04), 0 0 60px var(--accent-soft); }
+  50% { transform: scale(1.04); box-shadow: 0 0 40px rgba(255,255,255,0.06), 0 0 72px var(--accent); }
 }
 
 .splash-ring {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--accent-soft);
   animation: ringExpand 3s ease-out infinite;
 }
 
@@ -744,6 +744,41 @@ html.is-splashing .bottom-bar::after {
   white-space: normal;
   line-height: 1.45;
   word-break: break-word;
+}
+
+/* Story aux model rows — stable grid, no inline styles */
+.setting-aux-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.setting-aux-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.setting-aux-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.setting-aux-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.setting-aux-tokens {
+  width: 92px;
+  flex-shrink: 0;
+  font-size: 13px;
+  text-align: center;
+}
+/* Custom model input row — hidden by default, shown when __custom__ selected */
+.setting-aux-custom-row[hidden] {
+  display: none;
 }
 
 /* Settings section cards */
@@ -1705,6 +1740,19 @@ html.is-splashing .bottom-bar::after {
 
 .message-bubble p:last-child {
   margin-bottom: 0;
+}
+
+/* --- Story Part Separator (dual-part display) --- */
+.story-part {
+  margin-bottom: 6px;
+}
+.story-part:last-child {
+  margin-bottom: 0;
+}
+.story-part-continuation {
+  padding-top: 8px;
+  margin-top: 6px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
 }
 
 /* --- Markdown in Bubbles --- */

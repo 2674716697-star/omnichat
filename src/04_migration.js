@@ -215,6 +215,18 @@ function createSceneWorld(seed) {
     // Repair story mode flags from legacy fields before normalizing messages.
     // This ensures normalizeMessage can use isStoryStarted correctly.
     repairStoryModeFlags(conv);
+
+    // --- Schema v2→v3: aux model settings ---
+    if (oldVersion < 3) {
+      if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
+      if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
+      if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
+    }
+    // Ensure aux fields exist defensively (belt-and-suspenders)
+    if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
+    if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
+    if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
+
     for (var i = 0; i < conv.messages.length; i++) {
       conv.messages[i] = normalizeMessage(conv.messages[i], conv);
     }

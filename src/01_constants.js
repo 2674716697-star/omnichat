@@ -21,7 +21,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 2;
+  const STORAGE_SCHEMA_VERSION = 3;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {
@@ -101,6 +101,9 @@
     keepThinkingOpen: true,
     sceneDetailLevel: 'medium',
     worldMode: false,
+    storyAuxProvider: '',
+    storyAuxModel: '',
+    storyAuxMaxTokens: 10000,
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''

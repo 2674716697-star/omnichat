@@ -100,7 +100,8 @@ check('API uses _requestContent fallback', /_requestContent\s*\|\|\s*(m\.)?conte
 console.log('\n--- A/B/C/D choice logic ---');
 check('parseSceneChoiceInput exists', /function\s+parseSceneChoiceInput/.test(js));
 check('parseDirectionOptions exists', /function\s+parseDirectionOptions/.test(js));
-check('sendMessageContent used for chip click', /sendMessageContent\('选'\s*\+\s*letter\)/.test(js));
+check('sendMessageContent used for chip click with full text',
+  /我选择.*letter.*请沿这个分支继续/.test(js) && /sendMessageContent\(choiceText\)/.test(js));
 check('isLatestInteractiveDirectionMessage exists', /function\s+isLatestInteractiveDirectionMessage/.test(js));
 check('renderSceneStatusTable receives msgIndex', /function\s+renderSceneStatusTable\s*\(\s*msg\s*,\s*msgIndex/.test(js));
 check('renderBubbleHTML receives msgIndex', /function\s+renderBubbleHTML\s*\(\s*msg\s*,\s*msgIndex/.test(js));
@@ -150,6 +151,101 @@ check('syncLegacyToStoryMode handles enabled/started flags', /sm\.enabled\s*=\s*
 check('sendMessage calls repairStoryModeFlags before storyEnabled check', /syncLegacyToStoryMode\(conv\)[\s\S]*repairStoryModeFlags/.test(js));
 check('repair infers started from sceneWorld/character/npcs', /hasWorld\s*\|\|\s*hasChar\s*\|\|\s*hasNpcs/.test(js));
 check('repair infers started from message sceneSnapshot', /sceneSnapshot[\s\S]*inferredStarted\s*=\s*true/.test(js));
+
+// =========================================================================
+// 7b. STORY MODE CODE QUALITY — guardrails against known regressions
+// =========================================================================
+console.log('\n--- Story mode code quality ---');
+
+// 7b-1: story route must appear BEFORE sendMessage consumes state._regenerateFlags.
+// Extract the sendMessage function body and check ordering.
+var sendMsgFn = (js.match(/async function sendMessage\(\)\s*\{[\s\S]*?^  \}/m) || [''])[0];
+// The story route (isStoryEnabled check) must appear before the regenFlags read
+var storyRouteIdx = sendMsgFn.search(/if\s*\(\s*isStoryEnabled\s*\(\s*conv\s*\)\s*\)\s*\{[\s\S]*?sendStoryTurn/);
+var regenFlagsIdx = sendMsgFn.search(/state\._regenerateFlags/);
+check('story route appears BEFORE regenFlags consumption in sendMessage',
+  storyRouteIdx >= 0 && regenFlagsIdx >= 0 && storyRouteIdx < regenFlagsIdx);
+
+// 7b-2: sendStoryTurn must NOT call buildSceneFallbackDirections in the real fallback path.
+// Extract sendStoryTurn function body and ensure no buildSceneFallbackDirections call.
+var storyTurnFn = (js.match(/async function sendStoryTurn\s*\([\s\S]*?^  \}/m) || [''])[0];
+check('sendStoryTurn does NOT call buildSceneFallbackDirections',
+  !/buildSceneFallbackDirections/.test(storyTurnFn));
+
+// 7b-3: DOM bindings must include aux model controls.
+check('dom.selectStoryAuxProvider bound', /dom\.selectStoryAuxProvider\s*=\s*\$\(/.test(js));
+check('dom.selectStoryAuxModel bound', /dom\.selectStoryAuxModel\s*=\s*\$\(/.test(js));
+check('dom.inputStoryAuxModel bound', /dom\.inputStoryAuxModel\s*=\s*\$\(/.test(js));
+check('dom.inputStoryAuxMaxTokens bound', /dom\.inputStoryAuxMaxTokens\s*=\s*\$\(/.test(js));
+
+// 7b-4: Aux defaults must NOT be hardcoded deepseek as forced defaults.
+// Either DEFAULTS.storyAuxProvider is empty, OR usage falls back to conv.provider.
+var auxDefaultsOk = !/storyAuxProvider:\s*['"]deepseek['"]/.test(js)
+  || /conv\.storyAuxProvider\s*\|\|\s*conv\.provider/.test(js);
+check('aux provider not hardcoded deepseek OR usage falls back to conv.provider', auxDefaultsOk);
+var auxModelDefaultsOk = !/storyAuxModel:\s*['"]deepseek-v4-flash['"]/.test(js)
+  || /conv\.storyAuxModel\s*\|\|\s*resolveModel/.test(js);
+check('aux model not hardcoded deepseek-v4-flash OR usage falls back to resolveModel', auxModelDefaultsOk);
+
+// 7b-5: Aux API key fallback exists (if aux provider has no key, fall back to main).
+check('aux provider API key fallback to main provider',
+  /getApiKey\(auxProvider\)/.test(storyTurnFn) && /auxProvider\s*=\s*conv\.provider/.test(storyTurnFn));
+
+// 7b-6: Aux failure uses repairSceneBlock, not local fallback.
+check('aux failure path uses repairSceneBlock',
+  /repairSceneBlock\(conv,\s*fullContent\)/.test(storyTurnFn));
+check('aux failure does NOT show "已使用备选选项" toast',
+  !/已使用备选选项/.test(storyTurnFn));
+
+// 7c: sendStoryTurn UX state machine — progress, no stuck UI
+check('sendStoryTurn inserts placeholder before Part1',
+  /正在生成剧情/.test(storyTurnFn) && /placeholderMsg/.test(storyTurnFn));
+check('sendStoryTurn updates placeholder after Part1',
+  /part1Content/.test(storyTurnFn) && /placeholderMsg\.content\s*=\s*part1Content/.test(storyTurnFn));
+check('sendStoryTurn updates placeholder after Part2',
+  /placeholderMsg\.content\s*=\s*fullContent/.test(storyTurnFn));
+check('aux call has timeout protection (withTimeout)',
+  /withTimeout\(/.test(storyTurnFn));
+check('repair call has timeout protection (withTimeout)',
+  /repairSceneBlock/.test(storyTurnFn) && storyTurnFn.indexOf('withTimeout') < storyTurnFn.lastIndexOf('repairSceneBlock'));
+check('sendStoryTurn finally sets isStreaming=false',
+  /state\.isStreaming\s*=\s*false/.test(storyTurnFn));
+check('sendStoryTurn finally nulls abortController',
+  /state\.abortController\s*=\s*null/.test(storyTurnFn));
+check('sendStoryTurn finally calls updateSendUI',
+  /updateSendUI\(\)/.test(storyTurnFn));
+check('placeholderMsg._streaming cleared in finally',
+  /placeholderMsg\._streaming\s*=\s*false/.test(storyTurnFn));
+
+// 7d: sendStoryTurn A/B/C/D resilience — guarantee directions survive aux/repair failure
+check('sendStoryTurn saves previousSceneState before aux',
+  /previousSceneState\s*=\s*createSceneState\(conv\.sceneState\)/.test(storyTurnFn));
+check('ensureStoryDirections function exists',
+  /function\s+ensureStoryDirections/.test(js) || /ensureStoryDirections/.test(storyTurnFn));
+check('sendStoryTurn calls ensureStoryDirections',
+  /ensureStoryDirections\(assistantMsg/.test(storyTurnFn));
+check('ensureStoryDirections tries parsing from visible content (parseDirectionOptions)',
+  /ensureStoryDirections[\s\S]*parseDirectionOptions\(fullContent\)/.test(js));
+check('ensureStoryDirections falls back to repairSceneBlock (C)',
+  /ensureStoryDirections[\s\S]*repairSceneBlock/.test(js));
+check('ensureStoryDirections inherits previous directions (D)',
+  /ensureStoryDirections[\s\S]*previousSceneState[\s\S]*directions/.test(js) &&
+  /assistantMsg\.sceneSnapshot\s*=\s*createSceneState\(previousSceneState\)/.test(js));
+check('_showActions gated by parseDirectionOptions length >= 4',
+  /parseDirectionOptions\(finalDirs\)\.length\s*>=\s*4/.test(storyTurnFn));
+check('fallback writes assistantMsg.sceneSnapshot (not just conv.sceneState)',
+  /assistantMsg\.sceneSnapshot\s*=/.test(storyTurnFn));
+
+// 7e: render-time fallback for broken _showActions assistant without directions
+check('findPreviousSceneSnapshotForRender function exists',
+  /function\s+findPreviousSceneSnapshotForRender/.test(js));
+check('createMessageElement repairs broken _showActions assistant',
+  /createMessageElement[\s\S]*_showActions[\s\S]*findPreviousSceneSnapshotForRender/.test(js) ||
+  /msg\._showActions[\s\S]*findPreviousSceneSnapshotForRender/.test(js));
+check('renderSceneStatusTable also has fallback for broken assistant',
+  /renderSceneStatusTable[\s\S]*_showActions[\s\S]*findPreviousSceneSnapshotForRender/.test(js));
+check('fallback writes msg.sceneSnapshot (createSceneState)',
+  /msg\.sceneSnapshot\s*=\s*createSceneState\(fallback/.test(js));
 
 // =========================================================================
 // 8. BUILD VERSION
@@ -236,6 +332,40 @@ try {
 } catch (e) {
   warn('cannot run git status: ' + e.message);
 }
+
+// =========================================================================
+// 12b. AUX MODEL DEFAULTS & CLEANUP
+// =========================================================================
+console.log('\n--- Aux model defaults & cleanup ---');
+const htmlSrc = read('omnichat.html');
+// storyAuxMaxTokens must be 10000 not 1200
+var auxTokens1200inJS = /storyAuxMaxTokens:\s*1200/.test(js);
+var auxTokens1200inHTML = /storyAuxMaxTokens:\s*1200/.test(htmlSrc);
+var auxTokens10000inJS = /storyAuxMaxTokens:\s*10000/.test(js);
+var auxTokens10000inHTML = /storyAuxMaxTokens:\s*10000/.test(htmlSrc);
+check('script.js: no storyAuxMaxTokens: 1200', !auxTokens1200inJS);
+check('omnichat.html: no storyAuxMaxTokens: 1200', !auxTokens1200inHTML);
+check('script.js: has storyAuxMaxTokens: 10000', auxTokens10000inJS);
+check('omnichat.html: has storyAuxMaxTokens: 10000', auxTokens10000inHTML);
+// Both index.html and omnichat.html must have selectStoryAuxModel
+check('index.html: has selectStoryAuxModel', /selectStoryAuxModel/.test(idx));
+check('omnichat.html: has selectStoryAuxModel', /selectStoryAuxModel/.test(htmlSrc));
+// script.js must bind dom.selectStoryAuxModel AND use it in settings save
+var bindsSelectAuxModel = /dom\.selectStoryAuxModel\s*=\s*\$\(/.test(js);
+var usesInSyncFromUI = /dom\.selectStoryAuxModel/.test(js) && /conv\.storyAuxModel\s*=/.test(js);
+check('script.js: binds dom.selectStoryAuxModel', bindsSelectAuxModel);
+check('script.js: uses selectStoryAuxModel in settings save', usesInSyncFromUI);
+// Temp test files must not exist
+var noCCReport = !exists('_cc_test_report.md');
+var noConsoleTest = !exists('_console_test.js');
+var noTestApi = !exists('_test_api.mjs');
+var noTestBrowser = !exists('_test_browser.mjs');
+var noTestLogic = !exists('_test_logic.mjs');
+check('_cc_test_report.md deleted', noCCReport);
+check('_console_test.js deleted', noConsoleTest);
+check('_test_api.mjs deleted', noTestApi);
+check('_test_browser.mjs deleted', noTestBrowser);
+check('_test_logic.mjs deleted', noTestLogic);
 
 // =========================================================================
 // 13. INDEX.HTML / OMNICHAT.HTML SYNC (light check)

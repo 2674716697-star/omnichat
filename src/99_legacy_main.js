@@ -98,6 +98,10 @@
     dom.inputKeepThinking = $('#inputKeepThinking');
     dom.btnStartWorld = $('#btnStartWorld');
     dom.inputSceneDetail = $('#inputSceneDetail');
+    dom.selectStoryAuxProvider = $('#selectStoryAuxProvider');
+    dom.selectStoryAuxModel = $('#selectStoryAuxModel');
+    dom.inputStoryAuxModel = $('#inputStoryAuxModel');
+    dom.inputStoryAuxMaxTokens = $('#inputStoryAuxMaxTokens');
     dom.scenePanel = $('#scenePanel');
     dom.scenePanelToggle = $('#scenePanelToggle');
     dom.scenePanelBody = $('#scenePanelBody');
@@ -347,7 +351,45 @@
     return true;
   }
 
+  // =========================================================================
+  // findPreviousSceneSnapshotForRender — fallback directions for broken msgs
+  // Searches backwards from msgIndex for a valid sceneSnapshot with ≥4 directions.
+  // Falls back to conv.sceneState if no message-level snapshot found.
+  // =========================================================================
+
+  function findPreviousSceneSnapshotForRender(msgIndex) {
+    var conv = getCurrentConv();
+    if (!conv || !Array.isArray(conv.messages)) return null;
+    // Search backwards for a valid assistant sceneSnapshot
+    for (var i = msgIndex - 1; i >= 0; i--) {
+      var m = conv.messages[i];
+      if (m.role !== 'assistant' || !m.sceneSnapshot) continue;
+      var dirs = m.sceneSnapshot.directions || '';
+      if (typeof parseDirectionOptions === 'function' && parseDirectionOptions(dirs).length >= 4) {
+        return m.sceneSnapshot;
+      }
+    }
+    // Fallback: use conv-level sceneState
+    var cs = conv.sceneState;
+    if (cs && cs.directions && typeof parseDirectionOptions === 'function' && parseDirectionOptions(cs.directions).length >= 4) {
+      return cs;
+    }
+    return null;
+  }
+
   function renderSceneStatusTable(msg, msgIndex) {
+    // Repair broken assistant messages that have _showActions but no valid directions
+    if (msg.role === 'assistant' && msg._showActions && !msg._streaming) {
+      var hasDirs = msg.sceneSnapshot && msg.sceneSnapshot.directions && parseDirectionOptions(msg.sceneSnapshot.directions).length >= 4;
+      if (!hasDirs) {
+        var fallbackSS = findPreviousSceneSnapshotForRender(msgIndex);
+        if (fallbackSS && fallbackSS.directions) {
+          msg.sceneSnapshot = msg.sceneSnapshot
+            ? Object.assign({}, msg.sceneSnapshot, { directions: fallbackSS.directions, characterStatuses: fallbackSS.characterStatuses || [] })
+            : createSceneState(fallbackSS);
+        }
+      }
+    }
     var ss = createSceneState(msg.sceneSnapshot);
     var st = msg.sceneStatusSnapshot;
     var ch = msg.sceneCharacterSnapshot;
@@ -458,6 +500,9 @@
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
       worldMode: DEFAULTS.worldMode,
       sceneDetailLevel: DEFAULTS.sceneDetailLevel,
+      storyAuxProvider: DEFAULTS.storyAuxProvider,
+      storyAuxModel: DEFAULTS.storyAuxModel,
+      storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
       schemaVersion: STORAGE_SCHEMA_VERSION,
       messages: [],
     };
@@ -1049,12 +1094,24 @@
       html += '</details>';
     }
 
-    // Main content - fast path during streaming, full markdown when done
-    const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
-    const contentHTML = msg._streaming
-      ? renderContentFast(visibleContent)
-      : renderMarkdown(visibleContent);
-    html += '<div class="message-content">' + contentHTML + '</div>';
+    // Main content — displayParts for dual-part story, otherwise single content block
+    if (msg.displayParts && msg.displayParts.length > 0 && !msg._streaming) {
+      for (var pi = 0; pi < msg.displayParts.length; pi++) {
+        var part = msg.displayParts[pi];
+        if (part.content) {
+          html += '<div class="story-part' + (pi > 0 ? ' story-part-continuation' : '') + '">';
+          html += '<div class="message-content">' + renderMarkdown(part.content) + '</div>';
+          html += '</div>';
+        }
+      }
+    } else {
+      // Original single-content path (streaming or non-displayParts messages)
+      const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
+      const contentHTML = msg._streaming
+        ? renderContentFast(visibleContent)
+        : renderMarkdown(visibleContent);
+      html += '<div class="message-content">' + contentHTML + '</div>';
+    }
 
     if (msg.sceneSnapshot && !msg._streaming) {
       html += renderSceneStatusTable(msg, msgIndex);
@@ -1116,6 +1173,13 @@
     if (msg.role === 'system-info') {
       div.innerHTML = '<div class="message-bubble">' + escapeHtml(msg.content) + '</div>';
     } else if (msg.role === 'assistant') {
+      // Repair broken assistant messages that have _showActions but no valid directions
+      if (msg._showActions && !msg._streaming && (!msg.sceneSnapshot || !msg.sceneSnapshot.directions || parseDirectionOptions(msg.sceneSnapshot.directions).length < 4)) {
+        var fallbackSS = findPreviousSceneSnapshotForRender(index);
+        if (fallbackSS && fallbackSS.directions && parseDirectionOptions(fallbackSS.directions).length >= 4) {
+          msg.sceneSnapshot = createSceneState(fallbackSS);
+        }
+      }
       const roleLabel = 'AI';
       const bubbleClass = msg._streaming ? 'message-bubble streaming-cursor' : 'message-bubble';
       div.innerHTML = '<div class="message-role">' + roleLabel + '</div><div class="' + bubbleClass + '">' + renderBubbleHTML(msg, index) + '</div>';
@@ -1452,6 +1516,28 @@
     dom.inputAutoCompress.checked = !!conv.autoCompress;
     dom.inputKeepThinking.checked = conv.keepThinkingOpen !== false;
     if (dom.inputSceneDetail) dom.inputSceneDetail.value = conv.sceneDetailLevel || 'medium';
+    if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider.value = conv.storyAuxProvider || DEFAULTS.storyAuxProvider;
+    if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
+      var auxModel = conv.storyAuxModel || '';
+      var presetOpts = dom.selectStoryAuxModel.querySelectorAll('option');
+      var found = false;
+      var customRow = document.getElementById('storyAuxCustomRow');
+      for (var oi = 0; oi < presetOpts.length; oi++) {
+        if (presetOpts[oi].value === auxModel && presetOpts[oi].value !== '__custom__') {
+          dom.selectStoryAuxModel.value = auxModel;
+          dom.inputStoryAuxModel.value = '';
+          if (customRow) customRow.hidden = true;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        dom.selectStoryAuxModel.value = auxModel ? '__custom__' : '';
+        dom.inputStoryAuxModel.value = auxModel;
+        if (customRow) customRow.hidden = !auxModel;
+      }
+    }
+    if (dom.inputStoryAuxMaxTokens) dom.inputStoryAuxMaxTokens.value = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
     conv.toolCallLimit = 0;
     conv.toolCallLimitMode = 'disabled';
     dom.selectToolCallLimit.value = '0';
@@ -1487,6 +1573,16 @@
     conv.autoCompress = dom.inputAutoCompress.checked;
     conv.keepThinkingOpen = dom.inputKeepThinking.checked;
     if (dom.inputSceneDetail) conv.sceneDetailLevel = dom.inputSceneDetail.value;
+    if (dom.selectStoryAuxProvider) conv.storyAuxProvider = dom.selectStoryAuxProvider.value;
+    if (dom.selectStoryAuxModel) {
+      var selVal = dom.selectStoryAuxModel.value;
+      if (selVal === '__custom__' && dom.inputStoryAuxModel) {
+        conv.storyAuxModel = dom.inputStoryAuxModel.value.trim();
+      } else {
+        conv.storyAuxModel = selVal;
+      }
+    }
+    if (dom.inputStoryAuxMaxTokens) conv.storyAuxMaxTokens = parseInt(dom.inputStoryAuxMaxTokens.value, 10) || DEFAULTS.storyAuxMaxTokens;
     const prevPrecise = conv.preciseMode;
     conv.preciseMode = dom.inputPreciseMode.checked;
     if (conv.preciseMode && !prevPrecise) {
@@ -2417,6 +2513,508 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
+  // callChatModel — reusable Chat Completions API call
+  // =========================================================================
+
+  async function callChatModel(conv, model, messages, opts) {
+    opts = opts || {};
+    var provider = opts.provider || conv.provider;
+    var stream = opts.stream !== undefined ? opts.stream : (conv.stream !== false);
+    var maxTokens = opts.maxTokens || conv.maxTokens;
+    var signal = opts.signal || (state.abortController ? state.abortController.signal : null);
+
+    var pConf = getProviderConfig(provider);
+    var apiKey = getApiKey(provider);
+    if (!apiKey) throw new Error(ERR_MSGS.noApiKey + ' (' + provider + ')');
+    if (!pConf.apiUrl) throw new Error('Provider ' + provider + ' has no API URL');
+
+    var reqConv = Object.assign({}, conv, { stream: stream, maxTokens: maxTokens });
+    var headers = buildRequestHeaders(provider, apiKey, reqConv);
+    var body = buildRequestBody(reqConv, model, messages);
+
+    var resp = await fetch(pConf.apiUrl, {
+      method: 'POST', headers: headers, body: JSON.stringify(body), signal: signal,
+    });
+
+    if (!resp.ok) {
+      var errText = ''; try { errText = await resp.text(); } catch (_) {}
+      if (resp.status === 401) throw new Error(ERR_MSGS.unauthorized);
+      if (resp.status === 429) throw new Error(ERR_MSGS.rateLimited);
+      if (resp.status === 402) throw new Error(ERR_MSGS.insufficientBalance);
+      if (resp.status === 400 && /model/i.test(errText)) throw new Error(ERR_MSGS.modelNotFound);
+      if (resp.status === 400 && /max_tokens|context|length|too long/i.test(errText)) throw new Error('上下文或 Max Tokens 超出限制。');
+      throw new Error(ERR_MSGS.serverError + ' (' + provider + ' ' + resp.status + ')');
+    }
+
+    if (stream) return resp; // Caller must handle processStream
+
+    var data = await resp.json();
+    return parseNonStreamResponse(provider, data);
+  }
+
+  // =========================================================================
+  // STORY AUX MODEL — build messages and parse JSON response
+  // =========================================================================
+
+  function buildAuxMessages(conv, part1, part2) {
+    var fullStory = (part1 || '') + (part2 ? '\n\n' + part2 : '');
+    var prev = conv.sceneState || {};
+    var prevState = {
+      currentRole: prev.currentRole || '',
+      currentGoal: prev.currentGoal || '',
+      posture: prev.posture || '',
+      mental: prev.mental || '',
+      mentalScore: prev.mentalScore || '',
+      physical: prev.physical || '',
+      bodyDetails: prev.bodyDetails || '',
+      plot: prev.plot || '',
+      risk: prev.risk || '',
+      innerVoice: prev.innerVoice || '',
+      previousDirections: prev.directions || '',
+    };
+    var auxSystemPrompt = [
+      '你是一个剧情状态解析器。根据用户输入的两段剧情正文以及之前的剧情状态，输出更新后的 JSON 状态。',
+      '',
+      '输出格式为严格的 JSON（不要包含```json或任何其他markdown标记）：',
+      '{',
+      '  "currentRole": "当前主视角角色名",',
+      '  "currentGoal": "当前目标（一句话）",',
+      '  "posture": "当前姿势/位置",',
+      '  "mental": "精神状态描述，含具体触发原因",',
+      '  "mentalScore": "1-10整数评分",',
+      '  "physical": "身体状态一句话",',
+      '  "bodyDetails": "身体细节（可用\\n分隔多条，每条有具体可感知的细节）",',
+      '  "plot": "1-2句剧情总结",',
+      '  "risk": "隐藏风险或伏笔（1句）",',
+      '  "innerVoice": "内心独白（1句，可空）",',
+      '  "directions": "A. 行动+可能后果，16-32字\\nB. 行动+可能后果，16-32字\\nC. 行动+可能后果，16-32字\\nD. 行动+可能后果，16-32字",',
+      '  "characterStatuses": [{',
+      '    "name": "角色名",',
+      '    "relation": "主角/NPC等",',
+      '    "isMain": true,',
+      '    "mental": "精神状态",',
+      '    "mentalScore": "1-10",',
+      '    "physical": "身体状态",',
+      '    "bodyDetails": "身体细节",',
+      '    "goal": "当前目标",',
+      '    "posture": "姿势",',
+      '    "innerVoice": "内心独白"',
+      '  }]',
+      '}',
+      '',
+      '要求：',
+      '- 4 个剧情走向都必须输出，每条用 A./B./C./D. 开头，16-32字',
+      '- 每条走向必须包含行动+可能后果/风险/情绪变化',
+      '- 禁止"继续深入调查""暂时退一步观察"等泛化模板',
+      '- characterStatuses 至少包含主角',
+      '- 精神状态要有具体触发原因，如"因听见脚步声而警觉升高"',
+      '- 身体细节要具体可感知：呼吸、肌肉、视线等',
+    ].join('\n');
+
+    return [
+      { role: 'system', content: auxSystemPrompt },
+      { role: 'user', content: JSON.stringify({ part1: part1, part2: part2 || '', previousState: prevState }) },
+    ];
+  }
+
+  function tryParseAuxResponse(text) {
+    if (!text || typeof text !== 'string') return null;
+    var jsonMatch = text.match(/\{[\s\S]*\}/);
+    var jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
+    try {
+      var data = JSON.parse(jsonStr);
+      if (!data.directions || typeof data.directions !== 'string') return null;
+      var dirs = parseDirectionOptions(data.directions);
+      if (!dirs || dirs.length < 4) return null;
+      return {
+        currentRole: data.currentRole || '',
+        currentGoal: data.currentGoal || '',
+        posture: data.posture || '',
+        mental: data.mental || '',
+        mentalScore: normalizeMentalScore(data.mentalScore),
+        physical: data.physical || '',
+        bodyDetails: data.bodyDetails || '',
+        plot: data.plot || '',
+        risk: data.risk || '',
+        innerVoice: data.innerVoice || '',
+        directions: data.directions,
+        characterStatuses: Array.isArray(data.characterStatuses) ? data.characterStatuses : [],
+      };
+    } catch (_) { return null; }
+  }
+
+  // =========================================================================
+  // withTimeout — race a promise against a timeout, cleanup on settle
+  // =========================================================================
+
+  function withTimeout(promise, ms) {
+    var timeoutId;
+    var timeoutPromise = new Promise(function(_, reject) {
+      timeoutId = setTimeout(function() {
+        reject(new Error('Timeout after ' + (ms / 1000) + 's'));
+      }, ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(function() {
+      clearTimeout(timeoutId);
+    });
+  }
+
+  // =========================================================================
+  // ensureStoryDirections — guarantee assistantMsg has 4 parseable A/B/C/D
+  // Priority: A) existing sceneSnapshot directions B) parse visible content
+  // C) repairSceneBlock D) inherit previousSceneState
+  // =========================================================================
+
+  async function ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState) {
+    var existing = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
+    if (existing && parseDirectionOptions(existing).length >= 4) return; // A: already good
+
+    // B: try to parse directions from visible narrative
+    var fromContent = parseDirectionOptions(fullContent);
+    if (fromContent.length >= 4) {
+      var dirsStr = fromContent.map(function(d) { return d.content; }).join('\n');
+      assistantMsg.sceneSnapshot = createSceneState({ directions: dirsStr });
+      conv.sceneState = conv.sceneState || {};
+      conv.sceneState.directions = dirsStr;
+      if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+      return;
+    }
+
+    // C: repairSceneBlock with longer timeout (45s)
+    try {
+      var repairResult = await withTimeout(
+        repairSceneBlock(conv, fullContent),
+        45000
+      );
+      if (repairResult && parseDirectionOptions(repairResult.directions).length >= 4) {
+        assistantMsg.sceneSnapshot = createSceneState({
+          directions: repairResult.directions,
+          characterStatuses: repairResult.characterStatuses,
+        });
+        conv.sceneState = conv.sceneState || {};
+        conv.sceneState.directions = repairResult.directions;
+        conv.sceneState.characterStatuses = repairResult.characterStatuses;
+        if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+        return;
+      }
+    } catch (_) { /* fall through */ }
+
+    // D: inherit previous round's directions (no local fake A/B/C/D)
+    var prevDirs = previousSceneState && previousSceneState.directions;
+    if (prevDirs && parseDirectionOptions(prevDirs).length >= 4) {
+      assistantMsg.sceneSnapshot = createSceneState(previousSceneState);
+      conv.sceneState = conv.sceneState || {};
+      conv.sceneState.directions = previousSceneState.directions;
+      conv.sceneState.characterStatuses = previousSceneState.characterStatuses || (conv.sceneState.characterStatuses || []);
+      if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+      showToast('本轮走向解析失败，暂用上一轮走向', 'warning', 4000);
+      return;
+    }
+
+    // Nothing worked — at least show a clear message
+    showToast('状态卡生成失败，可提高 Max Tokens 或检查辅助模型设置。', 'warning', 5000);
+  }
+
+  // =========================================================================
+  // sendStoryTurn — dual-part story generation with aux model
+  // =========================================================================
+
+  async function sendStoryTurn(text, conv) {
+    // --- Regenerate guard ---
+    var regenFlags = state._regenerateFlags || null;
+    state._regenerateFlags = null;
+    var isRegenerate = regenFlags && regenFlags.appendUserMessage === false;
+
+    if (!isRegenerate) {
+      var userMsg = { role: 'user', content: text };
+      if (state.pendingHiddenRequest) {
+        userMsg._requestContent = state.pendingHiddenRequest;
+        state.pendingHiddenRequest = null;
+      }
+      conv.messages.push(userMsg);
+    } else {
+      // Regenerate: inject extra system messages if provided
+      if (regenFlags && regenFlags.extraSystemMessages && regenFlags.extraSystemMessages.length) {
+        for (var ei2 = 0; ei2 < regenFlags.extraSystemMessages.length; ei2++) {
+          conv.messages.push(regenFlags.extraSystemMessages[ei2]);
+        }
+      }
+    }
+
+    updateTimestamp(conv);
+    autoTitle(conv);
+    dom.inputMessage.value = '';
+    dom.inputMessage.style.height = 'auto';
+    preserveScrollPosition(renderMessages);
+    updateTopBar(); updateSendUI();
+    syncLegacyToStoryMode(conv); repairStoryModeFlags(conv);
+
+    state.abortController = new AbortController();
+    state.isStreaming = true;
+    state.ui.autoFollowStreaming = true;
+    state.ui.userScrolling = false;
+    updateScrollToBottomButton(false);
+
+    // --- Insert placeholder so user sees immediate progress ---
+    var placeholderIdx = conv.messages.length;
+    var placeholderMsg = {
+      role: 'assistant',
+      content: '正在生成剧情…',
+      _streaming: true,
+      _showActions: false,
+    };
+    conv.messages.push(placeholderMsg);
+    renderMessages();
+    scrollToBottomIfNeeded({ smooth: false });
+    updateSendUI();
+
+    var model = resolveModel(conv);
+    var part1Content = '';
+    var part2Content = '';
+    var assistantMsg = null; // placeholder promoted after Part2
+
+    try {
+      // ===== Part 1 =====
+      var messages1 = _buildStoryMessages(conv, text, false);
+      var r1 = await callChatModel(conv, model, messages1, { stream: false, signal: state.abortController.signal });
+      part1Content = r1.content || '';
+      if (!part1Content) throw new Error('Part1 生成失败：模型未返回正文。');
+
+      // Update placeholder with Part1 content so user sees first segment
+      placeholderMsg.content = part1Content;
+      placeholderMsg.displayParts = [{ content: part1Content, hideRole: false }];
+      renderMessages();
+      scrollToBottomIfNeeded({ smooth: false });
+
+      // ===== Part 2 =====
+      var messages2 = _buildStoryMessages(conv, text, part1Content);
+      try {
+        var r2 = await callChatModel(conv, model, messages2, { stream: false, signal: state.abortController.signal });
+        part2Content = r2.content || '';
+      } catch (part2Err) {
+        if (part2Err.name === 'AbortError') throw part2Err; // Propagate abort
+        console.warn('[OmniChat] Part2 failed:', part2Err.message || part2Err);
+        showToast('第二部分生成失败，仅显示第一部分。', 'warning');
+      }
+
+      // Update placeholder with Part2 content
+      var fullContent = part1Content;
+      var displayParts = [{ content: part1Content, hideRole: false }];
+      if (part2Content) {
+        fullContent += '\n\n' + part2Content;
+        displayParts.push({ content: part2Content, hideRole: true });
+      }
+      placeholderMsg.content = fullContent;
+      placeholderMsg.displayParts = displayParts;
+      renderMessages();
+      scrollToBottomIfNeeded({ smooth: false });
+
+      // Promote placeholder to real assistant message
+      assistantMsg = placeholderMsg;
+      assistantMsg._streaming = false;
+      assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
+
+      // Merge usage from both parts
+      if (r1.usage || (r2 && r2.usage)) {
+        assistantMsg.usage = {
+          prompt_tokens: (r1.usage && r1.usage.prompt_tokens || 0) + (r2 && r2.usage && r2.usage.prompt_tokens || 0),
+          completion_tokens: (r1.usage && r1.usage.completion_tokens || 0) + (r2 && r2.usage && r2.usage.completion_tokens || 0),
+          total_tokens: (r1.usage && r1.usage.total_tokens || 0) + (r2 && r2.usage && r2.usage.total_tokens || 0),
+        };
+      }
+
+      // ===== Aux model: JSON state extraction (with 25s timeout) =====
+      // Save a clean snapshot before aux/repair may mutate conv.sceneState
+      var previousSceneState = createSceneState(conv.sceneState);
+      var auxOk = false;
+      try {
+        var auxProvider = conv.storyAuxProvider || conv.provider;
+        var auxModel = conv.storyAuxModel || resolveModel(conv);
+        var auxMaxTokens = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
+        if (!getApiKey(auxProvider)) {
+          auxProvider = conv.provider;
+          auxModel = resolveModel(conv);
+        }
+        var auxMsgs = buildAuxMessages(conv, part1Content, part2Content || part1Content);
+        var auxResp = await withTimeout(
+          callChatModel(conv, auxModel, auxMsgs, {
+            provider: auxProvider, maxTokens: auxMaxTokens, stream: false,
+            signal: state.abortController.signal,
+          }),
+          25000
+        );
+        var parsed = tryParseAuxResponse(auxResp.content);
+        if (parsed) {
+          auxOk = true;
+          assistantMsg.sceneSnapshot = createSceneState(parsed);
+          // Merge into conv.sceneState
+          var prev = conv.sceneState || {};
+          conv.sceneState = {
+            currentRole: parsed.currentRole || prev.currentRole || '',
+            currentGoal: parsed.currentGoal || prev.currentGoal || '',
+            posture: parsed.posture || prev.posture || '',
+            mental: parsed.mental || prev.mental || '',
+            mentalScore: parsed.mentalScore || prev.mentalScore || '',
+            physical: parsed.physical || prev.physical || '',
+            bodyDetails: parsed.bodyDetails || prev.bodyDetails || '',
+            plot: parsed.plot || prev.plot || '',
+            risk: parsed.risk || prev.risk || '',
+            innerVoice: parsed.innerVoice || prev.innerVoice || '',
+            directions: parsed.directions || prev.directions || '',
+            characterStatuses: parsed.characterStatuses && parsed.characterStatuses.length
+              ? parsed.characterStatuses : (prev.characterStatuses || []),
+          };
+          if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+        }
+      } catch (auxErr) {
+        if (auxErr.name === 'AbortError') throw auxErr;
+        console.warn('[OmniChat] Aux model failed:', auxErr.message || auxErr);
+      }
+
+      // ===== Fallback: aux failed → repair via model (with 25s timeout) =====
+      if (!auxOk) {
+        try {
+          var repairResult = await withTimeout(
+            repairSceneBlock(conv, fullContent),
+            25000
+          );
+          if (repairResult) {
+            auxOk = true;
+            assistantMsg.sceneSnapshot = createSceneState({
+              directions: repairResult.directions,
+              characterStatuses: repairResult.characterStatuses,
+            });
+            conv.sceneState = conv.sceneState || {};
+            conv.sceneState.directions = repairResult.directions;
+            conv.sceneState.characterStatuses = repairResult.characterStatuses;
+            if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+          }
+        } catch (repairErr) {
+          console.warn('[OmniChat] Scene repair failed:', repairErr.message || repairErr);
+        }
+      }
+
+      // ===== ensureStoryDirections: guarantee 4 clickable A/B/C/D =====
+      await ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState);
+
+      assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
+      assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
+      // Only show actions if we actually have 4+ parseable directions
+      var finalDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
+      assistantMsg._showActions = !!(finalDirs && parseDirectionOptions(finalDirs).length >= 4);
+      assistantMsg._actionIndex = conv.messages.length;
+
+      // Strip any stray @@SCENE (belt-and-suspenders)
+      assistantMsg.content = stripStoryMetaFromVisibleContent(assistantMsg.content);
+      updateScenePanelUI();
+
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        if (part1Content) {
+          // Keep partial content visible with stopped marker
+          placeholderMsg.content = part1Content + '\n\n[已停止]';
+          placeholderMsg.displayParts = [{ content: part1Content, hideRole: false }];
+          placeholderMsg._streaming = false;
+          placeholderMsg._showActions = false;
+          renderMessages();
+        } else {
+          // No content yet — remove empty placeholder
+          conv.messages.pop();
+          renderMessages();
+        }
+        showToast(ERR_MSGS.userAborted, 'info');
+      } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
+        showToast(ERR_MSGS.cors, 'error', 6000);
+        conv.messages.splice(placeholderIdx, 1);
+        renderMessages();
+        if (!isRegenerate) { var lui = conv.messages.length - 1; if (conv.messages[lui] && conv.messages[lui].role === 'user') conv.messages.pop(); }
+      } else {
+        showToast(e.message || ERR_MSGS.network, 'error');
+        conv.messages.splice(placeholderIdx, 1);
+        renderMessages();
+        if (!isRegenerate) { var lui2 = conv.messages.length - 1; if (conv.messages[lui2] && conv.messages[lui2].role === 'user') conv.messages.pop(); }
+      }
+    } finally {
+      state.isStreaming = false;
+      state.abortController = null;
+      if (placeholderMsg) placeholderMsg._streaming = false;
+      updateSendUI();
+      updateTimestamp(conv);
+      updateTopBar();
+      renderMessages();
+      scrollToBottomIfNeeded({ smooth: false });
+      debouncedSave();
+    }
+  }
+
+  // =========================================================================
+  // _buildStoryMessages — construct request messages for story turns
+  // PartMode: falsy = Part1 (no assistant example), truthy = Part2 (inject Part1 as context)
+  // =========================================================================
+
+  function _buildStoryMessages(conv, userText, part1ContentForPart2) {
+    var isPart2 = !!part1ContentForPart2;
+    var messages = [];
+    var supportsCaching = conv.enableCaching && isAnthropicModel(resolveModel(conv));
+
+    // System prompt
+    var systemPrompt = conv.systemPrompt || '';
+    if (conv.preciseMode) {
+      systemPrompt = systemPrompt ? SYSTEM_PROMPT_PRECISE + '\n\n' + systemPrompt : SYSTEM_PROMPT_PRECISE;
+    }
+    if (isStoryStarted(conv)) {
+      var worldCard = buildCharacterCard(conv);
+      systemPrompt = (systemPrompt || '') + '\n[世界模式 — 当前角色卡与设定]\n' + worldCard;
+    }
+    // Add scene state reference (already tracked by system, NOT @@SCENE format)
+    if (isStoryEnabled(conv)) {
+      var ss = createSceneState(conv.sceneState);
+      var sceneStateRef = [
+        '\n[当前已记录场景状态 — 仅作写作参考]',
+        '当前角色：' + (ss.currentRole || '未记录'),
+        '当前目标：' + (ss.currentGoal || '未记录'),
+        '当前姿势：' + (ss.posture || '未记录'),
+        '精神状态：' + (ss.mental || '未记录') + (ss.mentalScore ? ' (' + ss.mentalScore + '/10)' : ''),
+        '身体状态：' + (ss.physical || '未记录'),
+        '剧情：' + (ss.plot || '未记录'),
+        '上次方向：' + (ss.directions ? ss.directions.replace(/\n/g, ' / ') : '未记录'),
+      ].join('\n');
+      systemPrompt = (systemPrompt || '') + '\n\n' + sceneStateRef;
+
+      // Writing rules (NO @@SCENE)
+      var writingRules = [
+        '',
+        '写作规则：',
+        '1. 请生成纯剧情正文，用第二人称"你"叙述主角的行动和感受。',
+        '2. 保持详细描写和人物互动，推进剧情发展。',
+        '3. 不要输出 @@SCENE 状态卡、不要输出 A/B/C/D 选项、不要输出任何元数据。',
+        '4. 状态卡和选项将由系统独立生成。',
+      ];
+      if (isPart2) {
+        writingRules.push('5. 请接续第一部分的结尾，直接开始剧情。不要复述前面的内容。');
+      }
+      systemPrompt = (systemPrompt || '') + '\n' + writingRules.join('\n');
+    }
+
+    if (systemPrompt) {
+      var sysMsg = { role: 'system', content: systemPrompt };
+      if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
+      messages.push(sysMsg);
+    }
+
+    // Conversation history (merged Part1+Part2 as single assistant content)
+    messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
+
+    // Part2: inject Part1 as context assistant message
+    if (isPart2) {
+      messages.push({ role: 'assistant', content: part1ContentForPart2 });
+      messages.push({ role: 'user', content: '请接续上面的剧情正文，输出第二部分。保持同样的风格和详细度。不要输出 @@SCENE 或 A/B/C/D 选项。' });
+    }
+
+    return messages;
+  }
+
+  // =========================================================================
   // STORY SCENE REPAIR — ask model to output missing @@SCENE block
   // =========================================================================
 
@@ -2633,6 +3231,16 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
+    // --- Route story mode to dual-part engine ---
+    // Must happen BEFORE regenFlags consumption so sendStoryTurn sees them,
+    // and BEFORE userMsg push to avoid duplicate messages.
+    syncLegacyToStoryMode(conv);
+    repairStoryModeFlags(conv);
+    if (isStoryEnabled(conv)) {
+      await sendStoryTurn(text, conv);
+      return;
+    }
+
     // Regenerate flag: when true, reuse existing last user message;
     // do NOT push a duplicate user message into conv.messages.
     var regenFlags = state._regenerateFlags || null;
@@ -2661,16 +3269,6 @@ function handleMessageAction(action, msgIndex) {
     preserveScrollPosition(renderMessages);
     updateTopBar();
     updateSendUI();
-
-    // Sync legacy scene fields → storyMode before prompt injection
-    syncLegacyToStoryMode(conv);
-    // Re-evaluate story flags from message history and legacy data
-    repairStoryModeFlags(conv);
-
-    // Story mode: warn if maxTokens too low for reliable @@SCENE output
-    if (isStoryEnabled(conv) && conv.maxTokens < 1200) {
-      showToast('世界故事模式建议 Max Tokens ≥ 2000（当前 ' + conv.maxTokens + '），否则状态卡和选项可能被截断。', 'warning');
-    }
 
     // Build messages array with caching support
     const supportsCaching = conv.enableCaching && isAnthropicModel(model);
@@ -3548,6 +4146,20 @@ function handleMessageAction(action, msgIndex) {
       }
     });
 
+    // Story aux model preset dropdown → toggle custom input
+    if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
+      dom.selectStoryAuxModel.addEventListener('change', () => {
+        var isCustom = dom.selectStoryAuxModel.value === '__custom__';
+        var customRow = document.getElementById('storyAuxCustomRow');
+        if (customRow) customRow.hidden = !isCustom;
+        if (!isCustom) dom.inputStoryAuxModel.value = '';
+        syncSettingsFromUI();
+      });
+      dom.inputStoryAuxModel.addEventListener('input', () => {
+        syncSettingsFromUI();
+      });
+    }
+
     dom.inputPreciseMode.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
@@ -3865,7 +4477,8 @@ function handleMessageAction(action, msgIndex) {
           });
         }
 
-        sendMessageContent('选' + letter).catch(function (err) {
+        var choiceText = '我选择 ' + letter + '：' + (chip.dataset.content || '') + '。请沿这个分支继续。';
+        sendMessageContent(choiceText).catch(function (err) {
           console.error('[OmniChat] Failed to send scene choice:', err);
           if (list) list.dataset.locked = '';
           chip.classList.remove('loading');

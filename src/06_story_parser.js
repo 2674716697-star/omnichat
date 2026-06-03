@@ -200,6 +200,9 @@ function getSceneBodyDetails(block) {
     // "A路线", "B分支", "C选项"
     var suffixMatch = t.match(/^([A-Da-d])\s*(?:路线|分支|选项|方向)[。.．、]*$/);
     if (suffixMatch) return suffixMatch[1].toUpperCase();
+    // Story chip format: "我选择A：选项文本。请沿这个分支继续。"
+    var storyChipMatch = t.match(/^我选择\s*([A-Da-d])[：:].+。请沿这个分支继续。$/);
+    if (storyChipMatch) return storyChipMatch[1].toUpperCase();
     return null;
   }
 

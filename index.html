@@ -349,6 +349,49 @@
           </select>
         </div>
 
+        <!-- Auxiliary Model for Story State -->
+        <div class="setting-group">
+          <label class="setting-label">
+            剧情状态辅助模型
+            <span class="setting-hint" style="display:block;font-weight:400">从正文提取状态卡和 A/B/C/D 选项。建议选速度快成本低的模型。</span>
+          </label>
+          <div class="setting-aux-row">
+            <span class="setting-aux-label">Provider</span>
+            <select class="select setting-aux-select" id="selectStoryAuxProvider">
+              <option value="">跟随当前</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="xai">xAI / Grok</option>
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="groq">Groq</option>
+              <option value="siliconflow">SiliconFlow</option>
+            </select>
+          </div>
+          <div class="setting-aux-row">
+            <span class="setting-aux-label">Model</span>
+            <select class="select setting-aux-select" id="selectStoryAuxModel">
+              <option value="">跟随当前模型</option>
+              <option value="deepseek-chat">DeepSeek Chat</option>
+              <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+              <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+              <option value="grok-3-mini">Grok 3 Mini</option>
+              <option value="openrouter/auto">OpenRouter Auto</option>
+              <option value="Qwen/Qwen3-Coder">Qwen3 Coder (SiliconFlow)</option>
+              <option value="__custom__">自定义…</option>
+            </select>
+          </div>
+          <div class="setting-aux-row setting-aux-custom-row" id="storyAuxCustomRow" hidden>
+            <span class="setting-aux-label"></span>
+            <input type="text" class="input setting-aux-input" id="inputStoryAuxModel" placeholder="输入自定义模型名称">
+          </div>
+          <div class="setting-aux-row">
+            <span class="setting-aux-label">Max Tok</span>
+            <input type="number" class="input setting-aux-tokens" id="inputStoryAuxMaxTokens" value="10000" min="200" max="32000">
+          </div>
+        </div>
+
           </div>
         </div>
 
