@@ -79,6 +79,7 @@
     dom.inputTopP = $('#inputTopP');
     dom.topPVal = $('#topPVal');
     dom.inputMaxTokens = $('#inputMaxTokens');
+    dom.inputReplyCharLimit = $('#inputReplyCharLimit');
     dom.inputStream = $('#inputStream');
     dom.inputCaching = $('#inputCaching');
     dom.inputPreciseMode = $('#inputPreciseMode');
@@ -482,6 +483,7 @@
       temperature: DEFAULTS.temperature,
       topP: DEFAULTS.topP,
       maxTokens: DEFAULTS.maxTokens,
+      replyCharLimit: DEFAULTS.replyCharLimit,
       stream: DEFAULTS.stream,
       toolCallLimit: DEFAULTS.toolCallLimit,
       toolCallLimitMode: DEFAULTS.toolCallLimitMode,
@@ -1519,6 +1521,7 @@
     dom.inputTopP.value = conv.topP;
     dom.topPVal.textContent = conv.topP;
     dom.inputMaxTokens.value = conv.maxTokens;
+    if (dom.inputReplyCharLimit) dom.inputReplyCharLimit.value = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     dom.inputStream.checked = conv.stream;
     dom.inputCaching.checked = conv.enableCaching !== false;
     dom.inputPreciseMode.checked = !!conv.preciseMode;
@@ -1575,6 +1578,7 @@
     conv.temperature = parseFloat(dom.inputTemperature.value) || DEFAULTS.temperature;
     conv.topP = parseFloat(dom.inputTopP.value) || DEFAULTS.topP;
     conv.maxTokens = parseInt(dom.inputMaxTokens.value, 10) || DEFAULTS.maxTokens;
+    conv.replyCharLimit = parseInt(dom.inputReplyCharLimit.value, 10) || DEFAULTS.replyCharLimit;
     conv.stream = dom.inputStream.checked;
     conv.enableCaching = dom.inputCaching.checked;
     conv.storyMode = conv.storyMode || createStoryMode();
@@ -3150,6 +3154,24 @@ function handleMessageAction(action, msgIndex) {
       messages.push({ role: 'user', content: '请接续上面的剧情正文，输出第二部分。保持同样的风格和详细度。不要输出 @@SCENE 或 A/B/C/D 选项。' });
     }
 
+    // Reply character count constraint for world story (Part1/Part2 split)
+    var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
+    if (stCharLimit) {
+      var part1Target = Math.round(stCharLimit * 0.55);
+      var part2Target = Math.round(stCharLimit * 0.45);
+      // Minimum per-segment target: prevent unusably tiny splits at low totals
+      var minSegTarget = Math.min(200, Math.floor(stCharLimit / 3));
+      if (part1Target < minSegTarget) part1Target = minSegTarget;
+      if (part2Target < minSegTarget) part2Target = minSegTarget;
+      var stCharMsg;
+      if (isPart2) {
+        stCharMsg = '\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±200 字误差，总计不超过 ' + (stCharLimit + 200) + ' 字。';
+      } else {
+        stCharMsg = '\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±200 字误差。第一部分目标约 ' + part1Target + ' 字。请确保总字数接近目标，每段至少保证基本叙事完整。';
+      }
+      messages.push({ role: 'system', content: stCharMsg });
+    }
+
     return messages;
   }
 
@@ -3573,6 +3595,13 @@ function handleMessageAction(action, msgIndex) {
         reminder += '\n详细度高但不能牺牲完整性：优先保证精神/身体/NPC/A/B/C/D/@@END 完整。';
       }
       messages.push({ role: 'system', content: reminder });
+    }
+
+    // Reply character count target constraint (regular chat only; story mode has its own in _buildStoryMessages)
+    var charLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
+    if (charLimit) {
+      var charLimitMsg = '\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±200 字误差（' + (charLimit - 200) + '–' + (charLimit + 200) + ' 字）。除非用户明确要求更短或更长，请尽量控制在此范围内，不要超出 ' + (charLimit + 200) + ' 字。';
+      messages.push({ role: 'system', content: charLimitMsg });
     }
 
     // Inject extra system messages (API-only, e.g. regenerate reminder).

@@ -258,6 +258,21 @@
           <input type="number" class="input" id="inputMaxTokens" value="5000" min="1" step="1">
         </div>
 
+        <div class="setting-group">
+          <label class="setting-label">
+            回复字数
+            <span class="setting-hint" style="display:block;font-weight:400">每轮回复的中文字数目标，误差约 ±200 字。仅作内容长度提示，不影响 Max Tokens 硬上限。</span>
+          </label>
+          <select class="select" id="inputReplyCharLimit">
+            <option value="500">500 字</option>
+            <option value="1000">1000 字</option>
+            <option value="1500">1500 字</option>
+            <option value="2000">2000 字</option>
+            <option value="2500">2500 字</option>
+            <option value="3000">3000 字</option>
+          </select>
+        </div>
+
         <!-- Stream Toggle -->
         <div class="setting-group setting-row">
           <label class="setting-label">流式输出 (Stream)</label>

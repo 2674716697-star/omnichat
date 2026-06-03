@@ -557,6 +557,84 @@ check('findPreviousSceneSnapshotForRender still in js',
   /function\s+findPreviousSceneSnapshotForRender/.test(js));
 
 // =========================================================================
+// 12d. REPLY CHAR LIMIT — per-turn Chinese character count target
+// =========================================================================
+console.log('\n--- Reply char limit ---');
+// Default value
+check('DEFAULTS.replyCharLimit is 500',
+  /replyCharLimit:\s*500\b/.test(js.match(/DEFAULTS\s*=[\s\S]*?^\s*\};/m)?.[0] || ''));
+// HTML select element
+check('index.html has inputReplyCharLimit select',
+  /inputReplyCharLimit/.test(idx));
+check('index.html has option value="500"',
+  /value\s*=\s*"500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="1000"',
+  /value\s*=\s*"1000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="1500"',
+  /value\s*=\s*"1500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="2000"',
+  /value\s*=\s*"2000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="2500"',
+  /value\s*=\s*"2500"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html has option value="3000"',
+  /value\s*=\s*"3000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+// No legacy high options
+check('index.html does NOT have option value="4000"',
+  !/value\s*=\s*"4000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html does NOT have option value="5000"',
+  !/value\s*=\s*"5000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+check('index.html does NOT have option value="6000"',
+  !/value\s*=\s*"6000"/.test(idx.match(/inputReplyCharLimit[\s\S]*?<\/select>/)?.[0] || ''));
+// DOM binding
+check('dom.inputReplyCharLimit bound in script.js',
+  /dom\.inputReplyCharLimit\s*=\s*\$\(/.test(js));
+// Settings save
+check('syncSettingsFromUI reads replyCharLimit',
+  /conv\.replyCharLimit\s*=\s*parseInt\(dom\.inputReplyCharLimit\.value/.test(js));
+// Settings load
+check('syncSettingsToUI writes replyCharLimit',
+  /dom\.inputReplyCharLimit\.value\s*=\s*conv\.replyCharLimit/.test(js));
+// createConversation includes replyCharLimit
+check('createConversation sets replyCharLimit',
+  /replyCharLimit:\s*DEFAULTS\.replyCharLimit/.test(js));
+// Migration clamps old >3000 values down to 3000
+check('normalizeConversation clamps replyCharLimit > 3000',
+  /conv\.replyCharLimit\s*=\s*3000/.test(js));
+// Migration defaults missing/<500 values to 500
+check('normalizeConversation defaults replyCharLimit < 500 to 500',
+  /rcl\s*<\s*500/.test(js) && /conv\.replyCharLimit\s*=\s*500/.test(js));
+// Migration normalizes intermediate values to nearest option
+check('normalizeConversation has REPLY_CHAR_OPTIONS for normalization',
+  /REPLY_CHAR_OPTIONS/.test(js) && /500.*1000.*1500.*2000.*2500.*3000/.test(js));
+// Regular chat constraint has ±200 tolerance
+check('regular chat replyCharLimit constraint mentions ±200',
+  /回复字数约束/.test(js) && /±200/.test(js));
+// Regular chat constraint mentions upper bound
+check('regular chat constraint mentions do not exceed limit+200',
+  /不要超出/.test(js) && /\+\s*200/.test(js));
+// World story split: Part1 has target
+check('_buildStoryMessages Part1 split target exists',
+  /第一部分目标约/.test(js) && /part1Target/.test(js));
+// World story split: Part2 has target
+check('_buildStoryMessages Part2 split target exists',
+  /第二部分目标约/.test(js) && /part2Target/.test(js));
+// World story constraint mentions total upper bound
+check('_buildStoryMessages mentions total upper bound',
+  /总计不超过/.test(js) && /\+\s*200/.test(js));
+// Minimum per-segment protection at low totals
+check('_buildStoryMessages has minSegTarget protection',
+  /minSegTarget/.test(js));
+// Part1 prompt emphasizes total word count + narrative completeness
+check('Part1 prompt emphasizes total word count',
+  /请确保总字数接近目标/.test(js) && /每段至少保证基本叙事完整/.test(js));
+// Story constraint message uses system role (not modifying user message)
+check('story char limit is a system message',
+  /回复字数约束/.test(js) && /role:\s*['\"]system['\"]/.test(js));
+// Must not break aux model parsing
+check('buildAuxMessages does NOT contain char limit constraint',
+  !/回复字数约束/.test(js.match(/function\s+buildAuxMessages[\s\S]*?^  \}/m)?.[0] || ''));
+
+// =========================================================================
 // 13. INDEX.HTML / OMNICHAT.HTML SYNC (light check)
 // =========================================================================
 console.log('\n--- Index / build sync ---');

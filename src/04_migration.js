@@ -226,6 +226,27 @@ function createSceneWorld(seed) {
     if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
     if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
     if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
+    // Migrate replyCharLimit to new range 500–3000 (clamp + normalize to nearest option)
+    var REPLY_CHAR_OPTIONS = [500, 1000, 1500, 2000, 2500, 3000];
+    if (conv.replyCharLimit != null) {
+      var rcl = parseInt(conv.replyCharLimit, 10);
+      if (!Number.isFinite(rcl) || rcl < 500) {
+        conv.replyCharLimit = 500;
+      } else if (rcl > 3000) {
+        conv.replyCharLimit = 3000;
+      } else {
+        // Normalize to nearest allowed option
+        var bestRcl = REPLY_CHAR_OPTIONS[0];
+        var bestRclDist = Math.abs(rcl - bestRcl);
+        for (var roi = 1; roi < REPLY_CHAR_OPTIONS.length; roi++) {
+          var distRcl = Math.abs(rcl - REPLY_CHAR_OPTIONS[roi]);
+          if (distRcl < bestRclDist) { bestRclDist = distRcl; bestRcl = REPLY_CHAR_OPTIONS[roi]; }
+        }
+        conv.replyCharLimit = bestRcl;
+      }
+    } else {
+      conv.replyCharLimit = DEFAULTS.replyCharLimit;
+    }
 
     for (var i = 0; i < conv.messages.length; i++) {
       conv.messages[i] = normalizeMessage(conv.messages[i], conv);

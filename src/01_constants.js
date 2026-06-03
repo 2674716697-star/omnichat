@@ -92,6 +92,7 @@
     temperature: 0.7,
     topP: 1,
     maxTokens: 5000,
+    replyCharLimit: 500,
     stream: true,
     toolCallLimit: 0,
     toolCallLimitMode: 'disabled',
