@@ -129,6 +129,12 @@ check('story prompt requires 4 branches in directions', /新的 4 个可行动�
 check('C/D template not marked as optional', !/<可选>/.test(js));
 check('buildSceneFallbackDirections still defined (offline tool)', /function\s+buildSceneFallbackDirections/.test(js));
 check('repairSceneBlock exists for real scene repair', /function\s+repairSceneBlock/.test(js));
+// repairSceneBlock must force non-streaming (resp.json() incompatible with stream)
+var repairFn = (js.match(/function\s+repairSceneBlock[\s\S]*?^  \}/m) || [''])[0];
+check('repairSceneBlock forces stream:false (repairConv or stream:false)',
+  /repairConv|stream\s*:\s*false/.test(repairFn));
+check('repairSceneBlock does NOT pass raw conv to buildRequestBody',
+  !/buildRequestBody\(\s*conv\s*,/.test(repairFn));
 check('scene repair called on parse failure', /_sceneRepairAttempted\s*=\s*true/.test(js));
 check('detail level never reduces A/B/C/D to < 4', /A\/B\/C\/D 走向仍然必须 4 条/.test(js));
 check('repairStoryModeFlags exists', /function\s+repairStoryModeFlags/.test(js));
@@ -240,6 +246,34 @@ if (exists('index.html')) {
   check('index.html links to omnichat.html (or is standalone)', true); // informational
 } else {
   warn('index.html missing');
+}
+
+// =========================================================================
+// 14. SYNTAX VALIDATION — script.js & omnichat.html inline script must parse
+// =========================================================================
+console.log('\n--- Syntax validation ---');
+try {
+  execSync('node --check script.js', { encoding: 'utf8', stdio: 'pipe' });
+  pass('script.js parses without SyntaxError');
+} catch (e) {
+  fail('script.js parse error: ' + (e.stderr || e.message || '').replace(/\n/g, ' '));
+}
+
+// Also validate omnichat.html inline script parses
+try {
+  var omniJs = html.match(/<script>([\s\S]*?)<\/script>/);
+  if (omniJs && omniJs[1]) {
+    execSync('node --check', {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      input: omniJs[1],
+    });
+    pass('omnichat.html inline script parses without SyntaxError');
+  } else {
+    warn('omnichat.html inline script not found for syntax check');
+  }
+} catch (e2) {
+  fail('omnichat.html inline script parse error: ' + (e2.stderr || e2.message || '').replace(/\n/g, ' '));
 }
 
 // =========================================================================

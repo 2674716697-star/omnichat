@@ -2501,7 +2501,7 @@ function getSceneBodyDetails(block) {
 
     // Truncated by output limit warning — show regardless of usage presence
     if (!msg._streaming && msg.finishReason === 'length') {
-      html += '<div class="token-usage" style="color:var(--scene-gold, #e0b060)">⚠️ 回复被 Max Tokens 截断，状态卡可能由备用逻辑生成。</div>';
+      html += '<div class="token-usage" style="color:var(--scene-gold, #e0b060)">⚠️ 回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。</div>';
     }
 
     // Post-response action buttons
@@ -3860,12 +3860,13 @@ function handleMessageAction(action, msgIndex) {
         '- 禁止"继续深入调查""暂时退一步观察"等泛化模板',
         '',
         '@@SCENE',
-      ].join('
-');
+      ].join('\n');
 
       var repairMessages = [{ role: "user", content: repairPrompt }];
-      var headers = buildRequestHeaders(conv.provider, apiKey, conv);
-      var body = buildRequestBody(conv, model, repairMessages);
+      // Force non-streaming for repair — resp.json() cannot parse a stream.
+      var repairConv = Object.assign({}, conv, { stream: false });
+      var headers = buildRequestHeaders(conv.provider, apiKey, repairConv);
+      var body = buildRequestBody(repairConv, model, repairMessages);
 
       var resp = await fetch(pConf.apiUrl, {
         method: "POST",
@@ -3887,12 +3888,11 @@ function handleMessageAction(action, msgIndex) {
       var dirs = parseDirectionOptions(block);
       if (!dirs || dirs.length < 4) return null;
 
-      var statuses = parseSceneStatuses(block, conv);
+      var statuses = parseCharacterStatuses(block);
       if (!statuses || !statuses.length) return null;
 
       return {
-        directions: dirs.map(function(d) { return d.content; }).join("
-"),
+        directions: dirs.map(function(d) { return d.content; }).join("\n"),
         characterStatuses: statuses
       };
     } catch (e) {

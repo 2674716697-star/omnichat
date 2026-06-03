@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { execSync } from 'child_process';
 
 const read = (p) => fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 const css = read('style.css');
@@ -82,6 +83,35 @@ check('import path calls normalizeConversation', /normalizeConversation\(c\)/.te
 check('createConversation sets schemaVersion', /schemaVersion:\s*STORAGE_SCHEMA_VERSION/.test(js));
 check('render uses displayContent fallback', /displayContent\s*\|\|\s*(msg\.)?content/.test(js));
 check('API uses _requestContent fallback', /_requestContent\s*\|\|\s*(m\.)?content/.test(js));
+
+// --- Syntax validation ---
+console.log('\n--- Syntax validation ---');
+try {
+  execSync('node --check script.js', { encoding: 'utf8', stdio: 'pipe' });
+  check('script.js parses without SyntaxError', true);
+} catch (e) {
+  check('script.js parses without SyntaxError', false);
+  console.error('   ' + (e.stderr || e.message || '').replace(/\n/g, ' '));
+}
+
+// Also validate omnichat.html inline script parses
+try {
+  var omniJs = html.match(/<script>([\s\S]*?)<\/script>/);
+  if (omniJs && omniJs[1]) {
+    execSync('node --check', {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      input: omniJs[1],
+    });
+    check('omnichat.html inline script parses without SyntaxError', true);
+  } else {
+    console.error('   omnichat.html inline script not found for syntax check');
+    check('omnichat.html inline script parses without SyntaxError', false);
+  }
+} catch (e2) {
+  check('omnichat.html inline script parses without SyntaxError', false);
+  console.error('   ' + (e2.stderr || e2.message || '').replace(/\n/g, ' '));
+}
 
 console.log('\n' + '='.repeat(50));
 if (failed) {
