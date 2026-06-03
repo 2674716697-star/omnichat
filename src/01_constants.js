@@ -91,7 +91,7 @@
   const DEFAULTS = {
     temperature: 0.7,
     topP: 1,
-    maxTokens: 2000,
+    maxTokens: 5000,
     stream: true,
     toolCallLimit: 0,
     toolCallLimitMode: 'disabled',
@@ -103,7 +103,7 @@
     worldMode: false,
     storyAuxProvider: '',
     storyAuxModel: '',
-    storyAuxMaxTokens: 10000,
+    storyAuxMaxTokens: 5000,
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''

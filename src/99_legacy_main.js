@@ -1081,7 +1081,7 @@
     const reasoning = msg.reasoning || '';
     if (reasoning) {
       const conv = getCurrentConv();
-      const isStreamingReasoning = msg._streaming && !msg.content;
+      const isStreamingReasoning = msg._streaming && !!reasoning;
       const keepOpen = msg._keepThinkingOpen !== undefined
         ? msg._keepThinkingOpen
         : conv && conv.keepThinkingOpen !== false;
@@ -1144,8 +1144,8 @@
       html += '<div class="token-usage" style="color:var(--scene-gold, #e0b060)">⚠️ 回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。</div>';
     }
 
-    // Post-response action buttons
-    if (msg._showActions && !msg._streaming) {
+    // Post-response action buttons — always show for completed assistant messages
+    if (!msg._streaming) {
       html += '<div class="msg-actions" data-msg-index="' + (msg._actionIndex || '') + '">';
       html += '<button class="btn-msg-action" data-action="regenerate" title="重新生成">';
       html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
@@ -1235,7 +1235,7 @@
             thinkDiv.innerHTML = renderContentFast(reasoning);
           }
           var details = bubble.querySelector('.thinking-section');
-          if (details && !msg.content) details.open = true;
+          if (details) details.open = true;
         }
         msg._lastRenderedReasoningLength = newReasonLen;
       }
@@ -1451,46 +1451,56 @@
 
   function updateScrollToBottomButton(show) {
     var btn = document.getElementById('scrollToBottomBtn');
-    var active = show && (state.isStreaming || state.ui.detachedContentDirty);
-    // Also show when streaming ended but user is detached
-    if (!active && !state.isStreaming && state.ui.detachedContentDirty) active = true;
 
-    if (active) {
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'scrollToBottomBtn';
-        btn.title = '回到底部查看最新内容';
-        btn.addEventListener('click', function() {
-          // Exit detached mode
-          state.ui.detachedDuringStreaming = false;
-          state.ui.autoFollowStreaming = true;
-          state.ui.userScrolling = false;
-          state.ui.programmaticScroll = true;
-
-          if (state.ui.detachedContentDirty) {
-            state.ui.detachedContentDirty = false;
-            // Full render to pick up sceneSnapshot, chips, token usage, action buttons
-            var conv = getCurrentConv();
-            if (conv && conv.messages.length) {
-              fullRenderMessages(conv.messages);
-            }
-          }
-
-          var sc = getScrollContainer();
-          if (sc) sc.scrollTop = sc.scrollHeight;
-          requestAnimationFrame(function() {
-            state.ui.programmaticScroll = false;
-          });
-          updateScrollToBottomButton(false);
-        });
-        document.body.appendChild(btn);
+    // --- Force-clean path: hide button, clear all state ---
+    if (!show) {
+      state.ui.detachedContentDirty = false;
+      if (btn) {
+        btn.classList.remove('show');
+        btn.textContent = '';
+        btn.setAttribute('aria-hidden', 'true');
       }
-      // Update button text
-      btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
-      btn.classList.add('show');
-    } else if (btn) {
-      btn.classList.remove('show');
+      return;
     }
+
+    // --- Show path: only if streaming or detached dirty ---
+    var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
+    if (!shouldShow) {
+      if (btn) { btn.classList.remove('show'); btn.textContent = ''; }
+      return;
+    }
+
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'scrollToBottomBtn';
+      btn.setAttribute('aria-hidden', 'true');
+      btn.addEventListener('click', function() {
+        state.ui.detachedDuringStreaming = false;
+        state.ui.autoFollowStreaming = true;
+        state.ui.userScrolling = false;
+        state.ui.programmaticScroll = true;
+
+        if (state.ui.detachedContentDirty) {
+          state.ui.detachedContentDirty = false;
+          var conv = getCurrentConv();
+          if (conv && conv.messages.length) {
+            fullRenderMessages(conv.messages);
+          }
+        }
+
+        var sc = getScrollContainer();
+        if (sc) sc.scrollTop = sc.scrollHeight;
+        requestAnimationFrame(function() {
+          state.ui.programmaticScroll = false;
+        });
+        updateScrollToBottomButton(false);
+      });
+      document.body.appendChild(btn);
+    }
+
+    btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
+    btn.removeAttribute('aria-hidden');
+    btn.classList.add('show');
   }
 
   // =========================================================================
@@ -2680,13 +2690,14 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // C: repairSceneBlock with longer timeout (45s)
+    // C: repairSceneBlock (20s timeout)
     try {
       var repairResult = await withTimeout(
         repairSceneBlock(conv, fullContent),
-        45000
+        20000
       );
-      if (repairResult && parseDirectionOptions(repairResult.directions).length >= 4) {
+      // repairSceneBlock already validates ≥4 parseable directions internally
+      if (repairResult) {
         assistantMsg.sceneSnapshot = createSceneState({
           directions: repairResult.directions,
           characterStatuses: repairResult.characterStatuses,
@@ -2699,7 +2710,7 @@ function handleMessageAction(action, msgIndex) {
       }
     } catch (_) { /* fall through */ }
 
-    // D: inherit previous round's directions (no local fake A/B/C/D)
+    // D: inherit previous round's directions
     var prevDirs = previousSceneState && previousSceneState.directions;
     if (prevDirs && parseDirectionOptions(prevDirs).length >= 4) {
       assistantMsg.sceneSnapshot = createSceneState(previousSceneState);
@@ -2711,12 +2722,136 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // Nothing worked — at least show a clear message
-    showToast('状态卡生成失败，可提高 Max Tokens 或检查辅助模型设置。', 'warning', 5000);
+    // E: hard local fallback — guaranteed 4 clickable options when all model strategies fail.
+    var fallbackContext = (fullContent || '').slice(-800);
+    var fallbackDirs = _buildHardFallbackDirections(fallbackContext, conv);
+    assistantMsg.sceneSnapshot = createSceneState({ directions: fallbackDirs });
+    conv.sceneState = conv.sceneState || {};
+    conv.sceneState.directions = fallbackDirs;
+    if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+    showToast('走向解析全部失败，已使用本地备选选项。建议重新生成或检查辅助模型。', 'warning', 5000);
+  }
+
+  // =========================================================================
+  // streamStoryPart — stream a story generation call into assistantMsg.
+  // Reads SSE chunks, uses parseStreamDelta to collect content/reasoning,
+  // throttles rendering at ~65ms so the user sees continuous text growth.
+  // Only real reasoning_content deltas populate the thinking section.
+  // Returns the content generated by this part (delta from initial msg length).
+  // =========================================================================
+
+  async function streamStoryPart(conv, model, messages, assistantMsg, opts) {
+    opts = opts || {};
+    var startLen = (assistantMsg.content || '').length;
+
+    var resp = await callChatModel(conv, model, messages, {
+      stream: true,
+      signal: state.abortController.signal,
+    });
+
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    var lastRenderAt = 0;
+    var renderTimer = null;
+    var minRenderGap = 65; // within 50-80ms, ~15fps throttle
+
+    var scheduleRender = function () {
+      if (renderTimer) return;
+      var elapsed = performance.now() - lastRenderAt;
+      if (elapsed >= minRenderGap) {
+        updateLastBubble(assistantMsg);
+        scrollToBottomIfNeeded({ smooth: false });
+        lastRenderAt = performance.now();
+      } else {
+        renderTimer = setTimeout(function () {
+          renderTimer = null;
+          updateLastBubble(assistantMsg);
+          scrollToBottomIfNeeded({ smooth: false });
+          lastRenderAt = performance.now();
+        }, minRenderGap - elapsed);
+      }
+    };
+
+    try {
+      while (true) {
+        var readResult;
+        try {
+          readResult = await reader.read();
+        } catch (e) {
+          if (e.name === 'AbortError') throw e;
+          throw e;
+        }
+        var done = readResult.done;
+        var value = readResult.value;
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        var lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (var li = 0; li < lines.length; li++) {
+          var trimmed = lines[li].trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+          var dataStr = trimmed.slice(5).trim();
+          if (dataStr === '[DONE]') break;
+
+          try {
+            var parsed = JSON.parse(dataStr);
+            var delta = parseStreamDelta(conv.provider, parsed);
+
+            // Only real reasoning_content deltas populate thinking
+            if (delta.reasoning) {
+              assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
+            }
+            if (delta.content) {
+              assistantMsg.content += delta.content;
+            }
+            if (delta.usage) {
+              assistantMsg.usage = delta.usage;
+            }
+            if (delta.finishReason) {
+              assistantMsg.finishReason = delta.finishReason;
+            }
+
+            if (delta.content || delta.reasoning) scheduleRender();
+          } catch (_) { /* skip unparseable chunks */ }
+        }
+      }
+
+      // Process remaining buffer
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        var finalTrimmed = buffer.trim();
+        if (finalTrimmed.startsWith('data:') && finalTrimmed !== 'data:[DONE]') {
+          try {
+            var finalParsed = JSON.parse(finalTrimmed.slice(5).trim());
+            var finalDelta = parseStreamDelta(conv.provider, finalParsed);
+            if (finalDelta.reasoning) assistantMsg.reasoning = (assistantMsg.reasoning || '') + finalDelta.reasoning;
+            if (finalDelta.content) assistantMsg.content += finalDelta.content;
+            if (finalDelta.usage) assistantMsg.usage = finalDelta.usage;
+            if (finalDelta.finishReason) assistantMsg.finishReason = finalDelta.finishReason;
+          } catch (_) { /* skip */ }
+        }
+      }
+    } finally {
+      if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+      reader.releaseLock();
+    }
+
+    // Final render for this part — caller keeps _streaming=true
+    updateLastBubble(assistantMsg);
+    scrollToBottomIfNeeded({ smooth: false });
+
+    var partContent = (assistantMsg.content || '').slice(startLen);
+    return partContent;
   }
 
   // =========================================================================
   // sendStoryTurn — dual-part story generation with aux model
+  // Uses streamStoryPart for continuous streaming display.
   // =========================================================================
 
   async function sendStoryTurn(text, conv) {
@@ -2755,11 +2890,11 @@ function handleMessageAction(action, msgIndex) {
     state.ui.userScrolling = false;
     updateScrollToBottomButton(false);
 
-    // --- Insert placeholder so user sees immediate progress ---
+    // --- Insert placeholder — starts empty, streaming cursor shows activity ---
     var placeholderIdx = conv.messages.length;
     var placeholderMsg = {
       role: 'assistant',
-      content: '正在生成剧情…',
+      content: '',
       _streaming: true,
       _showActions: false,
     };
@@ -2771,77 +2906,66 @@ function handleMessageAction(action, msgIndex) {
     var model = resolveModel(conv);
     var part1Content = '';
     var part2Content = '';
-    var assistantMsg = null; // placeholder promoted after Part2
+    var assistantMsg = placeholderMsg; // reused throughout
 
     try {
-      // ===== Part 1 =====
+      // ===== Part 1 (streaming) — content grows continuously in bubble =====
       var messages1 = _buildStoryMessages(conv, text, false);
-      var r1 = await callChatModel(conv, model, messages1, { stream: false, signal: state.abortController.signal });
-      part1Content = r1.content || '';
+      part1Content = await streamStoryPart(conv, model, messages1, assistantMsg, { label: 'Part1' });
       if (!part1Content) throw new Error('Part1 生成失败：模型未返回正文。');
 
-      // Update placeholder with Part1 content so user sees first segment
-      placeholderMsg.content = part1Content;
-      placeholderMsg.displayParts = [{ content: part1Content, hideRole: false }];
-      renderMessages();
-      scrollToBottomIfNeeded({ smooth: false });
+      // Save Part1 usage before Part2 may overwrite it
+      var part1Usage = assistantMsg.usage || null;
 
-      // ===== Part 2 =====
+      // ===== Part 2 (streaming) — appends to same bubble, continuous growth =====
       var messages2 = _buildStoryMessages(conv, text, part1Content);
+      var part2StartLen = (assistantMsg.content || '').length;
       try {
-        var r2 = await callChatModel(conv, model, messages2, { stream: false, signal: state.abortController.signal });
-        part2Content = r2.content || '';
+        await streamStoryPart(conv, model, messages2, assistantMsg, { label: 'Part2' });
+        part2Content = (assistantMsg.content || '').slice(part2StartLen);
       } catch (part2Err) {
-        if (part2Err.name === 'AbortError') throw part2Err; // Propagate abort
+        if (part2Err.name === 'AbortError') throw part2Err;
         console.warn('[OmniChat] Part2 failed:', part2Err.message || part2Err);
         showToast('第二部分生成失败，仅显示第一部分。', 'warning');
       }
 
-      // Update placeholder with Part2 content
-      var fullContent = part1Content;
-      var displayParts = [{ content: part1Content, hideRole: false }];
-      if (part2Content) {
-        fullContent += '\n\n' + part2Content;
-        displayParts.push({ content: part2Content, hideRole: true });
-      }
-      placeholderMsg.content = fullContent;
-      placeholderMsg.displayParts = displayParts;
-      renderMessages();
-      scrollToBottomIfNeeded({ smooth: false });
-
-      // Promote placeholder to real assistant message
-      assistantMsg = placeholderMsg;
-      assistantMsg._streaming = false;
-      assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
-
-      // Merge usage from both parts
-      if (r1.usage || (r2 && r2.usage)) {
+      // Merge usage from both streaming parts
+      if (part1Usage || assistantMsg.usage) {
+        var p2Usage = assistantMsg.usage || null;
         assistantMsg.usage = {
-          prompt_tokens: (r1.usage && r1.usage.prompt_tokens || 0) + (r2 && r2.usage && r2.usage.prompt_tokens || 0),
-          completion_tokens: (r1.usage && r1.usage.completion_tokens || 0) + (r2 && r2.usage && r2.usage.completion_tokens || 0),
-          total_tokens: (r1.usage && r1.usage.total_tokens || 0) + (r2 && r2.usage && r2.usage.total_tokens || 0),
+          prompt_tokens: (part1Usage && part1Usage.prompt_tokens || 0) + (p2Usage && p2Usage.prompt_tokens || 0),
+          completion_tokens: (part1Usage && part1Usage.completion_tokens || 0) + (p2Usage && p2Usage.completion_tokens || 0),
+          total_tokens: (part1Usage && part1Usage.total_tokens || 0) + (p2Usage && p2Usage.total_tokens || 0),
         };
       }
+
+      // Build displayParts and fullContent from streamed content
+      var fullContent = assistantMsg.content;
+      var displayParts = [{ content: part1Content, hideRole: false }];
+      if (part2Content) {
+        displayParts.push({ content: part2Content, hideRole: true });
+      }
+      // Stash final content — keep _streaming=true until directions are guaranteed
+      assistantMsg._pendingContent = fullContent;
+      assistantMsg._pendingDisplayParts = displayParts;
+      assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
 
       // ===== Aux model: JSON state extraction (with 25s timeout) =====
       // Save a clean snapshot before aux/repair may mutate conv.sceneState
       var previousSceneState = createSceneState(conv.sceneState);
       var auxOk = false;
       try {
-        var auxProvider = conv.storyAuxProvider || conv.provider;
-        var auxModel = conv.storyAuxModel || resolveModel(conv);
+        var auxResolved = resolveStoryAuxProviderAndModel(conv);
+        var auxProvider = auxResolved.provider;
+        var auxModel = auxResolved.model;
         var auxMaxTokens = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
-        if (!getApiKey(auxProvider)) {
-          auxProvider = conv.provider;
-          auxModel = resolveModel(conv);
-        }
         var auxMsgs = buildAuxMessages(conv, part1Content, part2Content || part1Content);
         var auxResp = await withTimeout(
           callChatModel(conv, auxModel, auxMsgs, {
             provider: auxProvider, maxTokens: auxMaxTokens, stream: false,
             signal: state.abortController.signal,
           }),
-          25000
+          20000
         );
         var parsed = tryParseAuxResponse(auxResp.content);
         if (parsed) {
@@ -2871,12 +2995,12 @@ function handleMessageAction(action, msgIndex) {
         console.warn('[OmniChat] Aux model failed:', auxErr.message || auxErr);
       }
 
-      // ===== Fallback: aux failed → repair via model (with 25s timeout) =====
+      // ===== Fallback: aux failed → repair via model (with 20s timeout) =====
       if (!auxOk) {
         try {
           var repairResult = await withTimeout(
             repairSceneBlock(conv, fullContent),
-            25000
+            20000
           );
           if (repairResult) {
             auxOk = true;
@@ -2897,9 +3021,16 @@ function handleMessageAction(action, msgIndex) {
       // ===== ensureStoryDirections: guarantee 4 clickable A/B/C/D =====
       await ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState);
 
+      // ===== Reveal: directions are now guaranteed — promote to final state =====
+      assistantMsg.content = assistantMsg._pendingContent || fullContent;
+      assistantMsg.displayParts = assistantMsg._pendingDisplayParts || displayParts;
+      delete assistantMsg._pendingContent;
+      delete assistantMsg._pendingDisplayParts;
+      assistantMsg._streaming = false;
+
       assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
       assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
-      // Only show actions if we actually have 4+ parseable directions
+      // Hard guarantee: ensureStoryDirections always provides 4+ parseable directions.
       var finalDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
       assistantMsg._showActions = !!(finalDirs && parseDirectionOptions(finalDirs).length >= 4);
       assistantMsg._actionIndex = conv.messages.length;
@@ -2910,10 +3041,11 @@ function handleMessageAction(action, msgIndex) {
 
     } catch (e) {
       if (e.name === 'AbortError') {
-        if (part1Content) {
-          // Keep partial content visible with stopped marker
-          placeholderMsg.content = part1Content + '\n\n[已停止]';
-          placeholderMsg.displayParts = [{ content: part1Content, hideRole: false }];
+        var partialContent = (placeholderMsg.content || '').trim();
+        if (partialContent) {
+          // Keep whatever streamed so far visible with stopped marker
+          placeholderMsg.content = partialContent + '\n\n[已停止]';
+          placeholderMsg.displayParts = [{ content: partialContent, hideRole: false }];
           placeholderMsg._streaming = false;
           placeholderMsg._showActions = false;
           renderMessages();
@@ -2937,7 +3069,14 @@ function handleMessageAction(action, msgIndex) {
     } finally {
       state.isStreaming = false;
       state.abortController = null;
+      if (placeholderMsg && placeholderMsg._pendingContent) {
+        placeholderMsg.content = placeholderMsg._pendingContent;
+        placeholderMsg.displayParts = placeholderMsg._pendingDisplayParts || null;
+        delete placeholderMsg._pendingContent;
+        delete placeholderMsg._pendingDisplayParts;
+      }
       if (placeholderMsg) placeholderMsg._streaming = false;
+      updateScrollToBottomButton(false);
       updateSendUI();
       updateTimestamp(conv);
       updateTopBar();
@@ -3073,7 +3212,7 @@ function handleMessageAction(action, msgIndex) {
       if (!statuses || !statuses.length) return null;
 
       return {
-        directions: dirs.map(function(d) { return d.content; }).join("\n"),
+        directions: dirs.map(function(d) { return d.letter + '. ' + d.content; }).join("\n"),
         characterStatuses: statuses
       };
     } catch (e) {
@@ -3773,12 +3912,25 @@ function handleMessageAction(action, msgIndex) {
 
     let renderScheduled = false;
     let lastRenderAt = 0;
-    const minRenderGap = 80;
+    const minRenderGap = 60;
+
+    // Flush final state: awaitable, cancels pending scheduleRender to avoid race
+    const flushFinalRender = () => {
+      return new Promise(function(resolve) {
+        renderScheduled = false; // cancel any pending timer
+        assistantMsg._streaming = false;
+        requestAnimationFrame(function() {
+          renderMessages();
+          scrollToBottomIfNeeded({ smooth: false });
+          resolve();
+        });
+      });
+    };
+
     const scheduleRender = () => {
       if (renderScheduled) return;
 
-      // Detached mode: user scrolled away — accumulate content in memory only.
-      // Do NOT touch the DOM to avoid reflow interrupting user scroll.
+      // Detached mode: user scrolled away — accumulate content in memory only
       if (state.ui.detachedDuringStreaming) {
         state.ui.detachedContentDirty = true;
         updateScrollToBottomButton(true);
@@ -3789,8 +3941,8 @@ function handleMessageAction(action, msgIndex) {
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
-          // Only update DOM when user is at bottom (auto-follow)
-          renderMessages();
+          // Light touch: only update last bubble during streaming
+          updateLastBubble(assistantMsg);
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
             if (sc && isNearBottom(sc, 120)) {
@@ -3818,8 +3970,11 @@ function handleMessageAction(action, msgIndex) {
 
           const dataStr = trimmed.slice(5).trim();
           if (dataStr === '[DONE]') {
-            assistantMsg._streaming = false;
-            scheduleRender();
+            await flushFinalRender();
+            // Reset detached flags so caller's finally doesn't re-arm dirty state
+            state.ui.detachedDuringStreaming = false;
+            state.ui.detachedContentDirty = false;
+            updateScrollToBottomButton(false);
             return;
           }
 
@@ -3869,6 +4024,7 @@ function handleMessageAction(action, msgIndex) {
             if (delta.finishReason) {
               assistantMsg.finishReason = delta.finishReason;
             }
+            if (delta.content || delta.reasoning) scheduleRender();
           } catch (_) { /* skip */ }
         }
       }
@@ -3892,6 +4048,9 @@ function handleMessageAction(action, msgIndex) {
       state.abortController.abort();
       state.abortController = null;
       state.isStreaming = false;
+      state.ui.detachedDuringStreaming = false;
+      state.ui.detachedContentDirty = false;
+      updateScrollToBottomButton(false);
       updateSendUI();
     }
   }

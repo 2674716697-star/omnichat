@@ -226,3 +226,50 @@ function getSceneBodyDetails(block) {
     }
     return lines.join('\n');
   }
+
+  function _buildHardFallbackDirections(contextSnippet, conv) {
+    // Guaranteed 4 clickable directions when all model/repair strategies fail.
+    var npcName = '';
+    if (conv && conv.sceneNpcs && conv.sceneNpcs.length) {
+      npcName = conv.sceneNpcs[0].name || '';
+    }
+    var text = String(contextSnippet || '');
+    var hasInvestigate = /调查|线索|追踪|寻找|检查|搜查|探索|真相|秘密|隐藏/.test(text);
+    var hasDanger = /危险|威胁|攻击|敌人|武器|战斗|受伤|陷阱|血|刀|枪/.test(text);
+    var hasDialogue = /对话|交谈|询问|告诉|解释|回答|请求|开口|问/.test(text);
+
+    var lines = [];
+    if (hasInvestigate) {
+      lines.push('A. 深入追查当前线索，挖掘被隐藏的关键信息');
+    } else if (hasDanger) {
+      lines.push('A. 评估威胁来源并制定应对策略，主动化解眼前风险');
+    } else {
+      lines.push('A. 仔细观察周围环境和人物反应，收集更多有用情报');
+    }
+
+    if (hasDanger) {
+      lines.push('B. 先确保自身安全，寻找更稳妥的行动时机和路线');
+    } else if (hasDialogue) {
+      lines.push('B. 暂停当前对话，重新审视对方的立场和可信度');
+    } else {
+      lines.push('B. 暂时保持现状，观察局势变化后再做决定');
+    }
+
+    if (npcName) {
+      lines.push('C. 主动接近' + npcName + '，试探对方真实意图和掌握的信息');
+    } else if (hasDialogue) {
+      lines.push('C. 转换话题方向，从另一个角度获取对方的真实态度');
+    } else {
+      lines.push('C. 与关键人物接触，试探对方真实意图和掌握的信息');
+    }
+
+    if (npcName) {
+      lines.push('D. 采取' + npcName + '意料之外的行动，打破当前僵局');
+    } else if (hasDanger) {
+      lines.push('D. 主动改变策略，用出其不意的行动扰乱对手节奏');
+    } else {
+      lines.push('D. 改变行动节奏，采取意料之外的行动打开新局面');
+    }
+
+    return lines.join('\n');
+  }

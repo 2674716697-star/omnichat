@@ -13,8 +13,8 @@
   /* === Glass surfaces — very subtle transparency === */
   --glass-bg: rgba(20, 20, 24, 0.82);
   --glass-bg-strong: rgba(20, 20, 24, 0.94);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --glass-highlight: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
   /* === Text === */
   --text-primary: #f0f0f2;
   --text-secondary: rgba(240, 240, 242, 0.56);
@@ -22,8 +22,8 @@
   /* === Accent — muted steel-blue, not electric === */
   --accent: #5B8CC7;
   --accent-bright: #7AACE0;
-  --accent-soft: rgba(91, 140, 199, 0.12);
-  --accent-glow: rgba(91, 140, 199, 0.06);
+  --accent-soft: rgba(91, 140, 199, 0.16);
+  --accent-glow: rgba(91, 140, 199, 0.08);
   /* === Semantic === */
   --danger: #E05555;
   --danger-soft: rgba(224, 85, 85, 0.12);
@@ -731,6 +731,15 @@ html.is-splashing .bottom-bar::after {
   justify-content: space-between;
   gap: 12px;
 }
+.setting-row .toggle {
+  flex-shrink: 0;
+}
+.setting-row .setting-label,
+.setting-row > span:first-child {
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
 
 .setting-range-val {
   color: var(--accent-bright);
@@ -829,6 +838,11 @@ html.is-splashing .bottom-bar::after {
 .story-mode-setting .toggle {
   flex: 0 0 46px;
   margin-top: 2px;
+}
+.story-mode-setting .setting-copy {
+  word-break: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .tool-warning {
@@ -933,7 +947,7 @@ html.is-splashing .bottom-bar::after {
   width: 100%;
   height: 100%;
   background: rgba(120, 120, 128, 0.32);
-  border-radius: 6px;
+  border-radius: 13px;
   transition: background 250ms var(--spring);
   position: relative;
 }
@@ -1707,7 +1721,7 @@ html.is-splashing .bottom-bar::after {
   word-break: break-word;
   overflow-wrap: break-word;
   letter-spacing: 0;
-  transition: border-color 180ms ease;
+  transition: border-color 180ms ease, opacity 120ms var(--spring);
 }
 
 .message.user .message-bubble {
@@ -1745,6 +1759,7 @@ html.is-splashing .bottom-bar::after {
 /* --- Story Part Separator (dual-part display) --- */
 .story-part {
   margin-bottom: 6px;
+  animation: storyReveal 350ms ease;
 }
 .story-part:last-child {
   margin-bottom: 0;
@@ -1753,6 +1768,11 @@ html.is-splashing .bottom-bar::after {
   padding-top: 8px;
   margin-top: 6px;
   border-top: 0.5px solid rgba(255, 255, 255, 0.06);
+}
+
+@keyframes storyReveal {
+  from { opacity: 0.6; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Markdown in Bubbles --- */
@@ -2140,6 +2160,7 @@ html.is-splashing .bottom-bar::after {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  transition: border-color 200ms ease;
 }
 
 .thinking-section[open] {
@@ -2191,6 +2212,12 @@ html.is-splashing .bottom-bar::after {
   max-height: 400px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  animation: thinkingFadeIn 200ms ease;
+}
+
+@keyframes thinkingFadeIn {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }
 
 .thinking-content p {
@@ -3604,6 +3631,11 @@ html.is-standalone .bottom-bar::after {
   font-size: 12px;
   padding: 9px 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+/* Streaming bubble: subtle reveal */
+.message-bubble.streaming-cursor .message-content {
+  transition: opacity 120ms ease;
 }
 
 /* Message bubble: long-form readability */
