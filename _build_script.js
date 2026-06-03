@@ -45,6 +45,7 @@ const REQUIRED = [
   'loadFromStorage',
   'debouncedSave',
   'createStoryMode',
+  'repairSceneBlock',
   'repairStoryModeFlags',
   'migrateStoryMode',
   'looksLikeWorldCharacterCard',
