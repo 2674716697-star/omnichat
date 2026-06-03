@@ -371,12 +371,12 @@ check('streamStoryPart uses updateLastBubble for incremental render',
   /updateLastBubble/.test(js.match(/function\s+streamStoryPart[\s\S]*?^  \}/m)?.[0] || ''));
 check('streamStoryPart has throttle gap (50-80ms)',
   /minRenderGap\s*=\s*(?:5\d|6\d|7\d|80)/.test(js.match(/function\s+streamStoryPart[\s\S]*?^  \}/m)?.[0] || ''));
-check('sendStoryTurn uses streamStoryPart for Part1',
-  /streamStoryPart\(conv,\s*model,\s*messages1/.test(storyTurnFn));
-check('sendStoryTurn uses streamStoryPart for Part2',
-  /streamStoryPart\(conv,\s*model,\s*messages2/.test(storyTurnFn));
-check('sendStoryTurn does NOT use non-streaming callChatModel for Part1/Part2',
-  !/callChatModel\(conv,\s*model,\s*messages[12],\s*\{\s*stream\s*:\s*false/.test(storyTurnFn));
+check('sendStoryTurn uses streamStoryPart once (single generation)',
+  (storyTurnFn.match(/streamStoryPart\(conv,\s*model,\s*messages/g) || []).length === 1);
+check('sendStoryTurn does NOT reference messages1/messages2 (no dual messages)',
+  !/messages1|messages2/.test(storyTurnFn));
+check('sendStoryTurn does NOT use non-streaming callChatModel for story generation',
+  !/callChatModel\(conv,\s*model,\s*messages,\s*\{\s*stream\s*:\s*false/.test(storyTurnFn));
 check('sendStoryTurn placeholder starts empty (content: \'\')',
   /content:\s*''/.test(storyTurnFn));
 check('sendStoryTurn placeholder has _streaming:true',
@@ -392,8 +392,8 @@ check('sendStoryTurn reveals content from _pendingContent after directions',
   /assistantMsg\.content\s*=\s*assistantMsg\._pendingContent[\s\S]*_streaming\s*=\s*false/.test(storyTurnFn));
 check('streamStoryPart only shows thinking from reasoning_content delta (no fake reasoning)',
   /delta\.reasoning/.test(js.match(/function\s+streamStoryPart[\s\S]*?^  \}/m)?.[0] || ''));
-check('streamStoryPart saves/merges Part1+Part2 usage tokens',
-  /part1Usage/.test(storyTurnFn));
+check('sendStoryTurn does NOT reference part1Content/part2Content (single story flow)',
+  !/part1Content|part2Content/.test(storyTurnFn));
 
 // 7e: render-time fallback for broken _showActions assistant without directions
 check('findPreviousSceneSnapshotForRender function exists',
@@ -555,6 +555,12 @@ check('ensureStoryDirections still in js',
   /function\s+ensureStoryDirections/.test(js));
 check('findPreviousSceneSnapshotForRender still in js',
   /function\s+findPreviousSceneSnapshotForRender/.test(js));
+// Bug fix: ensureStoryDirections preserves A/B/C/D letter prefixes
+check('ensureStoryDirections preserves letter prefix in dirsStr',
+  /d\.letter\s*\+\s*['\"]\.\s*['\"]\s*\+\s*d\.content/.test(js.match(/function\s+ensureStoryDirections[\s\S]*?^  \}/m)?.[0] || ''));
+// Aux messages use single storyContent payload
+check('buildAuxMessages payload uses story field (not part1/part2)',
+  /story\s*:\s*storyContent/.test(js) && !/part1\s*:/.test(js.match(/function\s+buildAuxMessages[\s\S]*?^  \}/m)?.[0] || ''));
 
 // =========================================================================
 // 12d. REPLY CHAR LIMIT — per-turn Chinese character count target
@@ -612,21 +618,18 @@ check('regular chat replyCharLimit constraint mentions ±50',
 // Regular chat constraint mentions upper bound
 check('regular chat constraint mentions do not exceed limit+50',
   /不要超出/.test(js) && /\+\s*50/.test(js));
-// World story split: Part1 has target
-check('_buildStoryMessages Part1 split target exists',
-  /第一部分目标约/.test(js) && /part1Target/.test(js));
-// World story split: Part2 has target
-check('_buildStoryMessages Part2 split target exists',
-  /第二部分目标约/.test(js) && /part2Target/.test(js));
-// World story constraint mentions total upper bound
-check('_buildStoryMessages mentions total upper bound',
-  /总计不超过/.test(js) && /\+\s*50/.test(js));
-// Minimum per-segment protection at low totals
-check('_buildStoryMessages has minSegTarget protection',
-  /minSegTarget/.test(js));
-// Part1 prompt emphasizes total word count + narrative completeness
-check('Part1 prompt emphasizes total word count',
-  /请确保总字数接近目标/.test(js) && /每段至少保证基本叙事完整/.test(js));
+// World story single-pass: single round character count constraint
+check('_buildStoryMessages has single-round char limit constraint',
+  /本轮剧情正文目标约/.test(js) && /优先自然完整/.test(js));
+// World story single-pass: no Part1/Part2 split
+check('_buildStoryMessages does NOT reference Part1/Part2 split targets',
+  !/第一部分目标约/.test(js) && !/第二部分目标约/.test(js) && !/part1Target/.test(js) && !/part2Target/.test(js) && !/minSegTarget/.test(js) && !/总计不超过/.test(js));
+// Emotional stability rule present in story writing rules
+check('_buildStoryMessages contains emotional stability rule',
+  /情绪基调保持克制/.test(js) && /平稳推进/.test(js) && /不要主动升级紧张感/.test(js));
+// Single-round constraint does NOT mention total upper bound or split
+check('_buildStoryMessages single-round constraint mentions ±50 tolerance',
+  /±50/.test(js) && /优先自然完整/.test(js));
 // Constraint appends to user message (not system) for stronger adherence
 check('char limit constraint appends to user message',
   /回复字数约束/.test(js) && /messages\[.*\]\.role\s*===\s*['\"]user['\"]/.test(js));

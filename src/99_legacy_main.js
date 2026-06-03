@@ -2570,8 +2570,7 @@ function handleMessageAction(action, msgIndex) {
   // STORY AUX MODEL — build messages and parse JSON response
   // =========================================================================
 
-  function buildAuxMessages(conv, part1, part2) {
-    var fullStory = (part1 || '') + (part2 ? '\n\n' + part2 : '');
+  function buildAuxMessages(conv, storyContent) {
     var prev = conv.sceneState || {};
     var prevState = {
       currentRole: prev.currentRole || '',
@@ -2587,7 +2586,7 @@ function handleMessageAction(action, msgIndex) {
       previousDirections: prev.directions || '',
     };
     var auxSystemPrompt = [
-      '你是一个剧情状态解析器。根据用户输入的两段剧情正文以及之前的剧情状态，输出更新后的 JSON 状态。',
+      '你是一个剧情状态解析器。根据用户输入的剧情正文以及之前的剧情状态，输出更新后的 JSON 状态。',
       '',
       '输出格式为严格的 JSON（不要包含```json或任何其他markdown标记）：',
       '{',
@@ -2627,7 +2626,7 @@ function handleMessageAction(action, msgIndex) {
 
     return [
       { role: 'system', content: auxSystemPrompt },
-      { role: 'user', content: JSON.stringify({ part1: part1, part2: part2 || '', previousState: prevState }) },
+      { role: 'user', content: JSON.stringify({ story: storyContent, previousState: prevState }) },
     ];
   }
 
@@ -2686,7 +2685,7 @@ function handleMessageAction(action, msgIndex) {
     // B: try to parse directions from visible narrative
     var fromContent = parseDirectionOptions(fullContent);
     if (fromContent.length >= 4) {
-      var dirsStr = fromContent.map(function(d) { return d.content; }).join('\n');
+      var dirsStr = fromContent.map(function(d) { return d.letter + '. ' + d.content; }).join('\n');
       assistantMsg.sceneSnapshot = createSceneState({ directions: dirsStr });
       conv.sceneState = conv.sceneState || {};
       conv.sceneState.directions = dirsStr;
@@ -2854,7 +2853,7 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
-  // sendStoryTurn — dual-part story generation with aux model
+  // sendStoryTurn — single-part story generation with aux model
   // Uses streamStoryPart for continuous streaming display.
   // =========================================================================
 
@@ -2908,47 +2907,18 @@ function handleMessageAction(action, msgIndex) {
     updateSendUI();
 
     var model = resolveModel(conv);
-    var part1Content = '';
-    var part2Content = '';
+    var storyContent = '';
     var assistantMsg = placeholderMsg; // reused throughout
 
     try {
-      // ===== Part 1 (streaming) — content grows continuously in bubble =====
-      var messages1 = _buildStoryMessages(conv, text, false);
-      part1Content = await streamStoryPart(conv, model, messages1, assistantMsg, { label: 'Part1' });
-      if (!part1Content) throw new Error('Part1 生成失败：模型未返回正文。');
+      // ===== Single story generation (streaming) =====
+      var messages = _buildStoryMessages(conv, text);
+      storyContent = await streamStoryPart(conv, model, messages, assistantMsg, { label: 'Story' });
+      if (!storyContent) throw new Error('故事生成失败：模型未返回正文。');
 
-      // Save Part1 usage before Part2 may overwrite it
-      var part1Usage = assistantMsg.usage || null;
-
-      // ===== Part 2 (streaming) — appends to same bubble, continuous growth =====
-      var messages2 = _buildStoryMessages(conv, text, part1Content);
-      var part2StartLen = (assistantMsg.content || '').length;
-      try {
-        await streamStoryPart(conv, model, messages2, assistantMsg, { label: 'Part2' });
-        part2Content = (assistantMsg.content || '').slice(part2StartLen);
-      } catch (part2Err) {
-        if (part2Err.name === 'AbortError') throw part2Err;
-        console.warn('[OmniChat] Part2 failed:', part2Err.message || part2Err);
-        showToast('第二部分生成失败，仅显示第一部分。', 'warning');
-      }
-
-      // Merge usage from both streaming parts
-      if (part1Usage || assistantMsg.usage) {
-        var p2Usage = assistantMsg.usage || null;
-        assistantMsg.usage = {
-          prompt_tokens: (part1Usage && part1Usage.prompt_tokens || 0) + (p2Usage && p2Usage.prompt_tokens || 0),
-          completion_tokens: (part1Usage && part1Usage.completion_tokens || 0) + (p2Usage && p2Usage.completion_tokens || 0),
-          total_tokens: (part1Usage && part1Usage.total_tokens || 0) + (p2Usage && p2Usage.total_tokens || 0),
-        };
-      }
-
-      // Build displayParts and fullContent from streamed content
+      // Build displayParts from streamed content
       var fullContent = assistantMsg.content;
-      var displayParts = [{ content: part1Content, hideRole: false }];
-      if (part2Content) {
-        displayParts.push({ content: part2Content, hideRole: true });
-      }
+      var displayParts = [{ content: storyContent, hideRole: false }];
       // Stash final content — keep _streaming=true until directions are guaranteed
       assistantMsg._pendingContent = fullContent;
       assistantMsg._pendingDisplayParts = displayParts;
@@ -2963,7 +2933,7 @@ function handleMessageAction(action, msgIndex) {
         var auxProvider = auxResolved.provider;
         var auxModel = auxResolved.model;
         var auxMaxTokens = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
-        var auxMsgs = buildAuxMessages(conv, part1Content, part2Content || part1Content);
+        var auxMsgs = buildAuxMessages(conv, storyContent);
         var auxResp = await withTimeout(
           callChatModel(conv, auxModel, auxMsgs, {
             provider: auxProvider, maxTokens: auxMaxTokens, stream: false,
@@ -3092,11 +3062,10 @@ function handleMessageAction(action, msgIndex) {
 
   // =========================================================================
   // _buildStoryMessages — construct request messages for story turns
-  // PartMode: falsy = Part1 (no assistant example), truthy = Part2 (inject Part1 as context)
+  // Single-pass generation: no Part1/Part2 split.
   // =========================================================================
 
-  function _buildStoryMessages(conv, userText, part1ContentForPart2) {
-    var isPart2 = !!part1ContentForPart2;
+  function _buildStoryMessages(conv, userText) {
     var messages = [];
     var supportsCaching = conv.enableCaching && isAnthropicModel(resolveModel(conv));
 
@@ -3132,10 +3101,8 @@ function handleMessageAction(action, msgIndex) {
         '2. 保持详细描写和人物互动，推进剧情发展。',
         '3. 不要输出 @@SCENE 状态卡、不要输出 A/B/C/D 选项、不要输出任何元数据。',
         '4. 状态卡和选项将由系统独立生成。',
+        '5. 情绪基调保持克制、自然、平稳推进。除非用户明确要求高燃、崩溃、惊险、强冲突，否则不要主动升级紧张感、危险感、心跳、压迫、失控、崩溃等描写。',
       ];
-      if (isPart2) {
-        writingRules.push('5. 请接续第一部分的结尾，直接开始剧情。不要复述前面的内容。');
-      }
       systemPrompt = (systemPrompt || '') + '\n' + writingRules.join('\n');
     }
 
@@ -3145,31 +3112,14 @@ function handleMessageAction(action, msgIndex) {
       messages.push(sysMsg);
     }
 
-    // Conversation history (merged Part1+Part2 as single assistant content)
+    // Conversation history
     messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
 
-    // Part2: inject Part1 as context assistant message
-    if (isPart2) {
-      messages.push({ role: 'assistant', content: part1ContentForPart2 });
-      messages.push({ role: 'user', content: '请接续上面的剧情正文，输出第二部分。保持同样的风格和详细度。不要输出 @@SCENE 或 A/B/C/D 选项。' });
-    }
-
-    // Reply character count constraint for world story (Part1/Part2 split)
+    // Reply character count constraint for world story (single pass)
     // Append to last user message for stronger adherence (vs. system message)
     var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (stCharLimit) {
-      var part1Target = Math.round(stCharLimit * 0.55);
-      var part2Target = Math.round(stCharLimit * 0.45);
-      // Minimum per-segment target: prevent unusably tiny splits at low totals
-      var minSegTarget = Math.min(200, Math.floor(stCharLimit / 3));
-      if (part1Target < minSegTarget) part1Target = minSegTarget;
-      if (part2Target < minSegTarget) part2Target = minSegTarget;
-      var stCharMsg;
-      if (isPart2) {
-        stCharMsg = '\n\n[回复字数约束] 第二部分目标约 ' + part2Target + ' 字。两部分合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差，总计不超过 ' + (stCharLimit + 50) + ' 字。不要参考历史回复的长度，每段独立遵守此约束。';
-      } else {
-        stCharMsg = '\n\n[回复字数约束] 本次生成分为两部分，合计目标约 ' + stCharLimit + ' 字，允许 ±50 字误差。第一部分目标约 ' + part1Target + ' 字。不要参考历史回复的长度，每段独立遵守此约束。请确保总字数接近目标，每段至少保证基本叙事完整。';
-      }
+      var stCharMsg = '\n\n[回复字数约束] 本轮剧情正文目标约 ' + stCharLimit + ' 字，允许 ±50 字。优先自然完整，不要为了凑字数堆砌心理描写、气氛描写或情绪升级。';
       if (conv._charLimitEscalate) {
         stCharMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
         conv._charLimitEscalate = false;
