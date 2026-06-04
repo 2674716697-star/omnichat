@@ -72,7 +72,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
   --keyboard-inset: 0px;
-  --top-bar-h: 46px;
+  --top-bar-h: 50px;
   --spring: cubic-bezier(0.25, 0.1, 0.25, 1);
   --spring-smooth: cubic-bezier(0.42, 0, 0.58, 1);
   --transition-fast: 160ms var(--spring);
@@ -293,23 +293,63 @@ html.is-splashing .bottom-bar::after {
   gap: 6px;
   padding: 4px 10px;
   padding-top: calc(4px + var(--safe-top));
-  background: var(--glass-bg-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 0.5px solid var(--glass-border);
+  background: transparent;
+  border-bottom: none;
   min-height: var(--top-bar-h);
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 
+/* Top bar icon buttons — individual glass capsules */
+.top-bar .btn-icon {
+  background: rgba(20, 20, 24, 0.66);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: saturate(140%) blur(16px);
+  -webkit-backdrop-filter: saturate(140%) blur(16px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .top-bar .btn-icon:hover {
+    background: rgba(20, 20, 24, 0.78);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--text-primary);
+  }
+}
+
+.top-bar .btn-icon:active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
+  transform: scale(0.94);
+  transition: transform 80ms var(--spring);
+}
+
+/* Ensure top-bar icon buttons stay round on narrow screens */
+.top-bar .btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.top-bar .btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .top-bar-info {
   flex: 1;
   min-width: 0;
+  max-width: min(52vw, 360px);
+  margin: 0 auto;
+  text-align: center;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
   transition: background 160ms ease;
+  overflow: hidden;
 }
 
 .top-bar-info:hover {
@@ -333,9 +373,11 @@ html.is-splashing .bottom-bar::after {
 .top-bar-meta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  margin-top: 0px;
-  flex-wrap: wrap;
+  margin-top: 1px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .badge {
@@ -345,6 +387,11 @@ html.is-splashing .bottom-bar::after {
   border-radius: 4px;
   white-space: nowrap;
   line-height: 1.4;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .badge-provider {
@@ -367,6 +414,10 @@ html.is-splashing .bottom-bar::after {
   color: var(--text-tertiary);
   white-space: nowrap;
   letter-spacing: 0.1px;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 /* --- Icon Button --- */
@@ -374,8 +425,8 @@ html.is-splashing .bottom-bar::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -386,9 +437,21 @@ html.is-splashing .bottom-bar::after {
   -webkit-tap-highlight-color: transparent;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+  }
+}
+
 .btn-icon:active {
   background: var(--bg-elevated);
   color: var(--text-primary);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .btn-icon.bg-active {
@@ -1973,8 +2036,8 @@ html.is-splashing .bottom-bar::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -2004,6 +2067,12 @@ html.is-splashing .bottom-bar::after {
 
 .btn-stop:active {
   background: rgba(224, 85, 85, 0.20);
+}
+
+.btn-send:focus-visible,
+.btn-stop:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* --- Toast --- */
@@ -2375,10 +2444,12 @@ html.is-splashing .bottom-bar::after {
   color: rgba(255, 255, 255, 0.45);
 }
 
-/* -- Top bar: glass, flush with story column -- */
+/* -- Top bar: inherit the transparent base style, no glass override -- */
 .scene-immersive .top-bar {
-  background: var(--glass-bg-strong);
-  border-bottom: 1px solid var(--glass-border);
+  background: transparent;
+  border-bottom: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
@@ -3214,6 +3285,43 @@ html.is-splashing .bottom-bar::after {
   }
 }
 
+/* Top bar: shrink badges on mid-width screens */
+@media (max-width: 600px) {
+  .top-bar {
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 4px;
+  }
+
+  .top-bar-info {
+    max-width: min(60vw, 280px);
+  }
+
+  .conv-title {
+    font-size: 12.5px;
+  }
+
+  .badge {
+    font-size: 9px;
+    max-width: 64px;
+  }
+
+  .context-stats {
+    max-width: 56px;
+  }
+}
+
+/* Top bar: hide context-stats on very narrow screens */
+@media (max-width: 380px) {
+  .top-bar .context-stats {
+    display: none;
+  }
+
+  .top-bar .badge-model {
+    max-width: 48px;
+  }
+}
+
 @media (max-width: 480px) and (min-height: 850px) {
   :root {
     --top-bar-h: 58px;
@@ -3226,8 +3334,8 @@ html.is-splashing .bottom-bar::after {
 
   .top-bar {
     min-height: var(--top-bar-h);
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .main-content {
