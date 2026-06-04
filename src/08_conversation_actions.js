@@ -46,7 +46,29 @@
 
   // -- Conversation lifecycle --------------------------------------------------
 
+  function resetRuntimeForNewConversation() {
+    if (state.abortController) {
+      try { state.abortController.abort(); } catch (_) {}
+    }
+    state.abortController = null;
+    state.isStreaming = false;
+    state.pendingHiddenRequest = null;
+    state._regenerateFlags = null;
+
+    state.ui.autoFollowStreaming = true;
+    state.ui.userScrolling = false;
+    state.ui.programmaticScroll = false;
+    state.ui.detachedDuringStreaming = false;
+    state.ui.pendingStreamRender = false;
+    state.ui.detachedContentDirty = false;
+
+    if (typeof updateScrollToBottomButton === 'function') updateScrollToBottomButton(false);
+    if (typeof updateSendUI === 'function') updateSendUI();
+  }
+
   function newConversation(overrides) {
+    resetRuntimeForNewConversation();
+
     var current = getCurrentConv();
     var provider = (overrides && overrides.provider) || (current && current.provider) || 'openai';
     var conv = createConversation(provider);
@@ -67,7 +89,6 @@
     state.currentConversationId = conv.id;
     renderAll();
     saveToStorage();
-    dom.inputMessage.focus();
   }
 
   function switchConversation(id) {

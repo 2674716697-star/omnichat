@@ -1634,7 +1634,7 @@
     dom.labelApiKey.textContent = pConf.name + ' API Key';
     dom.inputApiKey.placeholder = pConf.keyHint;
     dom.inputApiKey.value = state.apiKeys[provider] || '';
-    dom.apiKeyHint.textContent = '在 ' + pConf.name + ' 平台获取，仅保存在本地浏览器';
+    dom.apiKeyHint.textContent = '在 ' + pConf.name + ' 平台获取，仅保存在当前浏览器/设备；GitHub 同步不会同步密钥，手机端首次使用需填写一次';
     updateMaxTokensCap();
   }
 
@@ -2888,6 +2888,7 @@ function handleMessageAction(action, msgIndex) {
     syncLegacyToStoryMode(conv); repairStoryModeFlags(conv);
 
     state.abortController = new AbortController();
+    var requestController = state.abortController;
     state.isStreaming = true;
     state.ui.autoFollowStreaming = true;
     state.ui.userScrolling = false;
@@ -2924,6 +2925,8 @@ function handleMessageAction(action, msgIndex) {
       assistantMsg._pendingDisplayParts = displayParts;
       assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
 
+      if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+
       // ===== Aux model: JSON state extraction (with 25s timeout) =====
       // Save a clean snapshot before aux/repair may mutate conv.sceneState
       var previousSceneState = createSceneState(conv.sceneState);
@@ -2937,7 +2940,7 @@ function handleMessageAction(action, msgIndex) {
         var auxResp = await withTimeout(
           callChatModel(conv, auxModel, auxMsgs, {
             provider: auxProvider, maxTokens: auxMaxTokens, stream: false,
-            signal: state.abortController.signal,
+            signal: requestController.signal,
           }),
           20000
         );
@@ -2971,6 +2974,7 @@ function handleMessageAction(action, msgIndex) {
 
       // ===== Fallback: aux failed → repair via model (with 20s timeout) =====
       if (!auxOk) {
+        if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
         try {
           var repairResult = await withTimeout(
             repairSceneBlock(conv, fullContent),
@@ -2993,6 +2997,7 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // ===== ensureStoryDirections: guarantee 4 clickable A/B/C/D =====
+      if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       await ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState);
 
       // ===== Reveal: directions are now guaranteed — promote to final state =====
@@ -3020,6 +3025,8 @@ function handleMessageAction(action, msgIndex) {
           // Keep whatever streamed so far visible with stopped marker
           placeholderMsg.content = partialContent + '\n\n[已停止]';
           placeholderMsg.displayParts = [{ content: partialContent, hideRole: false }];
+          delete placeholderMsg._pendingContent;
+          delete placeholderMsg._pendingDisplayParts;
           placeholderMsg._streaming = false;
           placeholderMsg._showActions = false;
           renderMessages();
