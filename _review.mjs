@@ -411,8 +411,34 @@ check('fallback writes msg.sceneSnapshot (createSceneState)',
 // =========================================================================
 console.log('\n--- Build version ---');
 check('build-version meta in omnichat.html', /name=["']build-version["']/.test(html));
+check('build-commit meta in omnichat.html', /name=["']build-commit["']/.test(html));
+check('build-version meta in index.html', /name=["']build-version["']/.test(idx));
+check('build-commit meta in index.html', /name=["']build-commit["']/.test(idx));
 check('__BUILD_VERSION__ in script.js', /__BUILD_VERSION__/.test(js));
+check('__BUILD_COMMIT__ in script.js', /__BUILD_COMMIT__/.test(js));
 check('window.__BUILD_VERSION__ in omnichat.html', /window\.__BUILD_VERSION__/.test(html));
+check('window.__BUILD_COMMIT__ in omnichat.html', /window\.__BUILD_COMMIT__/.test(html));
+check('index.html keeps external stylesheet', /<link rel=["']stylesheet["'] href=["']style\.css["']>/.test(idx));
+check('index.html keeps external script', /<script src=["']script\.js["']><\/script>/.test(idx));
+check('omnichat.html has inline style', /<style>[\s\S]*<\/style>/.test(html));
+
+// Validate content is not empty/unknown
+var buildVerMatch = html.match(/<meta\s+name=["']build-version["']\s+content=["']([^"']*)["']/);
+var buildComMatch = html.match(/<meta\s+name=["']build-commit["']\s+content=["']([^"']*)["']/);
+var indexBuildVerMatch = idx.match(/<meta\s+name=["']build-version["']\s+content=["']([^"']*)["']/);
+var indexBuildComMatch = idx.match(/<meta\s+name=["']build-commit["']\s+content=["']([^"']*)["']/);
+check('build-version content is not empty',
+  buildVerMatch && buildVerMatch[1] && buildVerMatch[1].length > 0);
+check('build-commit content is not empty',
+  buildComMatch && buildComMatch[1] && buildComMatch[1].length > 0);
+check('build-commit content is not "unknown"',
+  buildComMatch && buildComMatch[1] && buildComMatch[1] !== 'unknown');
+check('build-commit content is not "dev"',
+  buildComMatch && buildComMatch[1] && buildComMatch[1] !== 'dev');
+check('index.html build-version matches omnichat.html',
+  indexBuildVerMatch && buildVerMatch && indexBuildVerMatch[1] === buildVerMatch[1]);
+check('index.html build-commit matches omnichat.html',
+  indexBuildComMatch && buildComMatch && indexBuildComMatch[1] === buildComMatch[1]);
 
 // =========================================================================
 // 9. SERVICE WORKER

@@ -1,15 +1,15 @@
 // Build standalone omnichat.html with minification
 const fs = require('fs');
 
-let html = fs.readFileSync('index.html', 'utf-8');
-const template = html; // Save source template for restore after build
+const sourceHtml = fs.readFileSync('index.html', 'utf-8');
 const css = fs.readFileSync('style.css', 'utf-8');
 const js = fs.readFileSync('script.js', 'utf-8');
 const buildVersion = Date.now().toString(36);
 const commitHash = (() => {
-  try {
-    return require('child_process').execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-  } catch (_) { return 'unknown'; }
+  if (process.env.OMNICHAT_BUILD_COMMIT) {
+    return process.env.OMNICHAT_BUILD_COMMIT.trim().slice(0, 9);
+  }
+  return 'precommit';
 })();
 
 // Minify CSS: remove comments, collapse whitespace, remove unnecessary semicolons
@@ -94,16 +94,28 @@ function minifyJS(js) {
 const cssMin = minifyCSS(css);
 const jsMin = minifyJS(js);
 
-// Strip previous build meta tags (prevents accumulation across builds)
-html = html.replace(/\s*<meta name="build-version"[^>]*>/g, '');
-html = html.replace(/\s*<meta name="build-commit"[^>]*>/g, '');
-html = html.replace(/\s*<link rel="apple-touch-icon"[^>]*>/g, '');
+function injectBuildMeta(input) {
+  let output = input
+    .replace(/\s*<meta name="build-version"[^>]*>/g, '')
+    .replace(/\s*<meta name="build-commit"[^>]*>/g, '')
+    .replace(/\s*<link rel="apple-touch-icon"[^>]*>/g, '');
 
-// Add fresh build version meta tags
-html = html.replace(
-  '<meta name="theme-color" content="#000000">',
-  '<meta name="theme-color" content="#000000">\n  <meta name="build-version" content="' + buildVersion + '">\n  <meta name="build-commit" content="' + commitHash + '">'
-);
+  output = output.replace(
+    '<meta name="theme-color" content="#000000">',
+    '<meta name="theme-color" content="#000000">\n  <meta name="build-version" content="' + buildVersion + '">\n  <meta name="build-commit" content="' + commitHash + '">'
+  );
+
+  const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E";
+  output = output.replace(
+    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n  <link rel="apple-touch-icon" href="' + icon + '">'
+  );
+
+  return output;
+}
+
+const indexHtml = injectBuildMeta(sourceHtml);
+let html = indexHtml;
 
 // Inline minified CSS
 html = html.replace(
@@ -117,18 +129,8 @@ html = html.replace(
   () => '<script>' + jsMin + '</script>'
 );
 
-// Add apple-touch-icon
-const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E";
-html = html.replace(
-  '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
-  '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n  <link rel="apple-touch-icon" href="' + icon + '">'
-);
-
 fs.writeFileSync('omnichat.html', html, 'utf-8');
-// Write to index.html for GitHub Pages default entry
-fs.writeFileSync('index.html', html, 'utf-8');
-// IMMEDIATELY restore the source template so the next build works
-fs.writeFileSync('index.html', template, 'utf-8');
+fs.writeFileSync('index.html', indexHtml, 'utf-8');
 
 // Verify
 const verifyHtml = fs.readFileSync('omnichat.html', 'utf-8');

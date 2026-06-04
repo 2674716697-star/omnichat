@@ -6581,9 +6581,6 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
     // Mark page as splashing so bottom-bar is hidden during animation
     document.documentElement.classList.add('is-splashing');
 
-    // Focus input after splash
-    setTimeout(() => dom.inputMessage.focus(), 2000);
-
     // Splash screen - dismiss after animation
     const splashDismissed = sessionStorage.getItem('omnichat_splash');
     const onSplashDone = () => {
@@ -6618,7 +6615,8 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       var versionFloat = document.createElement('div');
       versionFloat.id = 'debugVersionFloat';
       versionFloat.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:9999;font-size:9px;color:rgba(255,255,255,0.3);font-family:monospace;pointer-events:none;';
-      versionFloat.textContent = 'build: ' + window.__BUILD_COMMIT__.slice(0,7) + ' / ' + window.__BUILD_VERSION__;
+      var isRealCommit = window.__BUILD_COMMIT__ && window.__BUILD_COMMIT__ !== 'precommit' && window.__BUILD_COMMIT__ !== 'unknown' && window.__BUILD_COMMIT__ !== 'dev';
+      versionFloat.textContent = isRealCommit ? 'build: ' + window.__BUILD_COMMIT__.slice(0,7) + ' / ' + window.__BUILD_VERSION__ : 'build: ' + window.__BUILD_VERSION__;
       document.body.appendChild(versionFloat);
     }
 
