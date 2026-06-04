@@ -20,10 +20,10 @@
   --text-secondary: rgba(240, 240, 242, 0.56);
   --text-muted: rgba(240, 240, 242, 0.34);
   /* === Accent — muted steel-blue, not electric === */
-  --accent: #5B8CC7;
-  --accent-bright: #7AACE0;
-  --accent-soft: rgba(91, 140, 199, 0.16);
-  --accent-glow: rgba(91, 140, 199, 0.08);
+  --accent: #6FA3D7;
+  --accent-bright: #8BB9E8;
+  --accent-soft: rgba(111, 163, 215, 0.16);
+  --accent-glow: rgba(111, 163, 215, 0.12);
   /* === Semantic === */
   --danger: #E05555;
   --danger-soft: rgba(224, 85, 85, 0.12);
@@ -1995,8 +1995,8 @@ html.is-splashing .bottom-bar {
   background: rgba(20, 20, 24, 0.70);
   backdrop-filter: saturate(140%) blur(28px);
   -webkit-backdrop-filter: saturate(140%) blur(28px);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(111, 163, 215, 0.14);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(111, 163, 215, 0.04), inset 0 1px 0 rgba(111, 163, 215, 0.08);
   padding: 7px 10px;
   border-radius: 18px;
   transition: bottom 180ms ease;
@@ -2051,7 +2051,7 @@ html.is-splashing .bottom-bar {
 .input-message {
   flex: 1;
   padding: 10px 14px;
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   background: rgba(20, 20, 24, 0.48);
   backdrop-filter: saturate(145%) blur(18px);
@@ -2073,10 +2073,10 @@ html.is-splashing .bottom-bar {
 }
 
 .input-message:focus {
-  border-color: rgba(122, 172, 224, 0.32);
+  border-color: rgba(139, 185, 232, 0.32);
   background: rgba(20, 20, 24, 0.62);
   box-shadow:
-    0 0 0 1px rgba(122, 172, 224, 0.08),
+    0 0 0 1px rgba(139, 185, 232, 0.08),
     0 3px 12px rgba(0, 0, 0, 0.14),
     inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
@@ -2102,7 +2102,7 @@ html.is-splashing .bottom-bar {
 }
 
 .btn-send {
-  background: rgba(91, 140, 199, 0.72);
+  background: rgba(111, 163, 215, 0.72);
   color: #fff;
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.18),
@@ -2110,7 +2110,7 @@ html.is-splashing .bottom-bar {
 }
 
 .btn-send:hover {
-  background: rgba(122, 172, 224, 0.78);
+  background: rgba(139, 185, 232, 0.78);
   border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.22),
@@ -2118,7 +2118,7 @@ html.is-splashing .bottom-bar {
 }
 
 .btn-send:active {
-  background: rgba(74, 122, 181, 0.80);
+  background: rgba(88, 139, 185, 0.80);
   transform: scale(0.94);
 }
 
@@ -2199,7 +2199,7 @@ html.is-splashing .bottom-bar {
 .toast.info {
   background: rgba(15, 20, 28, 0.95);
   color: var(--accent-bright);
-  border: 0.5px solid rgba(91, 140, 199, 0.15);
+  border: 0.5px solid rgba(111, 163, 215, 0.15);
 }
 
 /* --- Dialog --- */
