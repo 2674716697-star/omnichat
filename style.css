@@ -1123,7 +1123,7 @@ html.is-splashing .bottom-bar::after {
   overscroll-behavior-y: auto;
   overflow-anchor: none;
   padding: 0;
-  padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
+  padding-top: 6px;
   padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px) + 18px);
   scroll-padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
   scroll-padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px) + 18px);
@@ -1144,6 +1144,7 @@ html.is-splashing .bottom-bar::after {
   max-width: 800px;
   margin: 0 auto;
   padding: 0 12px;
+  padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
   padding-bottom: 12px;
   overflow-anchor: none;
   contain: layout style paint;
@@ -2508,7 +2509,9 @@ html.is-splashing .bottom-bar::after {
 }
 
 .scene-immersive .messages-container {
-  padding: 0 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
   padding-bottom: 24px;
 }
 
@@ -3276,7 +3279,9 @@ html.is-splashing .bottom-bar::after {
   }
 
   .scene-immersive .messages-container {
-    padding: 0 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
     padding-bottom: 24px;
   }
 
@@ -3415,7 +3420,7 @@ html.is-splashing .bottom-bar::after {
   }
 
   .main-content {
-    padding-top: calc(var(--top-bar-h) + var(--safe-top) + 10px);
+    padding-top: 10px;
   }
 
   .welcome-screen {
@@ -3426,6 +3431,7 @@ html.is-splashing .bottom-bar::after {
   .messages-container {
     padding-left: 14px;
     padding-right: 14px;
+    padding-top: calc(var(--top-bar-h) + var(--safe-top) + 10px);
   }
 
   .bottom-bar {
