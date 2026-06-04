@@ -286,25 +286,15 @@ html.is-splashing .bottom-bar::after {
   transform: translateZ(0);
 }
 
-/* Top content veil: lets messages pass under the controls with a soft blur */
-.app-container::before {
-  content: '';
+/* .app-container::before removed — glass stripe now lives on .main-content::before */
+
+/* --- Top Bar --- */
+.top-bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: calc(var(--top-bar-h, 50px) + var(--safe-top, 0px) + 24px);
-  background: rgba(8, 8, 10, 0.08);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  pointer-events: none;
-  z-index: 5;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
-}
-
-/* --- Top Bar --- */
-.top-bar {
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -312,10 +302,8 @@ html.is-splashing .bottom-bar::after {
   padding-top: calc(4px + var(--safe-top));
   background: transparent;
   border-bottom: none;
+  box-shadow: none;
   min-height: var(--top-bar-h);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
   isolation: isolate;
 }
 
@@ -1119,14 +1107,33 @@ html.is-splashing .bottom-bar::after {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: auto;
   overflow-anchor: none;
-  padding: 8px 0;
+  padding: 0;
+  padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
   padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px) + 18px);
+  scroll-padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
   scroll-padding-bottom: calc(var(--bottom-bar-h, 150px) + var(--safe-bottom, 0px) + 18px);
   position: relative;
   background: transparent;
   transition: background 400ms var(--spring);
   contain: layout style;
   min-height: 0;
+}
+
+/* Top content veil: glass stripe overlaid on main-content, fades down behind top-bar */
+.main-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--top-bar-h, 50px) + var(--safe-top, 0px) + 24px);
+  background: rgba(8, 8, 10, 0.14);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  pointer-events: none;
+  z-index: 5;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
 }
 
 .messages-bottom-spacer {
@@ -2494,7 +2501,7 @@ html.is-splashing .bottom-bar::after {
 }
 
 /* Immersive mode keeps the top controls nearly invisible too. */
-.scene-immersive .app-container::before {
+.scene-immersive .main-content::before {
   background: rgba(8, 8, 10, 0.08);
 }
 
@@ -3410,7 +3417,7 @@ html.is-splashing .bottom-bar::after {
   }
 
   .main-content {
-    padding-top: 10px;
+    padding-top: calc(var(--top-bar-h) + var(--safe-top) + 10px);
   }
 
   .welcome-screen {
@@ -3837,7 +3844,6 @@ html.is-standalone .bottom-bar::after {
 .main-content {
   padding-left: 10px;
   padding-right: 10px;
-  padding-top: 6px;
 }
 .message {
   max-width: 100%;
