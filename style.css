@@ -286,21 +286,21 @@ html.is-splashing .bottom-bar::after {
   transform: translateZ(0);
 }
 
-/* Glass stripe — sits behind top bar, extends into status bar, fades at bottom */
+/* Top content veil: lets messages pass under the controls with a soft blur */
 .app-container::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: calc(var(--top-bar-h, 50px) + var(--safe-top, 0px) + 16px);
-  background: rgba(8, 8, 10, 0.16);
+  height: calc(var(--top-bar-h, 50px) + var(--safe-top, 0px) + 24px);
+  background: rgba(8, 8, 10, 0.08);
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
   pointer-events: none;
   z-index: 5;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0,0,0,0.55) 42%, transparent 100%);
 }
 
 /* --- Top Bar --- */
@@ -319,13 +319,8 @@ html.is-splashing .bottom-bar::after {
   isolation: isolate;
 }
 
-/* Top bar ::before — reserved; glass backdrop moved to .app-container::before */
 .top-bar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  top: calc(-1 * var(--safe-top, 0px) - 4px);
-  bottom: -12px;
+  content: none;
 }
 
 /* Top bar icon buttons — individual glass capsules, 40×40 round */
@@ -334,22 +329,22 @@ html.is-splashing .bottom-bar::after {
   height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: rgba(20, 20, 24, 0.66);
+  background: rgba(20, 20, 24, 0.56);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: saturate(140%) blur(16px);
   -webkit-backdrop-filter: saturate(140%) blur(16px);
   box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.16),
+    0 1px 4px rgba(0, 0, 0, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .top-bar .btn-icon:hover {
-    background: rgba(20, 20, 24, 0.78);
+    background: rgba(20, 20, 24, 0.66);
     border-color: rgba(255, 255, 255, 0.14);
     color: var(--text-primary);
     box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.20),
+      0 2px 8px rgba(0, 0, 0, 0.16),
       inset 0 1px 0 rgba(255, 255, 255, 0.10);
   }
 }
@@ -399,7 +394,7 @@ html.is-splashing .bottom-bar::after {
   text-overflow: ellipsis;
   line-height: 1.3;
   letter-spacing: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  text-shadow: none;
 }
 
 .top-bar-meta {
@@ -424,7 +419,7 @@ html.is-splashing .bottom-bar::after {
   text-overflow: ellipsis;
   flex-shrink: 1;
   min-width: 0;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.20);
+  text-shadow: none;
 }
 
 .badge-provider {
@@ -2498,9 +2493,9 @@ html.is-splashing .bottom-bar::after {
   background: transparent;
 }
 
-/* Immersive glass stripe: stronger tint since content is lighter / more exposed */
+/* Immersive mode keeps the top controls nearly invisible too. */
 .scene-immersive .app-container::before {
-  background: rgba(20, 20, 24, 0.55);
+  background: rgba(8, 8, 10, 0.08);
 }
 
 .scene-immersive .main-content {
@@ -2526,19 +2521,6 @@ html.is-splashing .bottom-bar::after {
 
 .scene-immersive .top-bar::before {
   display: none;
-}
-
-/* Immersive mode: stronger text shadow on top-bar text since no glass backdrop */
-.scene-immersive .conv-title {
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-}
-
-.scene-immersive .badge {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-.scene-immersive .context-stats {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
