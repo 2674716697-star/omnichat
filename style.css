@@ -299,15 +299,38 @@ html.is-splashing .bottom-bar::after {
   flex-shrink: 0;
   position: relative;
   z-index: 10;
+  isolation: isolate;
 }
 
-/* Top bar icon buttons — individual glass capsules */
+/* Top bar frosted-glass backdrop — extends into status bar, fades at bottom */
+.top-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  top: calc(-1 * var(--safe-top, 0px) - 4px);
+  bottom: -12px;
+  background: rgba(20, 20, 24, 0.48);
+  backdrop-filter: saturate(150%) blur(20px);
+  -webkit-backdrop-filter: saturate(150%) blur(20px);
+  pointer-events: none;
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%);
+}
+
+/* Top bar icon buttons — individual glass capsules, 40×40 round */
 .top-bar .btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
   background: rgba(20, 20, 24, 0.66);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: saturate(140%) blur(16px);
   -webkit-backdrop-filter: saturate(140%) blur(16px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -315,6 +338,9 @@ html.is-splashing .bottom-bar::after {
     background: rgba(20, 20, 24, 0.78);
     border-color: rgba(255, 255, 255, 0.14);
     color: var(--text-primary);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
   }
 }
 
@@ -324,14 +350,9 @@ html.is-splashing .bottom-bar::after {
   color: var(--text-primary);
   transform: scale(0.94);
   transition: transform 80ms var(--spring);
-}
-
-/* Ensure top-bar icon buttons stay round on narrow screens */
-.top-bar .btn-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .top-bar .btn-icon:focus-visible {
@@ -1946,6 +1967,7 @@ html.is-splashing .bottom-bar::after {
   max-width: 800px;
   margin: 0 auto;
   z-index: 50;
+  isolation: isolate;
   background: var(--glass-bg-strong);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -1955,6 +1977,21 @@ html.is-splashing .bottom-bar::after {
   padding: 6px 10px;
   padding-bottom: calc(6px + calc(var(--safe-bottom) + var(--keyboard-inset, 0px)));
   border-radius: 10px 10px 0 0;
+}
+
+/* Bottom bar safe-area extension — glass coverage below viewport edge */
+.bottom-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: calc(var(--safe-bottom) + var(--keyboard-inset, 0px) + 60px);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .quick-actions {
@@ -2038,35 +2075,53 @@ html.is-splashing .bottom-bar::after {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: none;
+  border: 0.5px solid rgba(255, 255, 255, 0.10);
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 150ms var(--spring);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  transition: background 150ms var(--spring), box-shadow 150ms var(--spring), transform 80ms var(--spring);
   -webkit-tap-highlight-color: transparent;
 }
 
 .btn-send {
-  background: var(--accent);
+  background: rgba(91, 140, 199, 0.72);
   color: #fff;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-send:hover {
-  background: var(--accent-bright);
+  background: rgba(122, 172, 224, 0.78);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .btn-send:active {
-  background: #4A7AB5;
+  background: rgba(74, 122, 181, 0.80);
+  transform: scale(0.94);
 }
 
 .btn-stop {
-  background: var(--danger-soft);
+  background: rgba(224, 85, 85, 0.28);
   color: var(--danger);
-  border: 1px solid rgba(224, 85, 85, 0.15);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.btn-stop:hover {
+  background: rgba(224, 85, 85, 0.36);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .btn-stop:active {
-  background: rgba(224, 85, 85, 0.20);
+  background: rgba(224, 85, 85, 0.44);
+  transform: scale(0.94);
 }
 
 .btn-send:focus-visible,
@@ -2444,12 +2499,16 @@ html.is-splashing .bottom-bar::after {
   color: rgba(255, 255, 255, 0.45);
 }
 
-/* -- Top bar: inherit the transparent base style, no glass override -- */
+/* -- Top bar: fully transparent for immersive mode, glass backdrop disabled -- */
 .scene-immersive .top-bar {
   background: transparent;
   border-bottom: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+.scene-immersive .top-bar::before {
+  display: none;
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
@@ -3574,6 +3633,7 @@ html.is-standalone .bottom-bar::after {
   height: 80px;
   background: inherit;
   pointer-events: none;
+  z-index: -1;
 }
 
 /* Bottom input area is globally unified — normal and story mode share the same purple-black aesthetic */
