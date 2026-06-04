@@ -286,6 +286,23 @@ html.is-splashing .bottom-bar::after {
   transform: translateZ(0);
 }
 
+/* Glass stripe — sits behind top bar, extends into status bar, fades at bottom */
+.app-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--top-bar-h, 50px) + var(--safe-top, 0px) + 16px);
+  background: rgba(8, 8, 10, 0.16);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  pointer-events: none;
+  z-index: 5;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 100%);
+}
+
 /* --- Top Bar --- */
 .top-bar {
   display: flex;
@@ -302,20 +319,13 @@ html.is-splashing .bottom-bar::after {
   isolation: isolate;
 }
 
-/* Top bar frosted-glass backdrop — extends into status bar, fades at bottom */
+/* Top bar ::before — reserved; glass backdrop moved to .app-container::before */
 .top-bar::before {
   content: '';
   position: absolute;
   inset: 0;
   top: calc(-1 * var(--safe-top, 0px) - 4px);
   bottom: -12px;
-  background: rgba(20, 20, 24, 0.52);
-  backdrop-filter: saturate(140%) blur(16px);
-  -webkit-backdrop-filter: saturate(140%) blur(16px);
-  pointer-events: none;
-  z-index: -1;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
 }
 
 /* Top bar icon buttons — individual glass capsules, 40×40 round */
@@ -2486,6 +2496,11 @@ html.is-splashing .bottom-bar::after {
 .scene-immersive.app-container {
   max-width: 720px;
   background: transparent;
+}
+
+/* Immersive glass stripe: stronger tint since content is lighter / more exposed */
+.scene-immersive .app-container::before {
+  background: rgba(20, 20, 24, 0.55);
 }
 
 .scene-immersive .main-content {
