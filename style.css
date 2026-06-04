@@ -308,7 +308,7 @@ html.is-splashing .bottom-bar {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 22px);
+  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 16px);
   background: linear-gradient(to top, rgba(8, 8, 10, 0.34) 0%, rgba(8, 8, 10, 0.08) 52%, transparent 100%);
   pointer-events: none;
   z-index: 4;
@@ -1137,7 +1137,7 @@ html.is-splashing .bottom-bar {
   padding-top: 6px;
   padding-bottom: 4px;
   scroll-padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
-  scroll-padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 12px);
+  scroll-padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 6px);
   position: relative;
   background: transparent;
   transition: background 400ms var(--spring);
@@ -1146,7 +1146,7 @@ html.is-splashing .bottom-bar {
 }
 
 .messages-bottom-spacer {
-  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 8px);
+  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 4px);
   flex-shrink: 0;
   pointer-events: none;
 }
@@ -1987,18 +1987,18 @@ html.is-splashing .bottom-bar {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--safe-bottom) + var(--keyboard-inset, 0px) + 8px);
+  bottom: calc(var(--safe-bottom) + var(--keyboard-inset, 0px) + 4px);
   width: calc(100% - 20px);
   max-width: 760px;
   z-index: 50;
   isolation: isolate;
-  background: rgba(20, 20, 24, 0.70);
-  backdrop-filter: saturate(140%) blur(28px);
-  -webkit-backdrop-filter: saturate(140%) blur(28px);
-  border: 0.5px solid rgba(111, 163, 215, 0.14);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(111, 163, 215, 0.04), inset 0 1px 0 rgba(111, 163, 215, 0.08);
+  background: rgba(20, 20, 24, 0.52);
+  backdrop-filter: saturate(150%) blur(32px);
+  -webkit-backdrop-filter: saturate(150%) blur(32px);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06);
   padding: 7px 10px;
-  border-radius: 18px;
+  border-radius: 20px;
   transition: bottom 180ms ease;
 }
 
@@ -2051,11 +2051,11 @@ html.is-splashing .bottom-bar {
 .input-message {
   flex: 1;
   padding: 10px 14px;
-  border: 0.5px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(20, 20, 24, 0.48);
-  backdrop-filter: saturate(145%) blur(18px);
-  -webkit-backdrop-filter: saturate(145%) blur(18px);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), rgba(20, 20, 24, 0.32);
+  backdrop-filter: saturate(150%) blur(22px);
+  -webkit-backdrop-filter: saturate(150%) blur(22px);
   color: var(--text-primary);
   font-size: 14px;
   resize: none;
@@ -2073,16 +2073,16 @@ html.is-splashing .bottom-bar {
 }
 
 .input-message:focus {
-  border-color: rgba(139, 185, 232, 0.32);
-  background: rgba(20, 20, 24, 0.62);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(20, 20, 24, 0.42);
   box-shadow:
-    0 0 0 1px rgba(139, 185, 232, 0.08),
-    0 3px 12px rgba(0, 0, 0, 0.14),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
 }
 
 .input-message::placeholder {
-  color: rgba(240, 240, 242, 0.24);
+  color: rgba(240, 240, 242, 0.28);
 }
 
 .btn-send, .btn-stop {
@@ -2105,16 +2105,16 @@ html.is-splashing .bottom-bar {
   background: rgba(111, 163, 215, 0.72);
   color: #fff;
   box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 1px 2px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 .btn-send:hover {
   background: rgba(139, 185, 232, 0.78);
   border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    0 1px 4px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-send:active {
@@ -2123,20 +2123,20 @@ html.is-splashing .bottom-bar {
 }
 
 .btn-stop {
-  background: rgba(224, 85, 85, 0.28);
-  color: var(--danger);
+  background: rgba(255, 255, 255, 0.90);
+  color: rgba(0, 0, 0, 0.82);
   box-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .btn-stop:hover {
-  background: rgba(224, 85, 85, 0.36);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .btn-stop:active {
-  background: rgba(224, 85, 85, 0.44);
+  background: rgba(220, 220, 225, 0.92);
   transform: scale(0.94);
 }
 
@@ -3782,7 +3782,7 @@ html.is-standalone body {
   position: fixed;
   right: 50%;
   transform: translateX(50%);
-  bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 14px);
+  bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 7px);
   z-index: 60;
   padding: 5px 12px;
   border-radius: var(--radius-sm);
@@ -3941,7 +3941,7 @@ html.has-custom-bg .user .message-bubble {
 }
 #btnSend:disabled { opacity: 0.35; }
 #btnStop {
-  color: var(--danger);
+  color: rgba(0, 0, 0, 0.82);
 }
 
 /* Story scene panel: cleaner collapsed toggle */
@@ -4098,7 +4098,7 @@ html.has-custom-bg .user .message-bubble {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 8px);
+  padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 4px);
 }
 
 .scene-panel.collapsed .scene-panel-body {
