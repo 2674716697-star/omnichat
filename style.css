@@ -309,13 +309,13 @@ html.is-splashing .bottom-bar::after {
   inset: 0;
   top: calc(-1 * var(--safe-top, 0px) - 4px);
   bottom: -12px;
-  background: rgba(20, 20, 24, 0.48);
-  backdrop-filter: saturate(150%) blur(20px);
-  -webkit-backdrop-filter: saturate(150%) blur(20px);
+  background: rgba(20, 20, 24, 0.52);
+  backdrop-filter: saturate(140%) blur(16px);
+  -webkit-backdrop-filter: saturate(140%) blur(16px);
   pointer-events: none;
   z-index: -1;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 65%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
 }
 
 /* Top bar icon buttons — individual glass capsules, 40×40 round */
@@ -389,6 +389,7 @@ html.is-splashing .bottom-bar::after {
   text-overflow: ellipsis;
   line-height: 1.3;
   letter-spacing: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .top-bar-meta {
@@ -413,6 +414,7 @@ html.is-splashing .bottom-bar::after {
   text-overflow: ellipsis;
   flex-shrink: 1;
   min-width: 0;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.20);
 }
 
 .badge-provider {
@@ -2509,6 +2511,19 @@ html.is-splashing .bottom-bar::after {
 
 .scene-immersive .top-bar::before {
   display: none;
+}
+
+/* Immersive mode: stronger text shadow on top-bar text since no glass backdrop */
+.scene-immersive .conv-title {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.scene-immersive .badge {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.scene-immersive .context-stats {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 /* -- Assistant story panel: wide, glowing, novel-like -- */
