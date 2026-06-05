@@ -1137,7 +1137,7 @@ html.is-splashing .bottom-bar {
   padding-top: 6px;
   padding-bottom: 4px;
   scroll-padding-top: calc(var(--top-bar-h) + var(--safe-top) + 8px);
-  scroll-padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 6px);
+  scroll-padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 18px);
   position: relative;
   background: transparent;
   transition: background 400ms var(--spring);
@@ -1146,7 +1146,7 @@ html.is-splashing .bottom-bar {
 }
 
 .messages-bottom-spacer {
-  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 4px);
+  height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 18px);
   flex-shrink: 0;
   pointer-events: none;
 }
@@ -4098,7 +4098,7 @@ html.has-custom-bg .user .message-bubble {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 4px);
+  padding-bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom, 0px) + var(--keyboard-inset, 0px) + 18px);
 }
 
 .scene-panel.collapsed .scene-panel-body {
