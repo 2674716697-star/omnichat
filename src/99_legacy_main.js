@@ -1046,7 +1046,7 @@
 
     // If last message is/was streaming, update it (handles both adding and removing cursor)
     const lastMsg = messages[messages.length - 1];
-    const lastExisting = dom.messagesContainer.querySelector('.message:last-child');
+    const lastExisting = existingItems[existingItems.length - 1] || null;
     const hasCursor = lastExisting && lastExisting.querySelector('.streaming-cursor');
     if (lastMsg && (lastMsg._streaming || hasCursor) && existingCount === messages.length) {
       updateLastBubble(lastMsg);
@@ -2897,6 +2897,7 @@ function handleMessageAction(action, msgIndex) {
 
     state.abortController = new AbortController();
     var requestController = state.abortController;
+    var turnConvId = conv.id;
     state.isStreaming = true;
     state.ui.autoFollowStreaming = true;
     state.ui.userScrolling = false;
@@ -3027,6 +3028,8 @@ function handleMessageAction(action, msgIndex) {
       updateScenePanelUI();
 
     } catch (e) {
+      // Data cleanup on old conv is always safe (conv is still stored).
+      // Toast and render only if still on this conversation.
       if (e.name === 'AbortError') {
         var partialContent = (placeholderMsg.content || '').trim();
         if (partialContent) {
@@ -3037,40 +3040,53 @@ function handleMessageAction(action, msgIndex) {
           delete placeholderMsg._pendingDisplayParts;
           placeholderMsg._streaming = false;
           placeholderMsg._showActions = false;
-          renderMessages();
         } else {
           // No content yet — remove empty placeholder
           conv.messages.pop();
+        }
+        if (state.currentConversationId === turnConvId) {
+          renderMessages();
+          showToast(ERR_MSGS.userAborted, 'info');
+        }
+      } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
+        conv.messages.splice(placeholderIdx, 1);
+        if (!isRegenerate) { var lui = conv.messages.length - 1; if (conv.messages[lui] && conv.messages[lui].role === 'user') conv.messages.pop(); }
+        if (state.currentConversationId === turnConvId) {
+          showToast(ERR_MSGS.cors, 'error', 6000);
           renderMessages();
         }
-        showToast(ERR_MSGS.userAborted, 'info');
-      } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
-        showToast(ERR_MSGS.cors, 'error', 6000);
-        conv.messages.splice(placeholderIdx, 1);
-        renderMessages();
-        if (!isRegenerate) { var lui = conv.messages.length - 1; if (conv.messages[lui] && conv.messages[lui].role === 'user') conv.messages.pop(); }
       } else {
-        showToast(e.message || ERR_MSGS.network, 'error');
         conv.messages.splice(placeholderIdx, 1);
-        renderMessages();
         if (!isRegenerate) { var lui2 = conv.messages.length - 1; if (conv.messages[lui2] && conv.messages[lui2].role === 'user') conv.messages.pop(); }
+        if (state.currentConversationId === turnConvId) {
+          showToast(e.message || ERR_MSGS.network, 'error');
+          renderMessages();
+        }
       }
     } finally {
-      state.isStreaming = false;
-      state.abortController = null;
-      if (placeholderMsg && placeholderMsg._pendingContent) {
-        placeholderMsg.content = placeholderMsg._pendingContent;
-        placeholderMsg.displayParts = placeholderMsg._pendingDisplayParts || null;
-        delete placeholderMsg._pendingContent;
-        delete placeholderMsg._pendingDisplayParts;
+      // Only clean up global state if this request is still the active one
+      if (state.abortController === requestController) {
+        state.isStreaming = false;
+        state.abortController = null;
+        updateScrollToBottomButton(false);
+        updateSendUI();
       }
-      if (placeholderMsg) placeholderMsg._streaming = false;
-      updateScrollToBottomButton(false);
-      updateSendUI();
-      updateTimestamp(conv);
-      updateTopBar();
-      renderMessages();
-      scrollToBottomIfNeeded({ smooth: false });
+      if (placeholderMsg) {
+        if (placeholderMsg._pendingContent) {
+          placeholderMsg.content = placeholderMsg._pendingContent;
+          placeholderMsg.displayParts = placeholderMsg._pendingDisplayParts || null;
+          delete placeholderMsg._pendingContent;
+          delete placeholderMsg._pendingDisplayParts;
+        }
+        placeholderMsg._streaming = false;
+      }
+      // Only render/scroll/toast if still on this conversation
+      if (state.currentConversationId === turnConvId) {
+        updateTimestamp(conv);
+        updateTopBar();
+        renderMessages();
+        scrollToBottomIfNeeded({ smooth: false });
+      }
       debouncedSave();
     }
   }
@@ -3606,6 +3622,8 @@ function handleMessageAction(action, msgIndex) {
 
     // Create abort controller
     state.abortController = new AbortController();
+    var requestController = state.abortController;
+    var sendConvId = conv.id;
     state.isStreaming = true;
     state.ui.autoFollowStreaming = true;
     state.ui.userScrolling = false;
@@ -3702,27 +3720,40 @@ function handleMessageAction(action, msgIndex) {
         }
       }
     } catch (e) {
+      // Data cleanup on old conv is always safe (conv is still stored).
+      // Toast and render only if still on this conversation.
       if (e.name === 'AbortError') {
         assistantMsg.content += '\n\n[已停止]';
-        showToast(ERR_MSGS.userAborted, 'info');
+        if (state.currentConversationId === sendConvId) {
+          showToast(ERR_MSGS.userAborted, 'info');
+        }
       } else if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
         conv.messages.pop();
-        showToast(ERR_MSGS.cors, 'error', 6000);
+        if (state.currentConversationId === sendConvId) {
+          showToast(ERR_MSGS.cors, 'error', 6000);
+        }
         if (isDebugBudget()) {
           console.warn('[OmniChat CORS Error] Type: TypeError/Failed to fetch. Provider:', conv.provider, 'Model:', model);
           if (_dbgBodyPreview) console.warn('[OmniChat CORS Error] Body ~', JSON.stringify(_dbgBodyPreview).length, 'bytes');
         }
       } else {
         conv.messages.pop();
-        showToast(e.message || ERR_MSGS.network, 'error');
+        if (state.currentConversationId === sendConvId) {
+          showToast(e.message || ERR_MSGS.network, 'error');
+        }
       }
-      preserveScrollPosition(renderMessages);
+      if (state.currentConversationId === sendConvId) {
+        preserveScrollPosition(renderMessages);
+      }
     } finally {
       assistantMsg._streaming = false;
       assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
-      state.isStreaming = false;
-      state.abortController = null;
-      updateSendUI();
+      // Only clean up global state if this request is still the active one
+      if (state.abortController === requestController) {
+        state.isStreaming = false;
+        state.abortController = null;
+        updateSendUI();
+      }
 
       // Remove empty assistant messages (no content and no error appended)
       if (assistantMsg.content === '' && conv.messages.includes(assistantMsg)) {
@@ -3861,7 +3892,7 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // --- Truncation warning (visible to all users, not just debug) ---
-      if (assistantMsg.finishReason === 'length') {
+      if (assistantMsg.finishReason === 'length' && state.currentConversationId === sendConvId) {
         showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。', 'warning');
       }
 
@@ -3902,23 +3933,24 @@ function handleMessageAction(action, msgIndex) {
         assistantMsg._actionIndex = conv.messages.indexOf(assistantMsg);
       }
 
-      updateTimestamp(conv);
-      updateTopBar();
+      // Only update UI if still on this conversation
+      if (state.currentConversationId === sendConvId) {
+        updateTimestamp(conv);
+        updateTopBar();
 
-      // If user is detached (scrolled away during streaming), defer full render.
-      // Don't force DOM rebuild that would interrupt their scrolling.
-      // The "↓ 查看最新回复" button will trigger the final render on click.
-      if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-        state.ui.detachedContentDirty = true;
-        updateScrollToBottomButton(true);
-        debouncedSave();
-        return;
+        // If user is detached (scrolled away during streaming), defer full render.
+        // Don't force DOM rebuild that would interrupt their scrolling.
+        // The "↓ 查看最新回复" button will trigger the final render on click.
+        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+          state.ui.detachedContentDirty = true;
+          updateScrollToBottomButton(true);
+        } else {
+          // User is at bottom — normal full render
+          fullRenderMessages(conv.messages);
+          scrollToBottomIfNeeded({ smooth: false });
+          updateScrollToBottomButton(false);
+        }
       }
-
-      // User is at bottom — normal full render
-      fullRenderMessages(conv.messages);
-      scrollToBottomIfNeeded({ smooth: false });
-      updateScrollToBottomButton(false);
       debouncedSave();
     }
   }

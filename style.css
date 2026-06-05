@@ -3289,10 +3289,6 @@ html.is-splashing .bottom-bar {
     padding-bottom: 24px;
   }
 
-  .scene-immersive .messages-container > .message:last-child {
-    margin-bottom: 8px;
-  }
-
   .scene-immersive .message.assistant .message-bubble {
     padding: 12px 14px;
     font-size: 14.5px;
