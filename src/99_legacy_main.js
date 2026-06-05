@@ -1343,6 +1343,7 @@
     document.documentElement.style.setProperty('--bottom-bar-h', h + 'px');
     // Keep user at bottom if they were near it before height changed
     if (prev && prev !== h + 'px' && state.ui.autoFollowStreaming) {
+      ensureMessagesBottomSpacer();
       var sc = getScrollContainer();
       if (sc && isNearBottom(sc, 60)) {
         requestAnimationFrame(function() { sc.scrollTop = sc.scrollHeight; });
@@ -1357,6 +1358,12 @@
       spacer.id = 'messagesBottomSpacer';
       spacer.className = 'messages-bottom-spacer';
       dom.messagesContainer.appendChild(spacer);
+    }
+    // Always ensure spacer is the last child of messagesContainer
+    if (spacer && dom.messagesContainer && spacer.parentNode === dom.messagesContainer) {
+      if (dom.messagesContainer.lastElementChild !== spacer) {
+        dom.messagesContainer.appendChild(spacer);
+      }
     }
     return spacer;
   }
@@ -1382,6 +1389,7 @@
   }
 
   function scrollToBottomIfNeeded(opts) {
+    ensureMessagesBottomSpacer();
     var el = getScrollContainer();
     if (!el) return;
     var smooth = opts && opts.smooth;

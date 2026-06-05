@@ -56,10 +56,12 @@ omnichat/
 
 确保 iPhone 与电脑在同一局域网：
 
-1. 电脑上运行 `python -m http.server 8000`
+1. 双击运行 `serve.bat`（自动查找 Python 并启动 HTTP 服务，默认端口 8000）
 2. 查看电脑局域网 IP（如 `192.168.1.100`）
 3. iPhone Safari 打开 `http://192.168.1.100:8000`
 4. 同样可「添加到主屏幕」安装为 PWA
+
+> `serve.bat` 会依次尝试 `python` → `py` → `python3`，都找不到时自动使用 Codex 自带的 Python。也可手动指定端口：`serve.bat 3000`。
 
 ## API Key 配置
 
