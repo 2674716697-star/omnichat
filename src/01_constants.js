@@ -105,6 +105,7 @@
     storyAuxProvider: '',
     storyAuxModel: '',
     storyAuxMaxTokens: 5000,
+    storyAuxApiKey: '',
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''

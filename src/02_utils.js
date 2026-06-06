@@ -70,11 +70,13 @@
       }
     }
 
-    // 4. API key fallback — if resolved provider has no key, use main provider
-    if (!getApiKey(provider)) {
+    // 4. API key resolution — aux key > global key > main provider fallback
+    var auxKey = (conv.storyAuxApiKey || '').trim() || getApiKey(provider);
+    if (!auxKey) {
+      // No key for aux provider — fall back to main provider+model
       provider = conv.provider;
       auxModel = resolveModel(conv);
     }
 
-    return { provider: provider, model: auxModel };
+    return { provider: provider, model: auxModel, apiKey: auxKey };
   }

@@ -103,6 +103,7 @@
     dom.selectStoryAuxModel = $('#selectStoryAuxModel');
     dom.inputStoryAuxModel = $('#inputStoryAuxModel');
     dom.inputStoryAuxMaxTokens = $('#inputStoryAuxMaxTokens');
+    dom.inputStoryAuxApiKey = $('#inputStoryAuxApiKey');
     dom.scenePanel = $('#scenePanel');
     dom.scenePanelToggle = $('#scenePanelToggle');
     dom.scenePanelBody = $('#scenePanelBody');
@@ -505,6 +506,7 @@
       storyAuxProvider: DEFAULTS.storyAuxProvider,
       storyAuxModel: DEFAULTS.storyAuxModel,
       storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
+      storyAuxApiKey: DEFAULTS.storyAuxApiKey,
       schemaVersion: STORAGE_SCHEMA_VERSION,
       messages: [],
     };
@@ -1538,6 +1540,7 @@
     dom.inputKeepThinking.checked = conv.keepThinkingOpen !== false;
     if (dom.inputSceneDetail) dom.inputSceneDetail.value = conv.sceneDetailLevel || 'medium';
     if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider.value = conv.storyAuxProvider || DEFAULTS.storyAuxProvider;
+    if (dom.inputStoryAuxApiKey) dom.inputStoryAuxApiKey.value = conv.storyAuxApiKey || '';
     if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
       var auxModel = conv.storyAuxModel || '';
       var presetOpts = dom.selectStoryAuxModel.querySelectorAll('option');
@@ -1596,6 +1599,7 @@
     conv.keepThinkingOpen = dom.inputKeepThinking.checked;
     if (dom.inputSceneDetail) conv.sceneDetailLevel = dom.inputSceneDetail.value;
     if (dom.selectStoryAuxProvider) conv.storyAuxProvider = dom.selectStoryAuxProvider.value;
+    if (dom.inputStoryAuxApiKey) conv.storyAuxApiKey = dom.inputStoryAuxApiKey.value.trim();
     if (dom.selectStoryAuxModel) {
       var selVal = dom.selectStoryAuxModel.value;
       if (selVal === '__custom__' && dom.inputStoryAuxModel) {
@@ -2546,11 +2550,12 @@ function handleMessageAction(action, msgIndex) {
     var signal = opts.signal || (state.abortController ? state.abortController.signal : null);
 
     var pConf = getProviderConfig(provider);
-    var apiKey = getApiKey(provider);
+    var apiKey = opts.apiKey || getApiKey(provider);
     if (!apiKey) throw new Error(ERR_MSGS.noApiKey + ' (' + provider + ')');
     if (!pConf.apiUrl) throw new Error('Provider ' + provider + ' has no API URL');
 
     var reqConv = Object.assign({}, conv, { stream: stream, maxTokens: maxTokens });
+    if (opts.temperature !== undefined) reqConv.temperature = opts.temperature;
     var headers = buildRequestHeaders(provider, apiKey, reqConv);
     var body = buildRequestBody(reqConv, model, messages);
 
@@ -2644,9 +2649,13 @@ function handleMessageAction(action, msgIndex) {
     var jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
     try {
       var data = JSON.parse(jsonStr);
-      if (!data.directions || typeof data.directions !== 'string') return null;
-      var dirs = parseDirectionOptions(data.directions);
-      if (!dirs || dirs.length < 4) return null;
+      // Accept even if directions are missing — ensureStoryDirections fills them in.
+      // Only require at least one meaningful field to consider it valid.
+      var dirs = (data.directions && typeof data.directions === 'string')
+        ? parseDirectionOptions(data.directions) : [];
+      var hasChars = Array.isArray(data.characterStatuses) && data.characterStatuses.length > 0;
+      var hasState = data.currentRole || data.mental || data.physical || data.plot;
+      if (dirs.length < 4 && !hasChars && !hasState) return null;
       return {
         currentRole: data.currentRole || '',
         currentGoal: data.currentGoal || '',
@@ -2658,7 +2667,7 @@ function handleMessageAction(action, msgIndex) {
         plot: data.plot || '',
         risk: data.risk || '',
         innerVoice: data.innerVoice || '',
-        directions: data.directions,
+        directions: data.directions || '',
         characterStatuses: Array.isArray(data.characterStatuses) ? data.characterStatuses : [],
       };
     } catch (_) { return null; }
@@ -2701,11 +2710,11 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // C: repairSceneBlock (20s timeout)
+    // C: repairSceneBlock (25s timeout)
     try {
       var repairResult = await withTimeout(
         repairSceneBlock(conv, fullContent),
-        20000
+        25000
       );
       // repairSceneBlock already validates ≥4 parseable directions internally
       if (repairResult) {
@@ -2945,7 +2954,7 @@ function handleMessageAction(action, msgIndex) {
 
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      // ===== Aux model: JSON state extraction (with 25s timeout) =====
+      // ===== Aux model: JSON state extraction (streaming, 30s timeout) =====
       // Save a clean snapshot before aux/repair may mutate conv.sceneState
       var previousSceneState = createSceneState(conv.sceneState);
       var auxOk = false;
@@ -2953,16 +2962,48 @@ function handleMessageAction(action, msgIndex) {
         var auxResolved = resolveStoryAuxProviderAndModel(conv);
         var auxProvider = auxResolved.provider;
         var auxModel = auxResolved.model;
+        var auxApiKey = auxResolved.apiKey;
         var auxMaxTokens = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
         var auxMsgs = buildAuxMessages(conv, storyContent);
-        var auxResp = await withTimeout(
+        showToast('正在提取角色卡和剧情走向...', 'info', 2000);
+        var auxStreamResp = await withTimeout(
           callChatModel(conv, auxModel, auxMsgs, {
-            provider: auxProvider, maxTokens: auxMaxTokens, stream: false,
+            provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: true,
+            temperature: 0.3,
             signal: requestController.signal,
           }),
-          20000
+          30000
         );
-        var parsed = tryParseAuxResponse(auxResp.content);
+        // Accumulate streamed SSE response into text (28s deadline, 2s margin)
+        var auxReader = auxStreamResp.body.getReader();
+        var auxDecoder = new TextDecoder();
+        var auxBuffer = '';
+        var auxContent = '';
+        var auxDeadline = Date.now() + 28000;
+        try {
+          while (true) {
+            if (Date.now() > auxDeadline) throw new Error('Timeout after 28s');
+            var auxChunk = await auxReader.read();
+            if (auxChunk.done) break;
+            auxBuffer += auxDecoder.decode(auxChunk.value, { stream: true });
+            var auxLines = auxBuffer.split('\n');
+            auxBuffer = auxLines.pop();
+            for (var ali = 0; ali < auxLines.length; ali++) {
+              var aline = auxLines[ali].trim();
+              if (!aline || aline === 'data: [DONE]') continue;
+              if (aline.startsWith('data: ')) {
+                try {
+                  var adata = JSON.parse(aline.slice(6));
+                  var adelta = (adata.choices && adata.choices[0] && adata.choices[0].delta) || {};
+                  if (adelta.content) auxContent += adelta.content;
+                } catch (_) {}
+              }
+            }
+          }
+        } finally {
+          auxReader.releaseLock();
+        }
+        var parsed = tryParseAuxResponse(auxContent);
         if (parsed) {
           auxOk = true;
           assistantMsg.sceneSnapshot = createSceneState(parsed);
@@ -2984,19 +3025,22 @@ function handleMessageAction(action, msgIndex) {
               ? parsed.characterStatuses : (prev.characterStatuses || []),
           };
           if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
+        } else {
+          console.warn('[OmniChat] Aux parse failed - response content:', auxContent.slice(0, 300));
         }
       } catch (auxErr) {
         if (auxErr.name === 'AbortError') throw auxErr;
         console.warn('[OmniChat] Aux model failed:', auxErr.message || auxErr);
+        showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
       }
 
-      // ===== Fallback: aux failed → repair via model (with 20s timeout) =====
+      // ===== Fallback: aux failed → repair via model (with 25s timeout) =====
       if (!auxOk) {
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
         try {
           var repairResult = await withTimeout(
             repairSceneBlock(conv, fullContent),
-            20000
+            25000
           );
           if (repairResult) {
             auxOk = true;
@@ -3011,6 +3055,7 @@ function handleMessageAction(action, msgIndex) {
           }
         } catch (repairErr) {
           console.warn('[OmniChat] Scene repair failed:', repairErr.message || repairErr);
+          showToast('剧情修复也失败了，尝试从正文提取...', 'warning', 3000);
         }
       }
 
@@ -4399,7 +4444,25 @@ function handleMessageAction(action, msgIndex) {
         updateTimestamp(conv);
         debouncedSave();
       }
+      // Reflect stored aux key for the newly selected provider, if any
+      if (dom.inputStoryAuxApiKey) {
+        var auxProv = dom.selectStoryAuxProvider.value;
+        var savedKey = (getCurrentConv() && getCurrentConv().storyAuxApiKey) || '';
+        dom.inputStoryAuxApiKey.value = savedKey;
+      }
     });
+
+    // Story aux API key
+    if (dom.inputStoryAuxApiKey) {
+      dom.inputStoryAuxApiKey.addEventListener('input', () => {
+        var conv = getCurrentConv();
+        if (conv) {
+          conv.storyAuxApiKey = dom.inputStoryAuxApiKey.value.trim();
+          updateTimestamp(conv);
+          debouncedSave();
+        }
+      });
+    }
 
     // Story aux model preset dropdown → toggle custom input
     if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {

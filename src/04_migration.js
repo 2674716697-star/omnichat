@@ -226,6 +226,7 @@ function createSceneWorld(seed) {
     if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
     if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
     if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
+    if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
     if (conv.replyCharLimit != null) {
