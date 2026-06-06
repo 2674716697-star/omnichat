@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#000000">
-  <meta name="build-version" content="mq147317">
+  <meta name="build-version" content="mq2ir9j3">
   <meta name="build-commit" content="precommit">
   <link rel="manifest" href="manifest.json">
   <title>OmniChat</title>
@@ -4301,6 +4301,11 @@ showToast('走向解析全部失败，已使用本地备选选项。建议重新
 async function streamStoryPart(conv, model, messages, assistantMsg, opts) {
 opts = opts || {};
 var startLen = (assistantMsg.content || '').length;
+var turnConvId = conv.id;
+var turnController = state.abortController;
+function isCurrentTurn() {
+return state.currentConversationId === turnConvId && state.abortController === turnController;
+}
 var resp = await callChatModel(conv, model, messages, {
 stream: true,
 signal: state.abortController.signal,
@@ -4312,6 +4317,7 @@ var lastRenderAt = 0;
 var renderTimer = null;
 var minRenderGap = 65; ;
 var scheduleRender = function () {
+if (!isCurrentTurn()) return;
 if (renderTimer) return;
 var elapsed = performance.now() - lastRenderAt;
 if (elapsed >= minRenderGap) {
@@ -4321,6 +4327,7 @@ lastRenderAt = performance.now();
 } else {
 renderTimer = setTimeout(function () {
 renderTimer = null;
+if (!isCurrentTurn()) return;
 updateLastBubble(assistantMsg);
 scrollToBottomIfNeeded({ smooth: false });
 lastRenderAt = performance.now();
@@ -4384,8 +4391,10 @@ if (finalDelta.finishReason) assistantMsg.finishReason = finalDelta.finishReason
 if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
 reader.releaseLock();
 }
+if (isCurrentTurn()) {
 updateLastBubble(assistantMsg);
 scrollToBottomIfNeeded({ smooth: false });
+}
 var partContent = (assistantMsg.content || '').slice(startLen);
 return partContent;
 }
@@ -5277,6 +5286,11 @@ async function processStream(resp, assistantMsg, conv) {
 const reader = resp.body.getReader();
 const decoder = new TextDecoder();
 let buffer = '';
+var turnConvId = conv.id;
+var turnController = state.abortController;
+function isCurrentTurn() {
+return state.currentConversationId === turnConvId && state.abortController === turnController;
+}
 let renderScheduled = false;
 let lastRenderAt = 0;
 const minRenderGap = 60;
@@ -5284,6 +5298,7 @@ const flushFinalRender = () => {
 return new Promise(function(resolve) {
 renderScheduled = false; ;
 assistantMsg._streaming = false;
+if (!isCurrentTurn()) { resolve(); return; }
 requestAnimationFrame(function() {
 renderMessages();
 scrollToBottomIfNeeded({ smooth: false });
@@ -5292,6 +5307,7 @@ resolve();
 });
 };
 const scheduleRender = () => {
+if (!isCurrentTurn()) return;
 if (renderScheduled) return;
 if (state.ui.detachedDuringStreaming) {
 state.ui.detachedContentDirty = true;
@@ -5302,6 +5318,7 @@ renderScheduled = true;
 const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
 setTimeout(() => {
 requestAnimationFrame(() => {
+if (!isCurrentTurn()) { renderScheduled = false; return; }
 updateLastBubble(assistantMsg);
 if (state.ui.autoFollowStreaming) {
 var sc = getScrollContainer();
@@ -5327,9 +5344,11 @@ if (!trimmed || !trimmed.startsWith('data:')) continue;
 const dataStr = trimmed.slice(5).trim();
 if (dataStr === '[DONE]') {
 await flushFinalRender();
+if (isCurrentTurn()) {
 state.ui.detachedDuringStreaming = false;
 state.ui.detachedContentDirty = false;
 updateScrollToBottomButton(false);
+}
 return;
 }
 try {
@@ -5561,6 +5580,18 @@ updateTimestamp(conv);
 debouncedSave();
 }
 });
+if (dom.inputReplyCharLimit) {
+var syncReplyCharLimit = function() {
+var conv = getCurrentConv();
+if (conv) {
+conv.replyCharLimit = parseInt(dom.inputReplyCharLimit.value, 10) || DEFAULTS.replyCharLimit;
+updateTimestamp(conv);
+debouncedSave();
+}
+};
+dom.inputReplyCharLimit.addEventListener('input', syncReplyCharLimit);
+dom.inputReplyCharLimit.addEventListener('change', syncReplyCharLimit);
+}
 dom.inputStream.addEventListener('change', () => {
 const conv = getCurrentConv();
 if (conv) {
@@ -5614,6 +5645,14 @@ updateTimestamp(conv);
 debouncedSave();
 }
 });
+if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider.addEventListener('change', () => {
+const conv = getCurrentConv();
+if (conv) {
+conv.storyAuxProvider = dom.selectStoryAuxProvider.value;
+updateTimestamp(conv);
+debouncedSave();
+}
+});
 if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
 dom.selectStoryAuxModel.addEventListener('change', () => {
 var isCustom = dom.selectStoryAuxModel.value === '__custom__';
@@ -5625,6 +5664,18 @@ syncSettingsFromUI();
 dom.inputStoryAuxModel.addEventListener('input', () => {
 syncSettingsFromUI();
 });
+}
+if (dom.inputStoryAuxMaxTokens) {
+var syncStoryAuxMaxTokens = function() {
+var conv = getCurrentConv();
+if (conv) {
+conv.storyAuxMaxTokens = parseInt(dom.inputStoryAuxMaxTokens.value, 10) || DEFAULTS.storyAuxMaxTokens;
+updateTimestamp(conv);
+debouncedSave();
+}
+};
+dom.inputStoryAuxMaxTokens.addEventListener('input', syncStoryAuxMaxTokens);
+dom.inputStoryAuxMaxTokens.addEventListener('change', syncStoryAuxMaxTokens);
 }
 dom.inputPreciseMode.addEventListener('change', () => {
 const conv = getCurrentConv();

@@ -2754,6 +2754,11 @@ function handleMessageAction(action, msgIndex) {
   async function streamStoryPart(conv, model, messages, assistantMsg, opts) {
     opts = opts || {};
     var startLen = (assistantMsg.content || '').length;
+    var turnConvId = conv.id;
+    var turnController = state.abortController;
+    function isCurrentTurn() {
+      return state.currentConversationId === turnConvId && state.abortController === turnController;
+    }
 
     var resp = await callChatModel(conv, model, messages, {
       stream: true,
@@ -2769,6 +2774,7 @@ function handleMessageAction(action, msgIndex) {
     var minRenderGap = 65; // within 50-80ms, ~15fps throttle
 
     var scheduleRender = function () {
+      if (!isCurrentTurn()) return;
       if (renderTimer) return;
       var elapsed = performance.now() - lastRenderAt;
       if (elapsed >= minRenderGap) {
@@ -2778,6 +2784,7 @@ function handleMessageAction(action, msgIndex) {
       } else {
         renderTimer = setTimeout(function () {
           renderTimer = null;
+          if (!isCurrentTurn()) return;
           updateLastBubble(assistantMsg);
           scrollToBottomIfNeeded({ smooth: false });
           lastRenderAt = performance.now();
@@ -2853,8 +2860,10 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // Final render for this part — caller keeps _streaming=true
-    updateLastBubble(assistantMsg);
-    scrollToBottomIfNeeded({ smooth: false });
+    if (isCurrentTurn()) {
+      updateLastBubble(assistantMsg);
+      scrollToBottomIfNeeded({ smooth: false });
+    }
 
     var partContent = (assistantMsg.content || '').slice(startLen);
     return partContent;
@@ -3963,6 +3972,11 @@ function handleMessageAction(action, msgIndex) {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    var turnConvId = conv.id;
+    var turnController = state.abortController;
+    function isCurrentTurn() {
+      return state.currentConversationId === turnConvId && state.abortController === turnController;
+    }
 
     let renderScheduled = false;
     let lastRenderAt = 0;
@@ -3973,6 +3987,7 @@ function handleMessageAction(action, msgIndex) {
       return new Promise(function(resolve) {
         renderScheduled = false; // cancel any pending timer
         assistantMsg._streaming = false;
+        if (!isCurrentTurn()) { resolve(); return; }
         requestAnimationFrame(function() {
           renderMessages();
           scrollToBottomIfNeeded({ smooth: false });
@@ -3982,6 +3997,7 @@ function handleMessageAction(action, msgIndex) {
     };
 
     const scheduleRender = () => {
+      if (!isCurrentTurn()) return;
       if (renderScheduled) return;
 
       // Detached mode: user scrolled away — accumulate content in memory only
@@ -3995,6 +4011,8 @@ function handleMessageAction(action, msgIndex) {
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
+          // Re-check current turn inside the async callback
+          if (!isCurrentTurn()) { renderScheduled = false; return; }
           // Light touch: only update last bubble during streaming
           updateLastBubble(assistantMsg);
           if (state.ui.autoFollowStreaming) {
@@ -4026,9 +4044,11 @@ function handleMessageAction(action, msgIndex) {
           if (dataStr === '[DONE]') {
             await flushFinalRender();
             // Reset detached flags so caller's finally doesn't re-arm dirty state
-            state.ui.detachedDuringStreaming = false;
-            state.ui.detachedContentDirty = false;
-            updateScrollToBottomButton(false);
+            if (isCurrentTurn()) {
+              state.ui.detachedDuringStreaming = false;
+              state.ui.detachedContentDirty = false;
+              updateScrollToBottomButton(false);
+            }
             return;
           }
 
@@ -4305,6 +4325,18 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
+    if (dom.inputReplyCharLimit) {
+      var syncReplyCharLimit = function() {
+        var conv = getCurrentConv();
+        if (conv) {
+          conv.replyCharLimit = parseInt(dom.inputReplyCharLimit.value, 10) || DEFAULTS.replyCharLimit;
+          updateTimestamp(conv);
+          debouncedSave();
+        }
+      };
+      dom.inputReplyCharLimit.addEventListener('input', syncReplyCharLimit);
+      dom.inputReplyCharLimit.addEventListener('change', syncReplyCharLimit);
+    }
     dom.inputStream.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
@@ -4359,6 +4391,16 @@ function handleMessageAction(action, msgIndex) {
       }
     });
 
+    // Story aux provider
+    if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider.addEventListener('change', () => {
+      const conv = getCurrentConv();
+      if (conv) {
+        conv.storyAuxProvider = dom.selectStoryAuxProvider.value;
+        updateTimestamp(conv);
+        debouncedSave();
+      }
+    });
+
     // Story aux model preset dropdown → toggle custom input
     if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
       dom.selectStoryAuxModel.addEventListener('change', () => {
@@ -4371,6 +4413,20 @@ function handleMessageAction(action, msgIndex) {
       dom.inputStoryAuxModel.addEventListener('input', () => {
         syncSettingsFromUI();
       });
+    }
+
+    // Story aux max tokens
+    if (dom.inputStoryAuxMaxTokens) {
+      var syncStoryAuxMaxTokens = function() {
+        var conv = getCurrentConv();
+        if (conv) {
+          conv.storyAuxMaxTokens = parseInt(dom.inputStoryAuxMaxTokens.value, 10) || DEFAULTS.storyAuxMaxTokens;
+          updateTimestamp(conv);
+          debouncedSave();
+        }
+      };
+      dom.inputStoryAuxMaxTokens.addEventListener('input', syncStoryAuxMaxTokens);
+      dom.inputStoryAuxMaxTokens.addEventListener('change', syncStoryAuxMaxTokens);
     }
 
     dom.inputPreciseMode.addEventListener('change', () => {
