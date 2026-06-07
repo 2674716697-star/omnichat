@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#000000">
-  <meta name="build-version" content="mq2nio47">
+  <meta name="build-version" content="mq3vkjp7">
   <meta name="build-commit" content="precommit">
   <link rel="manifest" href="manifest.json">
   <title>OmniChat</title>
@@ -4228,6 +4228,18 @@ return [
 { role: 'user', content: JSON.stringify({ story: storyContent, previousState: prevState }) },
 ];
 }
+function buildAuxMessagesStrict(conv, storyContent) {
+var msgs = buildAuxMessages(conv, storyContent);
+var strictPrefix = [
+'【重要】你必须输出完整 JSON，禁止省略任何字段。',
+'必须包含 4 条 A./B./C./D. 剧情走向（每条 16-32 字，含行动+后果）。',
+'必须包含至少 1 个 characterStatuses 条目。',
+'只输出纯 JSON，不要任何解释、markdown、或额外文本。',
+'',
+].join('\n');
+msgs[0].content = strictPrefix + msgs[0].content;
+return msgs;
+}
 function tryParseAuxResponse(text) {
 if (!text || typeof text !== 'string') return null;
 var jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -4254,6 +4266,14 @@ directions: data.directions || '',
 characterStatuses: Array.isArray(data.characterStatuses) ? data.characterStatuses : [],
 };
 } catch (_) { return null; }
+}
+function validateAuxSceneState(parsed) {
+if (!parsed) return false;
+var dirLen = typeof parseDirectionOptions === 'function'
+? parseDirectionOptions(parsed.directions).length
+: 0;
+var charLen = Array.isArray(parsed.characterStatuses) ? parsed.characterStatuses.length : 0;
+return dirLen >= 4 && charLen >= 1;
 }
 function withTimeout(promise, ms) {
 var timeoutId;
@@ -4471,80 +4491,87 @@ assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
 if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 var previousSceneState = createSceneState(conv.sceneState);
 var auxOk = false;
-try {
 var auxResolved = resolveStoryAuxProviderAndModel(conv);
 var auxProvider = auxResolved.provider;
 var auxModel = auxResolved.model;
 var auxApiKey = auxResolved.apiKey;
 var auxMaxTokens = conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens;
 var auxMsgs = buildAuxMessages(conv, storyContent);
-showToast('正在提取角色卡和剧情走向...', 'info', 2000);
-var auxStreamResp = await withTimeout(
-callChatModel(conv, auxModel, auxMsgs, {
-provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: true,
-temperature: 0.3,
-signal: requestController.signal,
-}),
-30000
-);
-var auxReader = auxStreamResp.body.getReader();
-var auxDecoder = new TextDecoder();
-var auxBuffer = '';
-var auxContent = '';
-var auxDeadline = Date.now() + 28000;
-try {
-while (true) {
-if (Date.now() > auxDeadline) throw new Error('Timeout after 28s');
-var auxChunk = await auxReader.read();
-if (auxChunk.done) break;
-auxBuffer += auxDecoder.decode(auxChunk.value, { stream: true });
-var auxLines = auxBuffer.split('\n');
-auxBuffer = auxLines.pop();
-for (var ali = 0; ali < auxLines.length; ali++) {
-var aline = auxLines[ali].trim();
-if (!aline || aline === 'data: [DONE]') continue;
-if (aline.startsWith('data: ')) {
-try {
-var adata = JSON.parse(aline.slice(6));
-var adelta = (adata.choices && adata.choices[0] && adata.choices[0].delta) || {};
-if (adelta.content) auxContent += adelta.content;
-} catch (_) {}
-}
-}
-}
-} finally {
-auxReader.releaseLock();
-}
-var parsed = tryParseAuxResponse(auxContent);
-if (parsed) {
+function applyAuxParsed(targetParsed) {
 auxOk = true;
-assistantMsg.sceneSnapshot = createSceneState(parsed);
-var prev = conv.sceneState || {};
+assistantMsg.sceneSnapshot = createSceneState(targetParsed);
+var p = conv.sceneState || {};
 conv.sceneState = {
-currentRole: parsed.currentRole || prev.currentRole || '',
-currentGoal: parsed.currentGoal || prev.currentGoal || '',
-posture: parsed.posture || prev.posture || '',
-mental: parsed.mental || prev.mental || '',
-mentalScore: parsed.mentalScore || prev.mentalScore || '',
-physical: parsed.physical || prev.physical || '',
-bodyDetails: parsed.bodyDetails || prev.bodyDetails || '',
-plot: parsed.plot || prev.plot || '',
-risk: parsed.risk || prev.risk || '',
-innerVoice: parsed.innerVoice || prev.innerVoice || '',
-directions: parsed.directions || prev.directions || '',
-characterStatuses: parsed.characterStatuses && parsed.characterStatuses.length
-? parsed.characterStatuses : (prev.characterStatuses || []),
+currentRole: targetParsed.currentRole || p.currentRole || '',
+currentGoal: targetParsed.currentGoal || p.currentGoal || '',
+posture: targetParsed.posture || p.posture || '',
+mental: targetParsed.mental || p.mental || '',
+mentalScore: targetParsed.mentalScore || p.mentalScore || '',
+physical: targetParsed.physical || p.physical || '',
+bodyDetails: targetParsed.bodyDetails || p.bodyDetails || '',
+plot: targetParsed.plot || p.plot || '',
+risk: targetParsed.risk || p.risk || '',
+innerVoice: targetParsed.innerVoice || p.innerVoice || '',
+directions: targetParsed.directions || p.directions || '',
+characterStatuses: targetParsed.characterStatuses && targetParsed.characterStatuses.length
+? targetParsed.characterStatuses : (p.characterStatuses || []),
 };
 if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
-} else {
-console.warn('[OmniChat] Aux parse failed - response content:', auxContent.slice(0, 300));
 }
-} catch (auxErr) {
-if (auxErr.name === 'AbortError') throw auxErr;
-console.warn('[OmniChat] Aux model failed:', auxErr.message || auxErr);
-showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
+try {
+var auxResp1 = await withTimeout(
+callChatModel(conv, auxModel, auxMsgs, {
+provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
+temperature: 0.2,
+signal: requestController.signal,
+}),
+20000
+);
+var auxContent1 = auxResp1.content || '';
+if (auxContent1) {
+var parsed1 = tryParseAuxResponse(auxContent1);
+if (parsed1 && validateAuxSceneState(parsed1)) {
+applyAuxParsed(parsed1);
+} else if (parsed1) {
+console.warn('[OmniChat] Aux attempt 1 validation failed (insufficient dirs/chars), retrying...');
+} else {
+console.warn('[OmniChat] Aux attempt 1 parse failed, retrying...');
+}
+}
+} catch (auxErr1) {
+if (auxErr1.name === 'AbortError') throw auxErr1;
+console.warn('[OmniChat] Aux attempt 1 failed:', auxErr1.message || auxErr1);
 }
 if (!auxOk) {
+if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+try {
+var auxMsgs2 = buildAuxMessagesStrict(conv, storyContent);
+var auxResp2 = await withTimeout(
+callChatModel(conv, auxModel, auxMsgs2, {
+provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
+temperature: 0.1,
+signal: requestController.signal,
+}),
+20000
+);
+var auxContent2 = auxResp2.content || '';
+if (auxContent2) {
+var parsed2 = tryParseAuxResponse(auxContent2);
+if (parsed2 && validateAuxSceneState(parsed2)) {
+applyAuxParsed(parsed2);
+} else if (parsed2) {
+console.warn('[OmniChat] Aux attempt 2 validation failed (insufficient dirs/chars)');
+} else {
+console.warn('[OmniChat] Aux attempt 2 parse failed');
+}
+}
+} catch (auxErr2) {
+if (auxErr2.name === 'AbortError') throw auxErr2;
+console.warn('[OmniChat] Aux attempt 2 failed:', auxErr2.message || auxErr2);
+}
+}
+if (!auxOk) {
+showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
 if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 try {
 var repairResult = await withTimeout(
