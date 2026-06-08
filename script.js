@@ -789,6 +789,41 @@ function createSceneWorld(seed) {
 
   function parseDirectionOptions(directions) {
     if (!directions) return [];
+    if (Array.isArray(directions)) {
+      directions = directions.map(function(item, idx) {
+        if (item == null) return '';
+        if (typeof item === 'object') {
+          return (item.letter || ['A', 'B', 'C', 'D'][idx] || '') + '. ' + (item.content || item.text || item.label || item.action || '');
+        }
+        return (['A', 'B', 'C', 'D'][idx] || '') + '. ' + String(item);
+      }).join('\n');
+    } else if (typeof directions === 'object') {
+      directions = ['A', 'B', 'C', 'D'].map(function(letter) {
+        var val = directions[letter] || directions[letter.toLowerCase()];
+        if (!val) return '';
+        if (typeof val === 'object') return letter + '. ' + (val.content || val.text || val.label || val.action || val.value || val.title || val.name || '');
+        return letter + '. ' + val;
+      }).join('\n');
+    }
+    directions = String(directions)
+      .replace(/\r/g, '\n')
+      .replace(/[Ａａ]/g, 'A')
+      .replace(/[Ｂｂ]/g, 'B')
+      .replace(/[Ｃｃ]/g, 'C')
+      .replace(/[Ｄｄ]/g, 'D')
+      .replace(/、/g, '. ');
+    // Detect compact space-separated format: "A. a B. b C. c D. d"
+    // Only convert when there are no semicolons (semicolon-separated is
+    // handled by the multi-option regex below; mixing both would add
+    // spurious trailing ; to content).
+    var hasSemicolons = /[;；]/.test(directions);
+    if (!hasSemicolons) {
+      var spaceMarkerRe = / [A-Da-d][\.．、\)\]】：:\-]/g;
+      var spaceMarkerCount = (directions.match(spaceMarkerRe) || []).length;
+      if (spaceMarkerCount >= 2) {
+        directions = directions.replace(/ (?=[A-Da-d][\.．、\)\]】：:\-])/g, '\n');
+      }
+    }
     var lines = directions.split('\n');
     var options = [];
     for (var i = 0; i < lines.length; i++) {
@@ -806,6 +841,29 @@ function createSceneWorld(seed) {
           if (num >= 1 && num <= 4) options.push({ letter: letters[num - 1], content: nm[2].trim() });
         }
       }
+    }
+    if (options.length >= 4) return options;
+
+    // Some providers return "A. ... B. ... C. ... D. ..." as one line.
+    // Re-parse the full directions string with a multi-option regex.
+    // Do NOT skip already-seen letters — per-line .+ may have swallowed
+    // subsequent options, so we let this regex re-parse cleanly and
+    // replace any overlapping per-line results.
+    var multiRe = /(?:^|[\n\r；;])\s*[\(\[（【]?\s*([A-Da-d])\s*[\.\)、\):：、\]】\s-]\s*([\s\S]*?)(?=(?:[\n\r；;]\s*[\(\[（【]?\s*[A-Da-d]\s*[\.\)、\):：、\]】\s-])|$)/g;
+    var fromMulti = [];
+    var match;
+    while ((match = multiRe.exec(directions))) {
+      var letter = match[1].toUpperCase();
+      var content = (match[2] || '').trim();
+      if (content) fromMulti.push({ letter: letter, content: content });
+    }
+    // If multi-option regex found ≥2 options, it understood the format better
+    // than per-line parsing — replace all overlapping per-line options.
+    if (fromMulti.length >= 2) {
+      var multiLetters = {};
+      for (var ml = 0; ml < fromMulti.length; ml++) multiLetters[fromMulti[ml].letter] = true;
+      options = options.filter(function(opt) { return !multiLetters[opt.letter]; });
+      for (var ml2 = 0; ml2 < fromMulti.length; ml2++) options.push(fromMulti[ml2]);
     }
     return options;
   }
@@ -1250,7 +1308,7 @@ function getSceneBodyDetails(block) {
       conv.temperature = 0.2;
       showToast('精确模式已开启：低温输出 + 防幻觉 Prompt', 'success');
     } else {
-      conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+      conv.temperature = conv._savedTemperature !== undefined && conv._savedTemperature !== null ? conv._savedTemperature : DEFAULTS.temperature;
       conv._savedTemperature = undefined;
       showToast('精确模式已关闭', 'info');
     }
@@ -3200,7 +3258,7 @@ function getSceneBodyDetails(block) {
       conv._savedTemperature = conv.temperature;
       conv.temperature = 0.2;
     } else if (!conv.preciseMode && prevPrecise) {
-      conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+      conv.temperature = conv._savedTemperature !== undefined && conv._savedTemperature !== null ? conv._savedTemperature : DEFAULTS.temperature;
       conv._savedTemperature = undefined;
     }
     dom.inputTemperature.value = String(conv.temperature);
@@ -4242,6 +4300,88 @@ function handleMessageAction(action, msgIndex) {
     return msgs;
   }
 
+  function normalizeAuxDirections(raw) {
+    if (!raw) return '';
+    var result = '';
+    if (typeof raw === 'string') {
+      result = raw;
+    } else if (Array.isArray(raw)) {
+      result = raw.map(function(item, idx) {
+        if (item == null) return '';
+        if (typeof item === 'object') {
+          return (item.letter || ['A', 'B', 'C', 'D'][idx] || '') + '. ' + (item.content || item.text || item.label || item.action || item.value || item.title || item.name || '');
+        }
+        return (['A', 'B', 'C', 'D'][idx] || '') + '. ' + String(item);
+      }).filter(Boolean).join('\n');
+    } else if (typeof raw === 'object') {
+      result = ['A', 'B', 'C', 'D'].map(function(letter) {
+        var item = raw[letter] || raw[letter.toLowerCase()];
+        if (!item) return '';
+        if (typeof item === 'object') item = item.content || item.text || item.label || item.action || item.value || item.title || item.name || '';
+        return letter + '. ' + item;
+      }).filter(Boolean).join('\n');
+    } else {
+      result = String(raw);
+    }
+    // Normalize fullwidth letters and other Unicode variants
+    result = result
+      .replace(/\r/g, '\n')
+      .replace(/[Ａａ]/g, 'A')
+      .replace(/[Ｂｂ]/g, 'B')
+      .replace(/[Ｃｃ]/g, 'C')
+      .replace(/[Ｄｄ]/g, 'D')
+      .replace(/、/g, '. ');
+    return result;
+  }
+
+  function normalizeAuxCharacterStatuses(data) {
+    var raw = data.characterStatuses || data.characters || data.characterStatus || data.roles || data.statuses || [];
+    // Convert object-valued map (e.g. {"主角": {...}, "NPC": {...}}) to array
+    if (raw && !Array.isArray(raw) && typeof raw === 'object') {
+      var mapKeys = Object.keys(raw);
+      var mapped = [];
+      for (var mk = 0; mk < mapKeys.length; mk++) {
+        var val = raw[mapKeys[mk]];
+        if (val && typeof val === 'object') {
+          val.name = val.name || mapKeys[mk];
+          mapped.push(val);
+        } else if (typeof val === 'string') {
+          mapped.push({ name: mapKeys[mk], content: val });
+        }
+      }
+      if (mapped.length) raw = mapped; else raw = [raw];
+    }
+    if (raw && !Array.isArray(raw)) raw = [raw];
+    // Convert string elements to {name} objects, filter to objects only
+    var statuses = [];
+    if (Array.isArray(raw)) {
+      for (var ri = 0; ri < raw.length; ri++) {
+        var item = raw[ri];
+        if (!item) continue;
+        if (typeof item === 'string') {
+          statuses.push({ name: item, relation: '', isMain: false });
+        } else if (typeof item === 'object') {
+          statuses.push(item);
+        }
+      }
+    }
+    if (!statuses.length && (data.currentRole || data.mental || data.physical || data.bodyDetails || data.currentGoal || data.posture || data.innerVoice)) {
+      statuses = [{
+        name: data.currentRole || '主角',
+        relation: '主角',
+        isMain: true,
+        mental: data.mental || '',
+        mentalScore: data.mentalScore || '',
+        physical: data.physical || '',
+        bodyDetails: data.bodyDetails || '',
+        goal: data.currentGoal || '',
+        posture: data.posture || '',
+        innerVoice: data.innerVoice || '',
+      }];
+    }
+    return statuses;
+  }
+
   function tryParseAuxResponse(text) {
     if (!text || typeof text !== 'string') return null;
     var jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -4250,9 +4390,10 @@ function handleMessageAction(action, msgIndex) {
       var data = JSON.parse(jsonStr);
       // Accept even if directions are missing — ensureStoryDirections fills them in.
       // Only require at least one meaningful field to consider it valid.
-      var dirs = (data.directions && typeof data.directions === 'string')
-        ? parseDirectionOptions(data.directions) : [];
-      var hasChars = Array.isArray(data.characterStatuses) && data.characterStatuses.length > 0;
+      var normalizedDirections = normalizeAuxDirections(data.directions);
+      var normalizedCharacters = normalizeAuxCharacterStatuses(data);
+      var dirs = normalizedDirections ? parseDirectionOptions(normalizedDirections) : [];
+      var hasChars = normalizedCharacters.length > 0;
       var hasState = data.currentRole || data.mental || data.physical || data.plot;
       if (dirs.length < 4 && !hasChars && !hasState) return null;
       return {
@@ -4266,8 +4407,8 @@ function handleMessageAction(action, msgIndex) {
         plot: data.plot || '',
         risk: data.risk || '',
         innerVoice: data.innerVoice || '',
-        directions: data.directions || '',
-        characterStatuses: Array.isArray(data.characterStatuses) ? data.characterStatuses : [],
+        directions: normalizedDirections,
+        characterStatuses: normalizedCharacters,
       };
     } catch (_) { return null; }
   }
@@ -4298,6 +4439,42 @@ function handleMessageAction(action, msgIndex) {
     });
   }
 
+  // withTimeoutAbort — combine a parent AbortSignal with a timeout into a derived
+  // AbortController so aux/repair timeouts truly cancel the underlying fetch
+  // without aborting the main request.  auxTO.timedOut distinguishes timeout
+  // from a user-triggered stop (user stop propagates via parentSignal listener).
+  function withTimeoutAbort(parentSignal, timeoutMs) {
+    var controller = new AbortController();
+    var _timedOut = false;
+    var timeoutId;
+    var onParentAbort;
+    if (parentSignal && parentSignal.aborted) {
+      controller.abort(parentSignal.reason);
+      return { signal: controller.signal, get timedOut() { return _timedOut; }, cleanup: function() {} };
+    }
+    timeoutId = setTimeout(function() {
+      _timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    if (parentSignal) {
+      onParentAbort = function() {
+        clearTimeout(timeoutId);
+        controller.abort(parentSignal.reason);
+      };
+      parentSignal.addEventListener('abort', onParentAbort, { once: true });
+    }
+    return {
+      signal: controller.signal,
+      get timedOut() { return _timedOut; },
+      cleanup: function() {
+        clearTimeout(timeoutId);
+        if (parentSignal && onParentAbort) {
+          parentSignal.removeEventListener('abort', onParentAbort);
+        }
+      }
+    };
+  }
+
   // =========================================================================
   // ensureStoryDirections — guarantee assistantMsg has 4 parseable A/B/C/D
   // Priority: A) existing sceneSnapshot directions B) parse visible content
@@ -4320,11 +4497,9 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // C: repairSceneBlock (25s timeout)
+    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 25000);
     try {
-      var repairResult = await withTimeout(
-        repairSceneBlock(conv, fullContent),
-        25000
-      );
+      var repairResult = await repairSceneBlock(conv, fullContent, repTO1.signal);
       // repairSceneBlock already validates ≥4 parseable directions internally
       if (repairResult) {
         assistantMsg.sceneSnapshot = createSceneState({
@@ -4337,7 +4512,11 @@ function handleMessageAction(action, msgIndex) {
         if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
         return;
       }
-    } catch (_) { /* fall through */ }
+    } catch (err) {
+      if (err && err.name === 'AbortError' && !repTO1.timedOut) throw err;
+      /* fall through */
+    }
+    finally { repTO1.cleanup(); }
 
     // D: inherit previous round's directions
     var prevDirs = previousSceneState && previousSceneState.directions;
@@ -4410,6 +4589,21 @@ function handleMessageAction(action, msgIndex) {
       }
     };
 
+    // Shared helper: process one SSE data line, returns true on [DONE]
+    function processDataLine(dataStr) {
+      if (dataStr === '[DONE]') return true;
+      try {
+        var parsed = JSON.parse(dataStr);
+        var delta = parseStreamDelta(conv.provider, parsed);
+        if (delta.reasoning) assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
+        if (delta.content) assistantMsg.content += delta.content;
+        if (delta.usage) assistantMsg.usage = delta.usage;
+        if (delta.finishReason) assistantMsg.finishReason = delta.finishReason;
+        if (delta.content || delta.reasoning) scheduleRender();
+      } catch (_) { /* skip unparseable chunks */ }
+      return false;
+    }
+
     try {
       while (true) {
         var readResult;
@@ -4430,46 +4624,18 @@ function handleMessageAction(action, msgIndex) {
         for (var li = 0; li < lines.length; li++) {
           var trimmed = lines[li].trim();
           if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-          var dataStr = trimmed.slice(5).trim();
-          if (dataStr === '[DONE]') break;
-
-          try {
-            var parsed = JSON.parse(dataStr);
-            var delta = parseStreamDelta(conv.provider, parsed);
-
-            // Only real reasoning_content deltas populate thinking
-            if (delta.reasoning) {
-              assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
-            }
-            if (delta.content) {
-              assistantMsg.content += delta.content;
-            }
-            if (delta.usage) {
-              assistantMsg.usage = delta.usage;
-            }
-            if (delta.finishReason) {
-              assistantMsg.finishReason = delta.finishReason;
-            }
-
-            if (delta.content || delta.reasoning) scheduleRender();
-          } catch (_) { /* skip unparseable chunks */ }
+          if (processDataLine(trimmed.slice(5).trim())) break;
         }
       }
 
-      // Process remaining buffer
+      // Process remaining buffer — split into lines, reuse same logic
       buffer += decoder.decode();
       if (buffer.trim()) {
-        var finalTrimmed = buffer.trim();
-        if (finalTrimmed.startsWith('data:') && finalTrimmed !== 'data:[DONE]') {
-          try {
-            var finalParsed = JSON.parse(finalTrimmed.slice(5).trim());
-            var finalDelta = parseStreamDelta(conv.provider, finalParsed);
-            if (finalDelta.reasoning) assistantMsg.reasoning = (assistantMsg.reasoning || '') + finalDelta.reasoning;
-            if (finalDelta.content) assistantMsg.content += finalDelta.content;
-            if (finalDelta.usage) assistantMsg.usage = finalDelta.usage;
-            if (finalDelta.finishReason) assistantMsg.finishReason = finalDelta.finishReason;
-          } catch (_) { /* skip */ }
+        var finalLines = buffer.split('\n');
+        for (var fli = 0; fli < finalLines.length; fli++) {
+          var finalTrimmed = finalLines[fli].trim();
+          if (!finalTrimmed || !finalTrimmed.startsWith('data:')) continue;
+          processDataLine(finalTrimmed.slice(5).trim());
         }
       }
     } finally {
@@ -4598,15 +4764,13 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // Attempt 1: non-streaming, temperature 0.2, 20s timeout
+      var auxTO1 = withTimeoutAbort(requestController.signal, 20000);
       try {
-        var auxResp1 = await withTimeout(
-          callChatModel(conv, auxModel, auxMsgs, {
-            provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
-            temperature: 0.2,
-            signal: requestController.signal,
-          }),
-          20000
-        );
+        var auxResp1 = await callChatModel(conv, auxModel, auxMsgs, {
+          provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
+          temperature: 0.2,
+          signal: auxTO1.signal,
+        });
         var auxContent1 = auxResp1.content || '';
         if (auxContent1) {
           var parsed1 = tryParseAuxResponse(auxContent1);
@@ -4619,23 +4783,23 @@ function handleMessageAction(action, msgIndex) {
           }
         }
       } catch (auxErr1) {
-        if (auxErr1.name === 'AbortError') throw auxErr1;
+        if (auxErr1.name === 'AbortError' && !auxTO1.timedOut) throw auxErr1;
         console.warn('[OmniChat] Aux attempt 1 failed:', auxErr1.message || auxErr1);
+      } finally {
+        auxTO1.cleanup();
       }
 
       // Attempt 2: stricter prompt, temperature 0.1, 20s timeout
       if (!auxOk) {
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        var auxTO2 = withTimeoutAbort(requestController.signal, 20000);
         try {
           var auxMsgs2 = buildAuxMessagesStrict(conv, storyContent);
-          var auxResp2 = await withTimeout(
-            callChatModel(conv, auxModel, auxMsgs2, {
-              provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
-              temperature: 0.1,
-              signal: requestController.signal,
-            }),
-            20000
-          );
+          var auxResp2 = await callChatModel(conv, auxModel, auxMsgs2, {
+            provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
+            temperature: 0.1,
+            signal: auxTO2.signal,
+          });
           var auxContent2 = auxResp2.content || '';
           if (auxContent2) {
             var parsed2 = tryParseAuxResponse(auxContent2);
@@ -4648,8 +4812,10 @@ function handleMessageAction(action, msgIndex) {
             }
           }
         } catch (auxErr2) {
-          if (auxErr2.name === 'AbortError') throw auxErr2;
+          if (auxErr2.name === 'AbortError' && !auxTO2.timedOut) throw auxErr2;
           console.warn('[OmniChat] Aux attempt 2 failed:', auxErr2.message || auxErr2);
+        } finally {
+          auxTO2.cleanup();
         }
       }
 
@@ -4657,11 +4823,9 @@ function handleMessageAction(action, msgIndex) {
       if (!auxOk) {
         showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        var repTO = withTimeoutAbort(requestController.signal, 25000);
         try {
-          var repairResult = await withTimeout(
-            repairSceneBlock(conv, fullContent),
-            25000
-          );
+          var repairResult = await repairSceneBlock(conv, fullContent, repTO.signal);
           if (repairResult) {
             auxOk = true;
             assistantMsg.sceneSnapshot = createSceneState({
@@ -4674,8 +4838,11 @@ function handleMessageAction(action, msgIndex) {
             if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
           }
         } catch (repairErr) {
+          if (repairErr && repairErr.name === 'AbortError' && !repTO.timedOut) throw repairErr;
           console.warn('[OmniChat] Scene repair failed:', repairErr.message || repairErr);
           showToast('剧情修复也失败了，尝试从正文提取...', 'warning', 3000);
+        } finally {
+          repTO.cleanup();
         }
       }
 
@@ -4845,7 +5012,7 @@ function handleMessageAction(action, msgIndex) {
   // STORY SCENE REPAIR — ask model to output missing @@SCENE block
   // =========================================================================
 
-  async function repairSceneBlock(conv, narrativeText) {
+  async function repairSceneBlock(conv, narrativeText, signal) {
     if (!narrativeText || narrativeText.trim().length < 20) return null;
     try {
       var pConf = getProviderConfig(conv.provider);
@@ -4880,7 +5047,7 @@ function handleMessageAction(action, msgIndex) {
         method: "POST",
         headers: headers,
         body: JSON.stringify(body),
-        signal: state.abortController ? state.abortController.signal : undefined,
+        signal: signal || (state.abortController ? state.abortController.signal : undefined),
       });
 
       if (!resp.ok) return null;
@@ -4904,6 +5071,7 @@ function handleMessageAction(action, msgIndex) {
         characterStatuses: statuses
       };
     } catch (e) {
+      if (e.name === 'AbortError') throw e;
       console.warn("[OmniChat] Scene repair failed:", e.message || e);
       return null;
     }
@@ -5397,6 +5565,7 @@ function handleMessageAction(action, msgIndex) {
       // Data cleanup on old conv is always safe (conv is still stored).
       // Toast and render only if still on this conversation.
       if (e.name === 'AbortError') {
+        assistantMsg._aborted = true;
         assistantMsg.content += '\n\n[已停止]';
         if (state.currentConversationId === sendConvId) {
           showToast(ERR_MSGS.userAborted, 'info');
@@ -5435,7 +5604,7 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // Extract scene state from response
-      if (storyEnabled && assistantMsg.content) {
+      if (storyEnabled && assistantMsg.content && !assistantMsg._aborted) {
         const sceneMatch = assistantMsg.content.match(/@@SCENE\s*([\s\S]*?)\s*@@END/);
         if (sceneMatch) {
           const block = sceneMatch[1];
@@ -5506,7 +5675,7 @@ function handleMessageAction(action, msgIndex) {
       // Completeness warnings for story mode responses (non-blocking)
       // Checks visible text for mental/body/npc, and sceneSnapshot for directions.
       // Does NOT check visible text for @@SCENE/@@END (they are stripped from display).
-      if (storyEnabled && assistantMsg.content) {
+      if (storyEnabled && assistantMsg.content && !assistantMsg._aborted) {
         var missing = [];
         // Visible text checks: mental, body, NPC presence in displayed text
         if (!/mental|精神|心理|内心|情绪|感受|觉得|感到/.test(assistantMsg.content)) missing.push('mental/心理');
@@ -5692,6 +5861,21 @@ function handleMessageAction(action, msgIndex) {
       }, delay);
     };
 
+    // Shared helper: process one SSE data line, returns true on [DONE]
+    function processDataLine(dataStr) {
+      if (dataStr === '[DONE]') return true;
+      try {
+        var parsed = JSON.parse(dataStr);
+        var delta = parseStreamDelta(conv.provider, parsed);
+        if (delta.reasoning) assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
+        if (delta.content) assistantMsg.content += delta.content;
+        if (delta.usage) assistantMsg.usage = delta.usage;
+        if (delta.finishReason) assistantMsg.finishReason = delta.finishReason;
+        if (delta.content || delta.reasoning) scheduleRender();
+      } catch (_) { /* skip unparseable chunks */ }
+      return false;
+    }
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -5704,11 +5888,8 @@ function handleMessageAction(action, msgIndex) {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-          const dataStr = trimmed.slice(5).trim();
-          if (dataStr === '[DONE]') {
+          if (processDataLine(trimmed.slice(5).trim())) {
             await flushFinalRender();
-            // Reset detached flags so caller's finally doesn't re-arm dirty state
             if (isCurrentTurn()) {
               state.ui.detachedDuringStreaming = false;
               state.ui.detachedContentDirty = false;
@@ -5716,55 +5897,17 @@ function handleMessageAction(action, msgIndex) {
             }
             return;
           }
-
-          try {
-            const parsed = JSON.parse(dataStr);
-            const delta = parseStreamDelta(conv.provider, parsed);
-
-            if (delta.content || delta.reasoning) {
-              if (delta.reasoning) {
-                assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
-              }
-              if (delta.content) {
-                assistantMsg.content += delta.content;
-              }
-              scheduleRender();
-            }
-
-            if (delta.usage) {
-              assistantMsg.usage = delta.usage;
-            }
-
-            // Capture finish_reason from streaming chunk (typically on last delta)
-            if (delta.finishReason) {
-              assistantMsg.finishReason = delta.finishReason;
-            }
-          } catch (_) {
-            // Skip unparseable chunks
-          }
         }
       }
 
-      // Process remaining buffer (may contain last chunk with usage)
+      // Process remaining buffer — split into lines, reuse same logic
       buffer += decoder.decode();
       if (buffer.trim()) {
-        const trimmed = buffer.trim();
-        if (trimmed.startsWith('data:') && trimmed !== 'data:[DONE]') {
-          try {
-            const parsed = JSON.parse(trimmed.slice(5).trim());
-            const delta = parseStreamDelta(conv.provider, parsed);
-            if (delta.reasoning) {
-              assistantMsg.reasoning = (assistantMsg.reasoning || '') + delta.reasoning;
-            }
-            if (delta.content) assistantMsg.content += delta.content;
-            if (delta.usage) {
-              assistantMsg.usage = delta.usage;
-            }
-            if (delta.finishReason) {
-              assistantMsg.finishReason = delta.finishReason;
-            }
-            if (delta.content || delta.reasoning) scheduleRender();
-          } catch (_) { /* skip */ }
+        var finalLines = buffer.split('\n');
+        for (var fli = 0; fli < finalLines.length; fli++) {
+          var finalTrimmed = finalLines[fli].trim();
+          if (!finalTrimmed || !finalTrimmed.startsWith('data:')) continue;
+          processDataLine(finalTrimmed.slice(5).trim());
         }
       }
     } catch (e) {
@@ -6120,7 +6263,7 @@ function handleMessageAction(action, msgIndex) {
           conv._savedTemperature = conv.temperature;
           conv.temperature = 0.2;
         } else {
-          conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+          conv.temperature = conv._savedTemperature !== undefined && conv._savedTemperature !== null ? conv._savedTemperature : DEFAULTS.temperature;
           conv._savedTemperature = undefined;
         }
         dom.inputTemperature.value = String(conv.temperature);

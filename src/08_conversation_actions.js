@@ -164,7 +164,7 @@
       conv.temperature = 0.2;
       showToast('精确模式已开启：低温输出 + 防幻觉 Prompt', 'success');
     } else {
-      conv.temperature = conv._savedTemperature || DEFAULTS.temperature;
+      conv.temperature = conv._savedTemperature !== undefined && conv._savedTemperature !== null ? conv._savedTemperature : DEFAULTS.temperature;
       conv._savedTemperature = undefined;
       showToast('精确模式已关闭', 'info');
     }

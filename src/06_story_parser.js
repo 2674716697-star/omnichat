@@ -103,6 +103,41 @@
 
   function parseDirectionOptions(directions) {
     if (!directions) return [];
+    if (Array.isArray(directions)) {
+      directions = directions.map(function(item, idx) {
+        if (item == null) return '';
+        if (typeof item === 'object') {
+          return (item.letter || ['A', 'B', 'C', 'D'][idx] || '') + '. ' + (item.content || item.text || item.label || item.action || '');
+        }
+        return (['A', 'B', 'C', 'D'][idx] || '') + '. ' + String(item);
+      }).join('\n');
+    } else if (typeof directions === 'object') {
+      directions = ['A', 'B', 'C', 'D'].map(function(letter) {
+        var val = directions[letter] || directions[letter.toLowerCase()];
+        if (!val) return '';
+        if (typeof val === 'object') return letter + '. ' + (val.content || val.text || val.label || val.action || val.value || val.title || val.name || '');
+        return letter + '. ' + val;
+      }).join('\n');
+    }
+    directions = String(directions)
+      .replace(/\r/g, '\n')
+      .replace(/[Ａａ]/g, 'A')
+      .replace(/[Ｂｂ]/g, 'B')
+      .replace(/[Ｃｃ]/g, 'C')
+      .replace(/[Ｄｄ]/g, 'D')
+      .replace(/、/g, '. ');
+    // Detect compact space-separated format: "A. a B. b C. c D. d"
+    // Only convert when there are no semicolons (semicolon-separated is
+    // handled by the multi-option regex below; mixing both would add
+    // spurious trailing ; to content).
+    var hasSemicolons = /[;；]/.test(directions);
+    if (!hasSemicolons) {
+      var spaceMarkerRe = / [A-Da-d][\.．、\)\]】：:\-]/g;
+      var spaceMarkerCount = (directions.match(spaceMarkerRe) || []).length;
+      if (spaceMarkerCount >= 2) {
+        directions = directions.replace(/ (?=[A-Da-d][\.．、\)\]】：:\-])/g, '\n');
+      }
+    }
     var lines = directions.split('\n');
     var options = [];
     for (var i = 0; i < lines.length; i++) {
@@ -120,6 +155,29 @@
           if (num >= 1 && num <= 4) options.push({ letter: letters[num - 1], content: nm[2].trim() });
         }
       }
+    }
+    if (options.length >= 4) return options;
+
+    // Some providers return "A. ... B. ... C. ... D. ..." as one line.
+    // Re-parse the full directions string with a multi-option regex.
+    // Do NOT skip already-seen letters — per-line .+ may have swallowed
+    // subsequent options, so we let this regex re-parse cleanly and
+    // replace any overlapping per-line results.
+    var multiRe = /(?:^|[\n\r；;])\s*[\(\[（【]?\s*([A-Da-d])\s*[\.\)、\):：、\]】\s-]\s*([\s\S]*?)(?=(?:[\n\r；;]\s*[\(\[（【]?\s*[A-Da-d]\s*[\.\)、\):：、\]】\s-])|$)/g;
+    var fromMulti = [];
+    var match;
+    while ((match = multiRe.exec(directions))) {
+      var letter = match[1].toUpperCase();
+      var content = (match[2] || '').trim();
+      if (content) fromMulti.push({ letter: letter, content: content });
+    }
+    // If multi-option regex found ≥2 options, it understood the format better
+    // than per-line parsing — replace all overlapping per-line options.
+    if (fromMulti.length >= 2) {
+      var multiLetters = {};
+      for (var ml = 0; ml < fromMulti.length; ml++) multiLetters[fromMulti[ml].letter] = true;
+      options = options.filter(function(opt) { return !multiLetters[opt.letter]; });
+      for (var ml2 = 0; ml2 < fromMulti.length; ml2++) options.push(fromMulti[ml2]);
     }
     return options;
   }
