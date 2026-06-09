@@ -2345,6 +2345,8 @@ function getSceneBodyDetails(block) {
     // Move scenePanelBody into editor
     editorBody.appendChild(sourceBody);
     sourceBody.style.display = '';
+    editorBody.scrollTop = 0;
+    sourceBody.scrollTop = 0;
 
     // Re-render chips and NPCs inside editor
     if (typeof renderMoodChips === 'function') renderMoodChips();
@@ -2367,6 +2369,10 @@ function getSceneBodyDetails(block) {
     state.ui.storyEditorOpen = true;
     document.documentElement.classList.add('story-editor-open');
     document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function() {
+      editorBody.scrollTop = 0;
+      sourceBody.scrollTop = 0;
+    });
     updateBottomBarHeight();
   }
 
