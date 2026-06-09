@@ -1026,6 +1026,7 @@
   function renderMessages() {
     const conv = getCurrentConv();
     if (!conv) {
+      document.documentElement.classList.add('welcome-visible');
       dom.messagesContainer.innerHTML = '';
       dom.welcomeScreen.classList.remove('hidden');
       dom.messagesContainer.appendChild(dom.welcomeScreen);
@@ -1034,12 +1035,14 @@
 
     const messages = conv.messages;
     if (messages.length === 0) {
+      document.documentElement.classList.add('welcome-visible');
       dom.welcomeScreen.classList.remove('hidden');
       dom.messagesContainer.innerHTML = '';
       dom.messagesContainer.appendChild(dom.welcomeScreen);
       return;
     }
 
+    document.documentElement.classList.remove('welcome-visible');
     dom.welcomeScreen.classList.add('hidden');
 
     // Diff-based update: compare existing DOM with needed messages
@@ -1342,21 +1345,32 @@
     updateInsets();
   }
 
-  // Measure actual bottom-bar height for accurate main-content reserve
-  function updateBottomBarHeight() {
+  // Measure actual bottom-bar height for accurate main-content reserve.
+  // Coalesced via rAF so ResizeObserver / visualViewport bursts produce at most one
+  // getBoundingClientRect + setProperty per frame, avoiding layout thrash.
+  var _bbhPending = false;
+  var _followScrollPending = false;
+  function _updateBottomBarHeightImpl() {
+    _bbhPending = false;
     var bar = document.querySelector('.bottom-bar');
     if (!bar) return;
     var h = Math.ceil(bar.getBoundingClientRect().height);
     var prev = document.documentElement.style.getPropertyValue('--bottom-bar-h');
+    if (prev === h + 'px') return;
     document.documentElement.style.setProperty('--bottom-bar-h', h + 'px');
     // Keep user at bottom if they were near it before height changed
     if (prev && prev !== h + 'px' && state.ui.autoFollowStreaming) {
       ensureMessagesBottomSpacer();
       var sc = getScrollContainer();
       if (sc && isNearBottom(sc, 60)) {
-        requestAnimationFrame(function() { sc.scrollTop = sc.scrollHeight; });
+        scheduleFollowScroll(60);
       }
     }
+  }
+  function updateBottomBarHeight() {
+    if (_bbhPending) return;
+    _bbhPending = true;
+    requestAnimationFrame(_updateBottomBarHeightImpl);
   }
 
   function ensureMessagesBottomSpacer() {
@@ -1412,9 +1426,24 @@
       // Reset programmatic flag after smooth scroll completes
       setTimeout(function() { state.ui.programmaticScroll = false; }, 400);
     } else {
+      scheduleFollowScroll(force ? 0 : 120);
+    }
+  }
+
+  function scheduleFollowScroll(threshold) {
+    if (_followScrollPending) return;
+    _followScrollPending = true;
+    requestAnimationFrame(function() {
+      _followScrollPending = false;
+      var el = getScrollContainer();
+      if (!el) return;
+      if (threshold && !isNearBottom(el, threshold)) {
+        state.ui.programmaticScroll = false;
+        return;
+      }
       el.scrollTop = el.scrollHeight;
       requestAnimationFrame(function() { state.ui.programmaticScroll = false; });
-    }
+    });
   }
 
   function scrollToBottom(force) {
@@ -2947,21 +2976,25 @@ function handleMessageAction(action, msgIndex) {
     var renderTimer = null;
     var minRenderGap = 65; // within 50-80ms, ~15fps throttle
 
+    var _renderPending = false;
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
-      if (renderTimer) return;
+      if (_renderPending || renderTimer) return;
+      _renderPending = true;
       var elapsed = performance.now() - lastRenderAt;
-      if (elapsed >= minRenderGap) {
+      var doRender = function () {
+        renderTimer = null;
+        _renderPending = false;
+        if (!isCurrentTurn()) return;
         updateLastBubble(assistantMsg);
         scrollToBottomIfNeeded({ smooth: false });
         lastRenderAt = performance.now();
+      };
+      if (elapsed >= minRenderGap) {
+        requestAnimationFrame(doRender);
       } else {
         renderTimer = setTimeout(function () {
-          renderTimer = null;
-          if (!isCurrentTurn()) return;
-          updateLastBubble(assistantMsg);
-          scrollToBottomIfNeeded({ smooth: false });
-          lastRenderAt = performance.now();
+          requestAnimationFrame(doRender);
         }, minRenderGap - elapsed);
       }
     };
@@ -3017,6 +3050,7 @@ function handleMessageAction(action, msgIndex) {
       }
     } finally {
       if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+      _renderPending = false;
       reader.releaseLock();
     }
 
@@ -4229,7 +4263,7 @@ function handleMessageAction(action, msgIndex) {
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
             if (sc && isNearBottom(sc, 120)) {
-              sc.scrollTop = sc.scrollHeight;
+              scheduleFollowScroll(120);
             }
           }
           lastRenderAt = performance.now();
@@ -5021,7 +5055,7 @@ function handleMessageAction(action, msgIndex) {
     dom.inputMessage.addEventListener('input', () => {
       dom.inputMessage.style.height = 'auto';
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
-      requestAnimationFrame(updateBottomBarHeight);
+      updateBottomBarHeight();
     });
 
     // Smart scroll tracking — auto-follow unless user manually scrolls away
@@ -5106,7 +5140,7 @@ function handleMessageAction(action, msgIndex) {
           // Keep at bottom if user was near it
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
-            if (sc && isNearBottom(sc, 60)) sc.scrollTop = sc.scrollHeight;
+            if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
           }
         });
       });
