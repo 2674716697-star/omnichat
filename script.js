@@ -3225,6 +3225,15 @@ function getSceneBodyDetails(block) {
 
     const newProvider = dom.selectProvider.value;
     const providerChanged = newProvider !== conv.provider;
+    const previousProvider = conv.provider;
+
+    // When provider changes, save current input ONLY to the OLD provider
+    // before switching — but only if the input is non-empty, to prevent
+    // empty inputs during panel init from overwriting a saved key.
+    // (Intentional clears are handled by the input event, not this branch.)
+    if (providerChanged && dom.inputApiKey.value.trim()) {
+      state.apiKeys[previousProvider] = dom.inputApiKey.value.trim();
+    }
 
     conv.provider = newProvider;
     conv.customModel = dom.inputCustomModel.value.trim();
@@ -3266,14 +3275,19 @@ function getSceneBodyDetails(block) {
     conv.toolCallLimit = 0;
     conv.toolCallLimitMode = 'disabled';
 
-    state.apiKeys[conv.provider] = dom.inputApiKey.value.trim();
+    // API key: save to current provider only when provider hasn't changed.
+    // When provider changed, load the new provider's saved key instead.
+    if (providerChanged) {
+      updateApiKeyField();
+    } else {
+      state.apiKeys[conv.provider] = dom.inputApiKey.value.trim();
+    }
 
     if (providerChanged) {
       conv.model = '';
       conv.customModel = '';
       dom.selectModel.value = '';
       dom.inputCustomModel.value = '';
-      updateApiKeyField();
     }
 
     updateTimestamp(conv);

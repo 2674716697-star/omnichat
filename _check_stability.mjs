@@ -41,7 +41,7 @@ check('no security-panel', !/security-panel/.test(html + css + js));
 
 // --- Service worker ---
 console.log('\n--- Service worker ---');
-check('sw cache omnichat-v3', /CACHE_NAME\s*=\s*['"]omnichat-v3['"]/.test(sw));
+check('sw cache omnichat-v4', /CACHE_NAME\s*=\s*['"]omnichat-v4['"]/.test(sw));
 
 // --- Build version ---
 console.log('\n--- Build version ---');

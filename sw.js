@@ -3,7 +3,7 @@
    Network-first app shell, offline fallback, NEVER caches sw.js.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-v3';
+const CACHE_NAME = 'omnichat-v4';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
