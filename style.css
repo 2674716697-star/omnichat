@@ -1,5 +1,5 @@
 /* ============================================================
-   OmniChat - Mobile-First AI Chat Client
+   Mira - Mobile-First AI Chat Client
    Dark mode, clean, production-grade styles
    ============================================================ */
 
@@ -146,11 +146,13 @@ a {
 }
 
 /* --- Splash Screen --- */
-/* During splash, lock body/app background to solid near-black */
+/* Palette: graphite black + ivory white + champagne gold — no blue, no green */
+/* Brand: minimal Mira mark with a quiet mirrored sweep */
+/* During splash, lock body/app background to solid graphite */
 html.is-splashing,
 html.is-splashing body,
 html.is-splashing .app-container {
-  background: #0C0C16 !important;
+  background: #111115 !important;
   overflow: hidden;
 }
 
@@ -161,7 +163,7 @@ html.is-splashing .app-container {
   right: 0;
   bottom: -260px;
   min-height: calc(100dvh + 260px);
-  background: #0C0C16;
+  background: #111115;
   z-index: 99999;
   display: flex;
   align-items: center;
@@ -176,7 +178,7 @@ html.is-splashing .app-container {
   right: 0;
   bottom: -260px;
   height: 320px;
-  background: #0C0C16;
+  background: #111115;
   pointer-events: none;
   z-index: 99998;
 }
@@ -192,16 +194,19 @@ html.is-splashing .bottom-bar {
   display: none !important;
 }
 
+/* Background warm glow — champagne/ivory radial behind the Mira mark */
 .splash-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 50% at 50% 40%, var(--accent-soft) 0%, rgba(255,255,255,0.03) 35%, transparent 70%);
-  animation: splashBgPulse 3s ease-in-out infinite;
+  background:
+    radial-gradient(ellipse 30% 22% at 50% 44%, rgba(245, 226, 190, 0.10) 0%, rgba(245, 226, 190, 0.035) 46%, transparent 72%),
+    radial-gradient(ellipse 62% 50% at 50% 46%, rgba(196, 169, 98, 0.045) 0%, rgba(240, 236, 228, 0.02) 42%, transparent 76%);
+  animation: splashBgPulse 2.4s ease-in-out 0.12s infinite;
 }
 
 @keyframes splashBgPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.46; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.025); }
 }
 
 .splash-content {
@@ -212,74 +217,212 @@ html.is-splashing .bottom-bar {
   gap: 0;
 }
 
+/* ---- Logo area: minimal Mira mark ---- */
 .splash-logo {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 130px;
+  height: 110px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
-.splash-orb {
+.splash-ring-wrap {
   position: relative;
   z-index: 2;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 40%, transparent 70%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-primary);
-  animation: orbPulse 3s ease-in-out infinite;
-  box-shadow: 0 0 32px rgba(255,255,255,0.04), 0 0 60px var(--accent-soft);
+  transform-origin: 50% 55%;
+  animation: ringEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both, ringSettle 1.9s ease-in-out 0.92s infinite;
 }
 
-@keyframes orbPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 32px rgba(255,255,255,0.04), 0 0 60px var(--accent-soft); }
-  50% { transform: scale(1.04); box-shadow: 0 0 40px rgba(255,255,255,0.06), 0 0 72px var(--accent); }
+@keyframes ringEnter {
+  0% { opacity: 0; transform: translateY(8px) scale(0.82); filter: blur(8px); }
+  54% { opacity: 1; transform: translateY(0) scale(1.035); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-.splash-ring {
+@keyframes ringSettle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.006); }
+}
+
+.splash-ring-aura {
   position: absolute;
-  inset: 0;
+  inset: -16px -14px;
   border-radius: 50%;
-  border: 1px solid var(--accent-soft);
-  animation: ringExpand 3s ease-out infinite;
+  background: radial-gradient(ellipse 85% 80% at 50% 48%,
+    rgba(232, 211, 174, 0.12) 0%,
+    rgba(240, 236, 228, 0.04) 45%,
+    transparent 72%);
+  animation: ringAuraPulse 2.2s ease-in-out 0.4s infinite;
+  pointer-events: none;
 }
 
-@keyframes ringExpand {
-  0% { transform: scale(0.8); opacity: 0.6; }
-  50% { transform: scale(1.15); opacity: 0.15; }
-  100% { transform: scale(0.8); opacity: 0.6; }
+@keyframes ringAuraPulse {
+  0%, 100% { opacity: 0.28; transform: scale(0.96); }
+  50% { opacity: 0.78; transform: scale(1.08); }
 }
 
+.splash-ring-svg {
+  position: relative;
+  z-index: 3;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
+}
+
+.splash-ring-body {
+  animation: ringBodyFade 0.4s ease-out 0.08s both;
+}
+
+@keyframes ringBodyFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.splash-ring-shadow {
+  animation: markShadowIn 0.6s ease-out 0.08s both;
+}
+
+@keyframes markShadowIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.splash-ring-rim {
+  animation: rimFadeIn 0.52s ease-out 0.2s both;
+}
+
+@keyframes rimFadeIn {
+  from { stroke-opacity: 0; }
+  to { stroke-opacity: 0.18; }
+}
+
+.splash-ring-echo {
+  stroke-dasharray: 188;
+  stroke-dashoffset: 188;
+  animation: ringEchoDraw 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+}
+
+@keyframes ringEchoDraw {
+  0% { stroke-dashoffset: 188; opacity: 0; }
+  45% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+.splash-ring-trace {
+  stroke-dasharray: 188;
+  stroke-dashoffset: 188;
+  animation: ringTraceDraw 0.96s cubic-bezier(0.16, 1, 0.3, 1) 0.18s forwards;
+}
+
+@keyframes ringTraceDraw {
+  0% { stroke-dashoffset: 188; }
+  72% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.splash-sweep {
+  stroke-dasharray: 18 42 188;
+  stroke-dashoffset: 34;
+  animation: sweepTravel 0.72s cubic-bezier(0.33, 0, 0.2, 1) 0.72s forwards;
+}
+
+@keyframes sweepTravel {
+  from { opacity: 0; stroke-dashoffset: 34; }
+  18% { opacity: 1; }
+  100% { opacity: 0; stroke-dashoffset: -226; }
+}
+
+.splash-fold {
+  animation: foldFadeIn 0.4s ease-out 0.86s both;
+}
+
+@keyframes foldFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.splash-glint {
+  opacity: 0;
+  filter: drop-shadow(0 0 5px rgba(255, 248, 234, 0.65));
+  animation: glintTravel 0.76s cubic-bezier(0.33, 0, 0.2, 1) 0.7s forwards;
+}
+
+@keyframes glintTravel {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.55); }
+  18% { opacity: 0.95; }
+  64% { opacity: 0.88; transform: translate(36px, -18px) scale(1); }
+  100% { opacity: 0; transform: translate(74px, 2px) scale(0.7); }
+}
+
+.splash-gap-edge {
+  display: none;
+}
+
+@keyframes gapEdgeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Title ---- */
 .splash-title {
   font-size: 32px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 0;
-  animation: titleFadeIn 0.8s ease-out 0.2s both;
+  animation: titleFadeIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) 1.08s both;
 }
 
 @keyframes titleFadeIn {
-  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
+/* ---- Tagline ---- */
 .splash-tagline {
   font-size: 14px;
   color: var(--text-tertiary);
   margin-top: 6px;
   letter-spacing: 1px;
-  animation: tagFadeIn 0.8s ease-out 0.5s both;
+  animation: tagFadeIn 0.52s ease-out 1.32s both;
 }
 
 @keyframes tagFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Reduced motion: respect user preference --- */
+/* All elements visible immediately, no animation */
+@media (prefers-reduced-motion: reduce) {
+  .splash-bg { animation: none; opacity: 1; }
+  .splash-ring-wrap { animation: none; opacity: 1; transform: none; }
+  .splash-ring-aura { animation: none; opacity: 0.5; }
+  .splash-ring-body { animation: none; opacity: 1; }
+  .splash-ring-rim { animation: none; }
+  .splash-ring-trace { animation: none; stroke-dashoffset: 0; }
+  .splash-sweep { animation: none; display: none; }
+  .splash-fold { animation: none; opacity: 1; }
+  .splash-gap-edge { animation: none; opacity: 1; }
+  .splash-title { animation: none; opacity: 1; transform: none; }
+  .splash-tagline { animation: none; opacity: 1; transform: none; }
+  html:not(.is-splashing) .app-container,
+  html:not(.is-splashing) .top-bar,
+  html:not(.is-splashing) .welcome-screen,
+  html:not(.is-splashing) .welcome-step,
+  html:not(.is-splashing) .bottom-bar {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+  html:not(.is-splashing) .app-container,
+  html:not(.is-splashing) .top-bar,
+  html:not(.is-splashing) .welcome-screen,
+  html:not(.is-splashing) .welcome-step {
+    transform: none;
+  }
+  html:not(.is-splashing) .bottom-bar {
+    transform: translateX(-50%);
+  }
 }
 
 /* --- App Container --- */
@@ -294,6 +437,23 @@ html.is-splashing .bottom-bar {
   z-index: 1;
   overflow: hidden;
   transform: translateZ(0);
+}
+
+html:not(.is-splashing) .app-container {
+  animation: appShellIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes appShellIn {
+  from {
+    opacity: 0.86;
+    filter: blur(3px);
+    transform: translateY(8px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) translateZ(0);
+  }
 }
 
 /* Top content veil: fixed in the app shell so messages pass underneath it. */
@@ -343,6 +503,23 @@ html.is-splashing .bottom-bar {
   box-shadow: none;
   min-height: var(--top-bar-h);
   isolation: isolate;
+}
+
+html:not(.is-splashing) .top-bar {
+  animation: topBarIn 480ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
+@keyframes topBarIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 .top-bar::before {
@@ -1275,6 +1452,23 @@ html.is-splashing .bottom-bar {
   position: relative;
 }
 
+html:not(.is-splashing) .welcome-screen {
+  animation: welcomeRise 520ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+@keyframes welcomeRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 .welcome-screen::before {
   content: '';
   position: absolute;
@@ -1285,8 +1479,8 @@ html.is-splashing .bottom-bar {
 
 .welcome-icon {
   margin-bottom: 22px;
-  color: var(--accent);
-  opacity: 0.42;
+  color: rgba(196, 169, 98, 0.32);
+  opacity: 1;
   position: relative;
   z-index: 1;
 }
@@ -1332,6 +1526,24 @@ html.is-splashing .bottom-bar {
   font-size: 12.5px;
   line-height: 1.45;
   text-align: left;
+}
+
+html:not(.is-splashing) .welcome-step {
+  animation: welcomeStepIn 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html:not(.is-splashing) .welcome-step:nth-child(1) { animation-delay: 180ms; }
+html:not(.is-splashing) .welcome-step:nth-child(2) { animation-delay: 230ms; }
+
+@keyframes welcomeStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .welcome-step.done {
@@ -2049,6 +2261,23 @@ html.is-splashing .bottom-bar {
   padding: 8px 12px;
   border-radius: 18px;
   transition: bottom 180ms ease;
+}
+
+html:not(.is-splashing) .bottom-bar {
+  animation: dockFloatIn 520ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+@keyframes dockFloatIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px) scale(0.985);
+    filter: blur(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 

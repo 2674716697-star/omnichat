@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c1c22"/>
+      <stop offset="100%" stop-color="#121218"/>
+    </linearGradient>
+    <linearGradient id="mGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f2e8d2"/>
+      <stop offset="35%" stop-color="#e8dcc0"/>
+      <stop offset="100%" stop-color="#d4c8a8"/>
+    </linearGradient>
+  </defs>
+  <!-- Full-bleed background -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- M symbol: centered within safe zone (80% = 410px) -->
+  <path d="M170 176 L208 336 L256 242 L304 336 L342 176"
+        stroke="url(#mGold)" stroke-width="32"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

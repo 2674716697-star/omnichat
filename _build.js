@@ -97,18 +97,12 @@ const jsMin = minifyJS(js);
 function injectBuildMeta(input) {
   let output = input
     .replace(/\s*<meta name="build-version"[^>]*>/g, '')
-    .replace(/\s*<meta name="build-commit"[^>]*>/g, '')
-    .replace(/\s*<link rel="apple-touch-icon"[^>]*>/g, '');
+    .replace(/\s*<meta name="build-commit"[^>]*>/g, '');
 
+  // Inject build meta after the first theme-color tag (preserving PWA theme-color media variants)
   output = output.replace(
-    '<meta name="theme-color" content="#000000">',
-    '<meta name="theme-color" content="#000000">\n  <meta name="build-version" content="' + buildVersion + '">\n  <meta name="build-commit" content="' + commitHash + '">'
-  );
-
-  const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230f0f0f'/%3E%3Cpath d='M96 52c-24 0-44 20-44 44s20 44 44 44 44-20 44-44-20-44-44-44zm0 16c15 0 28 13 28 28s-13 28-28 28-28-13-28-28 13-28 28-28z' fill='%234a9eff'/%3E%3Ccircle cx='96' cy='96' r='16' fill='%236ab4ff'/%3E%3C/svg%3E";
-  output = output.replace(
-    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
-    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n  <link rel="apple-touch-icon" href="' + icon + '">'
+    /(<meta name="theme-color"[^>]*>)/,
+    '$1\n  <meta name="build-version" content="' + buildVersion + '">\n  <meta name="build-commit" content="' + commitHash + '">'
   );
 
   return output;
