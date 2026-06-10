@@ -2856,19 +2856,7 @@ function getSceneBodyDetails(block) {
     }
 
     if (msg._sceneFinalizing) {
-      html += '<div class="scene-finalizing-hint">整理剧情走向…</div>';
-      // Show previous directions as pending chips so user isn't blocked
-      if (msg._pendingDirections) {
-        var prevOpts = parseDirectionOptions(msg._pendingDirections);
-        if (prevOpts.length >= 4) {
-          html += '<div class="dir-choices-list locked pending">';
-          for (var pi = 0; pi < prevOpts.length; pi++) {
-            var po = prevOpts[pi];
-            html += '<button class="dir-choice-chip disabled pending" disabled>' + escapeHtml(po.letter) + '. ' + escapeHtml(po.content) + '</button>';
-          }
-          html += '</div>';
-        }
-      }
+      html += '<div class="scene-finalizing-hint"><span class="finalizing-dot"></span> 整理剧情走向…</div>';
     }
 
     if (msg.sceneSnapshot && !msg._streaming) {

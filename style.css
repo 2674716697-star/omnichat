@@ -2433,16 +2433,29 @@ html.welcome-visible .welcome-security {
 
 /* --- Scene Finalizing Hint --- */
 .scene-finalizing-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.78em;
   color: var(--text-muted, #8a8a8a);
   padding: 6px 0 2px;
-  opacity: 0.7;
   animation: hintPulse 2s ease-in-out infinite;
 }
-
+.finalizing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: finalizingBounce 0.8s ease-in-out infinite;
+}
+@keyframes finalizingBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
 @keyframes hintPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
 }
 
 @keyframes cursorGlow {
