@@ -2261,6 +2261,7 @@ html.welcome-visible .welcome-security {
   max-width: 90%;
   margin-bottom: 16px;
   animation: msgIn 200ms ease;
+  contain: layout style;
 }
 
 @keyframes msgIn {
@@ -2450,8 +2451,7 @@ html.welcome-visible .welcome-security {
   margin-left: 2px;
   vertical-align: text-bottom;
   border-radius: 1px;
-  box-shadow: 0 0 6px rgba(200, 155, 156, 0.35), 0 0 12px rgba(200, 155, 156, 0.12);
-  animation: cursorGlow 0.8s ease-in-out infinite;
+  animation: cursorBlink 0.8s steps(1) infinite;
   will-change: opacity;
 }
 
@@ -2482,9 +2482,9 @@ html.welcome-visible .welcome-security {
   50% { opacity: 0.85; }
 }
 
-@keyframes cursorGlow {
-  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(200, 155, 156, 0.35), 0 0 12px rgba(200, 155, 156, 0.12); }
-  50% { opacity: 0.35; box-shadow: 0 0 3px rgba(200, 155, 156, 0.18), 0 0 6px rgba(200, 155, 156, 0.06); }
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* --- Bottom Bar (floating dock) --- */
@@ -2497,10 +2497,8 @@ html.welcome-visible .welcome-security {
   max-width: 760px;
   z-index: 50;
   isolation: isolate;
-  background: rgba(24, 24, 24,0.52);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 0.5px solid rgba(255, 255, 255, 0.065);
+  background: rgba(24, 24, 24, 0.88);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.025);
   padding: 8px 12px;
   border-radius: 18px;

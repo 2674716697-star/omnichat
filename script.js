@@ -2991,18 +2991,7 @@ function getSceneBodyDetails(block) {
   }
 
   function animeWelcomeGlow() {
-    // Warm gold ambient halo pulse on the welcome icon.
-    if (typeof gsap === 'undefined') return;
-    var icon = document.querySelector('.welcome-icon');
-    if (!icon) return;
-    // Replace the CSS @keyframes ambient pulse with a GSAP-driven warm version
-    gsap.to(icon, {
-      boxShadow: '0 0 40px rgba(200, 155, 156, 0.10), 0 0 80px rgba(200, 155, 156, 0.04)',
-      duration: 3,
-      ease: 'sine.inOut',
-      yoyo: true,
-      repeat: -1
-    });
+    // CSS-driven ambient pulse, no GSAP overhead
   }
 
   function updateLastBubble(msg) {
