@@ -3319,8 +3319,10 @@ function getSceneBodyDetails(block) {
     // --- Force-clean path: hide button, clear all state ---
     if (!show) {
       state.ui.detachedContentDirty = false;
+      state.ui._scrollBtnVisible = false;
       if (btn) {
         if (typeof gsap !== 'undefined') {
+          gsap.killTweensOf(btn);
           gsap.to(btn, {
             opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
             onComplete: function() {
@@ -3341,8 +3343,10 @@ function getSceneBodyDetails(block) {
     // --- Show path: only if streaming or detached dirty ---
     var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
     if (!shouldShow) {
+      state.ui._scrollBtnVisible = false;
       if (btn) {
         if (typeof gsap !== 'undefined') {
+          gsap.killTweensOf(btn);
           gsap.to(btn, { opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
             onComplete: function() { btn.classList.remove('show'); btn.textContent = ''; }
           });
@@ -3381,9 +3385,12 @@ function getSceneBodyDetails(block) {
 
     btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
     btn.removeAttribute('aria-hidden');
+
+    // Only animate entrance if button wasn't already visible
+    var wasVisible = btn.classList.contains('show');
     btn.classList.add('show');
-    // GSAP spring entrance
-    if (typeof gsap !== 'undefined') {
+    if (!wasVisible && typeof gsap !== 'undefined') {
+      gsap.killTweensOf(btn);
       gsap.fromTo(btn,
         { opacity: 0, scale: 0.6, y: 10 },
         { opacity: 1, scale: 1, y: 0, duration: 0.38, ease: 'back.out(1.4)' }
