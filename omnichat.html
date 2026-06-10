@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq85qfka">
+  <meta name="build-version" content="mq860biu">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -720,14 +720,14 @@ keyHint: 'sk-...',
 },
 };
 const PROVIDER_CAPS = {
-openai: { maxOutputTokens: 32000 },
-xai: { maxOutputTokens: 32000 },
-deepseek: { maxOutputTokens: 384000 },
-openrouter: { maxOutputTokens: 32000 },
-groq: { maxOutputTokens: 32000 },
-moonshot: { maxOutputTokens: 32000 },
-zhipu: { maxOutputTokens: 32000 },
-siliconflow:{ maxOutputTokens: 32000 },
+openai: { maxOutputTokens: 32000, contextWindow: 128000 },
+xai: { maxOutputTokens: 32000, contextWindow: 128000 },
+deepseek: { maxOutputTokens: 384000, contextWindow: 160000 },
+openrouter: { maxOutputTokens: 32000, contextWindow: 200000 },
+groq: { maxOutputTokens: 32000, contextWindow: 128000 },
+moonshot: { maxOutputTokens: 32000, contextWindow: 128000 },
+zhipu: { maxOutputTokens: 32000, contextWindow: 128000 },
+siliconflow:{ maxOutputTokens: 32000, contextWindow: 128000 },
 };
 const DEFAULTS = {
 temperature: 0.7,
@@ -4908,7 +4908,8 @@ var streak = conv._escalateStreak || 0;
 var margin = streak >= 2 ? 2.0 : (streak >= 1 ? 1.5 : 1.25);
 var adaptive = Math.ceil((baseTokens + overhead) * margin);
 var estimatedInputTokens = Math.ceil(countApproxChars(conv) / 3);
-var contextWindow = 128000; ;
+var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
+var contextWindow = caps.contextWindow || 128000;
 var workingReserve = Math.ceil(contextWindow * 0.1); ;
 var maxSafeOutput = contextWindow - estimatedInputTokens - workingReserve;
 if (maxSafeOutput < adaptive) {
@@ -5277,13 +5278,21 @@ if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
 messages.push(sysMsg);
 }
 messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
-var keepRecent = 10;
-var kept = 0;
-for (var mi = messages.length - 1; mi >= 0; mi--) {
-if (messages[mi].role !== 'system') {
-kept++;
-if (kept > keepRecent) messages.splice(mi, 1);
+var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
+var contextWindow = caps.contextWindow || 128000;
+var estimatedTokens = 0;
+for (var mi = 0; mi < messages.length; mi++) {
+estimatedTokens += Math.ceil((messages[mi].content || '').length / 3);
 }
+var safeBudget = Math.floor(contextWindow * 0.75);
+while (estimatedTokens > safeBudget) {
+var cut = -1;
+for (var mi = 0; mi < messages.length; mi++) {
+if (messages[mi].role !== 'system') { cut = mi; break; }
+}
+if (cut < 0) break;
+estimatedTokens -= Math.ceil((messages[cut].content || '').length / 3);
+messages.splice(cut, 1);
 }
 var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
 if (stCharLimit) {

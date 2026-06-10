@@ -85,14 +85,14 @@
   // Per-provider maximum output token caps.
   // Used to validate user input before sending requests.
   const PROVIDER_CAPS = {
-    openai:     { maxOutputTokens: 32000 },
-    xai:        { maxOutputTokens: 32000 },
-    deepseek:   { maxOutputTokens: 384000 },
-    openrouter: { maxOutputTokens: 32000 },
-    groq:       { maxOutputTokens: 32000 },
-    moonshot:   { maxOutputTokens: 32000 },
-    zhipu:      { maxOutputTokens: 32000 },
-    siliconflow:{ maxOutputTokens: 32000 },
+    openai:     { maxOutputTokens: 32000, contextWindow: 128000 },
+    xai:        { maxOutputTokens: 32000, contextWindow: 128000 },
+    deepseek:   { maxOutputTokens: 384000, contextWindow: 160000 },
+    openrouter: { maxOutputTokens: 32000, contextWindow: 200000 },
+    groq:       { maxOutputTokens: 32000, contextWindow: 128000 },
+    moonshot:   { maxOutputTokens: 32000, contextWindow: 128000 },
+    zhipu:      { maxOutputTokens: 32000, contextWindow: 128000 },
+    siliconflow:{ maxOutputTokens: 32000, contextWindow: 128000 },
   };
 
   const DEFAULTS = {
@@ -4984,7 +4984,8 @@ function handleMessageAction(action, msgIndex) {
 
     // Context window budget: prevent API rejection when input tokens grow large
     var estimatedInputTokens = Math.ceil(countApproxChars(conv) / 3);
-    var contextWindow = 128000; // conservative default (DeepSeek V3/V4, GPT-4o class)
+    var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
+    var contextWindow = caps.contextWindow || 128000;
     var workingReserve = Math.ceil(contextWindow * 0.1); // 10% for model to breathe
     var maxSafeOutput = contextWindow - estimatedInputTokens - workingReserve;
     if (maxSafeOutput < adaptive) {
@@ -5422,14 +5423,22 @@ function handleMessageAction(action, msgIndex) {
     // Conversation history
     messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
 
-    // Story mode: keep only recent context (character card + scene state already in system prompt)
-    var keepRecent = 10;
-    var kept = 0;
-    for (var mi = messages.length - 1; mi >= 0; mi--) {
-      if (messages[mi].role !== 'system') {
-        kept++;
-        if (kept > keepRecent) messages.splice(mi, 1);
+    // Token-budget trim: keep conversations within provider context window
+    var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
+    var contextWindow = caps.contextWindow || 128000;
+    var estimatedTokens = 0;
+    for (var mi = 0; mi < messages.length; mi++) {
+      estimatedTokens += Math.ceil((messages[mi].content || '').length / 3);
+    }
+    var safeBudget = Math.floor(contextWindow * 0.75);
+    while (estimatedTokens > safeBudget) {
+      var cut = -1;
+      for (var mi = 0; mi < messages.length; mi++) {
+        if (messages[mi].role !== 'system') { cut = mi; break; }
       }
+      if (cut < 0) break;
+      estimatedTokens -= Math.ceil((messages[cut].content || '').length / 3);
+      messages.splice(cut, 1);
     }
 
     // Reply character count constraint for world story (single pass)
