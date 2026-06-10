@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq85fdsj">
+  <meta name="build-version" content="mq85qfka">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -3448,11 +3448,7 @@ state.ui.autoFollowStreaming = true;
 state.ui.userScrolling = false;
 if (state.ui.detachedDuringStreaming) {
 state.ui.detachedDuringStreaming = false;
-if (state.ui.detachedContentDirty) {
-state.ui.detachedContentDirty = false;
-renderMessages();
-el.scrollTop = el.scrollHeight;
-}
+el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
 }
 updateScrollToBottomButton(false);
 }
@@ -3481,7 +3477,7 @@ btn.setAttribute('aria-hidden', 'true');
 }
 return;
 }
-var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
+var shouldShow = state.isStreaming && state.ui.detachedDuringStreaming;
 if (!shouldShow) {
 state.ui._scrollBtnVisible = false;
 if (btn) {
@@ -3502,19 +3498,8 @@ btn.addEventListener('click', function() {
 state.ui.detachedDuringStreaming = false;
 state.ui.autoFollowStreaming = true;
 state.ui.userScrolling = false;
-state.ui.programmaticScroll = true;
-if (state.ui.detachedContentDirty) {
-state.ui.detachedContentDirty = false;
-var conv = getCurrentConv();
-if (conv && conv.messages.length) {
-fullRenderMessages(conv.messages);
-}
-}
 var sc = getScrollContainer();
-if (sc) sc.scrollTop = sc.scrollHeight;
-requestAnimationFrame(function() {
-state.ui.programmaticScroll = false;
-});
+if (sc) sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
 updateScrollToBottomButton(false);
 });
 document.body.appendChild(btn);
@@ -4819,9 +4804,7 @@ var scheduleRender = function () {
 if (!isCurrentTurn()) return;
 if (_renderPending || renderTimer) return;
 if (state.ui.detachedDuringStreaming) {
-state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
-return;
 }
 _renderPending = true;
 var elapsed = performance.now() - lastRenderAt;
@@ -5024,7 +5007,6 @@ if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortEr
 assistantMsg._sceneFinalizing = true;
 if (state.currentConversationId === turnConvId) {
 if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
 }
 }
@@ -5152,7 +5134,6 @@ showToast('回复被截断。下轮 Token 预算自动增加到 ' + nextBudget, 
 updateScenePanelUI();
 if (state.currentConversationId === turnConvId) {
 if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
 } else {
 updateLastBubble(assistantMsg);
@@ -5991,9 +5972,7 @@ const scheduleRender = () => {
 if (!isCurrentTurn()) return;
 if (renderScheduled) return;
 if (state.ui.detachedDuringStreaming) {
-state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
-return;
 }
 renderScheduled = true;
 const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));

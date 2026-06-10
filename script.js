@@ -3295,7 +3295,6 @@ function getSceneBodyDetails(block) {
       state.ui.autoFollowStreaming = false;
       state.ui.userScrolling = true;
       state.ui.lastUserScrollAt = Date.now();
-      // Enter detached mode: stop DOM updates during streaming
       if (state.isStreaming) {
         state.ui.detachedDuringStreaming = true;
       }
@@ -3303,14 +3302,11 @@ function getSceneBodyDetails(block) {
     } else {
       state.ui.autoFollowStreaming = true;
       state.ui.userScrolling = false;
-      // Exit detached mode: sync accumulated content to DOM
+      // Resume auto-follow — next render will naturally scroll to bottom
       if (state.ui.detachedDuringStreaming) {
         state.ui.detachedDuringStreaming = false;
-        if (state.ui.detachedContentDirty) {
-          state.ui.detachedContentDirty = false;
-          renderMessages();
-          el.scrollTop = el.scrollHeight;
-        }
+        // Smooth scroll to current bottom so it doesn't jump
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
       }
       updateScrollToBottomButton(false);
     }
@@ -3344,7 +3340,7 @@ function getSceneBodyDetails(block) {
     }
 
     // --- Show path: only if streaming or detached dirty ---
-    var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
+    var shouldShow = state.isStreaming && state.ui.detachedDuringStreaming;
     if (!shouldShow) {
       state.ui._scrollBtnVisible = false;
       if (btn) {
@@ -3366,21 +3362,9 @@ function getSceneBodyDetails(block) {
         state.ui.detachedDuringStreaming = false;
         state.ui.autoFollowStreaming = true;
         state.ui.userScrolling = false;
-        state.ui.programmaticScroll = true;
-
-        if (state.ui.detachedContentDirty) {
-          state.ui.detachedContentDirty = false;
-          var conv = getCurrentConv();
-          if (conv && conv.messages.length) {
-            fullRenderMessages(conv.messages);
-          }
-        }
 
         var sc = getScrollContainer();
-        if (sc) sc.scrollTop = sc.scrollHeight;
-        requestAnimationFrame(function() {
-          state.ui.programmaticScroll = false;
-        });
+        if (sc) sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
         updateScrollToBottomButton(false);
       });
       document.body.appendChild(btn);
@@ -4873,10 +4857,9 @@ function handleMessageAction(action, msgIndex) {
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
       if (_renderPending || renderTimer) return;
+      // Always update bubble — user can read while content streams in
       if (state.ui.detachedDuringStreaming) {
-        state.ui.detachedContentDirty = true;
         updateScrollToBottomButton(true);
-        return;
       }
       _renderPending = true;
       var elapsed = performance.now() - lastRenderAt;
@@ -5124,7 +5107,6 @@ function handleMessageAction(action, msgIndex) {
       assistantMsg._sceneFinalizing = true;
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
         }
       }
@@ -5270,10 +5252,10 @@ function handleMessageAction(action, msgIndex) {
       }
 
       updateScenePanelUI();
-      // Show action buttons — directly update the bubble for smooth transition
+      // Show action buttons / direction chips
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
+          // User scrolled away — content is already rendered, just show button
           updateScrollToBottomButton(true);
         } else {
           updateLastBubble(assistantMsg);
@@ -6301,20 +6283,16 @@ function handleMessageAction(action, msgIndex) {
       if (!isCurrentTurn()) return;
       if (renderScheduled) return;
 
-      // Detached mode: user scrolled away — accumulate content in memory only
+      // Always update bubble — user can read while content streams in
       if (state.ui.detachedDuringStreaming) {
-        state.ui.detachedContentDirty = true;
         updateScrollToBottomButton(true);
-        return;
       }
 
       renderScheduled = true;
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
-          // Re-check current turn inside the async callback
           if (!isCurrentTurn()) { renderScheduled = false; return; }
-          // Light touch: only update last bubble during streaming
           updateLastBubble(assistantMsg);
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
