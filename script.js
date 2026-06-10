@@ -2988,7 +2988,7 @@ function getSceneBodyDetails(block) {
     if (!icon) return;
     // Replace the CSS @keyframes ambient pulse with a GSAP-driven warm version
     gsap.to(icon, {
-      boxShadow: '0 0 40px rgba(196, 169, 98, 0.10), 0 0 80px rgba(196, 169, 98, 0.04)',
+      boxShadow: '0 0 40px rgba(200, 155, 156, 0.10), 0 0 80px rgba(200, 155, 156, 0.04)',
       duration: 3,
       ease: 'sine.inOut',
       yoyo: true,

@@ -14,7 +14,7 @@ Mira is an AI story chat client supporting multi-model chat, world-building char
 
 ## Brand Personality
 
-Refined, calm, focused. Dark glass-morphism aesthetic with a warm graphite-champagne palette. Champagne gold accent with subtle spring-based micro-interactions. Professional but warm — like a quiet writing studio at night with candlelight.
+Refined, calm, focused. Dark glass-morphism aesthetic on a neutral deep-black canvas. Soft rose gold accent with subtle spring-based micro-interactions. Professional but warm — like a quiet writing studio at night with rose-tinted candlelight.
 
 ## Anti-references
 
