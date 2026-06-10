@@ -4779,7 +4779,7 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // C: repairSceneBlock (15s timeout)
-    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 15000);
+    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 45000);
     try {
       var repairResult = await repairSceneBlock(conv, fullContent, repTO1.signal);
       // repairSceneBlock already validates ≥4 parseable directions internally
@@ -5147,7 +5147,8 @@ function handleMessageAction(action, msgIndex) {
       }
 
       // Attempt 1: non-streaming, temperature 0.2, 12s timeout
-      var auxTO1 = withTimeoutAbort(requestController.signal, 12000);
+      console.log('[OmniChat] Aux attempt 1 — model:', auxModel, 'provider:', auxProvider, 'maxTokens:', auxMaxTokens, 'storyLen:', storyContent.length);
+      var auxTO1 = withTimeoutAbort(requestController.signal, 45000);
       try {
         var auxResp1 = await callChatModel(conv, auxModel, auxMsgs, {
           provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
@@ -5156,27 +5157,32 @@ function handleMessageAction(action, msgIndex) {
           responseFormat: 'json_object',
         });
         var auxContent1 = auxResp1.content || '';
+        console.log('[OmniChat] Aux attempt 1 response length:', auxContent1.length, 'chars');
         if (auxContent1) {
           var parsed1 = tryParseAuxResponse(auxContent1);
           if (parsed1 && validateAuxSceneState(parsed1)) {
+            console.log('[OmniChat] Aux attempt 1 SUCCESS — dirs:', parseDirectionOptions(parsed1.directions).length, 'chars:', parsed1.characterStatuses.length);
             applyAuxParsed(parsed1);
           } else if (parsed1) {
-            console.warn('[OmniChat] Aux attempt 1 validation failed (insufficient dirs/chars), retrying...');
+            var d1 = parseDirectionOptions(parsed1.directions).length;
+            var c1 = parsed1.characterStatuses ? parsed1.characterStatuses.length : 0;
+            console.warn('[OmniChat] Aux attempt 1 validation failed — dirs:', d1, 'chars:', c1, '(need >=4 dirs AND >=1 char)');
           } else {
-            console.warn('[OmniChat] Aux attempt 1 parse failed, retrying...');
+            console.warn('[OmniChat] Aux attempt 1 parse failed — raw preview:', auxContent1.substring(0, 300));
           }
         }
       } catch (auxErr1) {
         if (auxErr1.name === 'AbortError' && !auxTO1.timedOut) throw auxErr1;
-        console.warn('[OmniChat] Aux attempt 1 failed:', auxErr1.message || auxErr1);
+        console.warn('[OmniChat] Aux attempt 1 error:', auxErr1.message || auxErr1, auxTO1.timedOut ? '(timeout)' : '');
       } finally {
         auxTO1.cleanup();
       }
 
-      // Attempt 2: stricter prompt, temperature 0.1, 20s timeout
+      // Attempt 2: stricter prompt, temperature 0.1
       if (!auxOk) {
+        console.log('[OmniChat] Aux attempt 2 — strict mode, model:', auxModel);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var auxTO2 = withTimeoutAbort(requestController.signal, 12000);
+        var auxTO2 = withTimeoutAbort(requestController.signal, 45000);
         try {
           var auxMsgs2 = buildAuxMessagesStrict(conv, storyContent);
           var auxResp2 = await callChatModel(conv, auxModel, auxMsgs2, {
@@ -5186,19 +5192,23 @@ function handleMessageAction(action, msgIndex) {
             responseFormat: 'json_object',
           });
           var auxContent2 = auxResp2.content || '';
+          console.log('[OmniChat] Aux attempt 2 response length:', auxContent2.length, 'chars');
           if (auxContent2) {
             var parsed2 = tryParseAuxResponse(auxContent2);
             if (parsed2 && validateAuxSceneState(parsed2)) {
+              console.log('[OmniChat] Aux attempt 2 SUCCESS');
               applyAuxParsed(parsed2);
             } else if (parsed2) {
-              console.warn('[OmniChat] Aux attempt 2 validation failed (insufficient dirs/chars)');
+              var d2 = parseDirectionOptions(parsed2.directions).length;
+              var c2 = parsed2.characterStatuses ? parsed2.characterStatuses.length : 0;
+              console.warn('[OmniChat] Aux attempt 2 validation failed — dirs:', d2, 'chars:', c2);
             } else {
-              console.warn('[OmniChat] Aux attempt 2 parse failed');
+              console.warn('[OmniChat] Aux attempt 2 parse failed — raw preview:', auxContent2.substring(0, 300));
             }
           }
         } catch (auxErr2) {
           if (auxErr2.name === 'AbortError' && !auxTO2.timedOut) throw auxErr2;
-          console.warn('[OmniChat] Aux attempt 2 failed:', auxErr2.message || auxErr2);
+          console.warn('[OmniChat] Aux attempt 2 error:', auxErr2.message || auxErr2, auxTO2.timedOut ? '(timeout)' : '');
         } finally {
           auxTO2.cleanup();
         }
@@ -5208,7 +5218,7 @@ function handleMessageAction(action, msgIndex) {
       if (!auxOk) {
         showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var repTO = withTimeoutAbort(requestController.signal, 15000);
+        var repTO = withTimeoutAbort(requestController.signal, 45000);
         try {
           var repairResult = await repairSceneBlock(conv, fullContent, repTO.signal);
           if (repairResult) {
@@ -6403,11 +6413,9 @@ function handleMessageAction(action, msgIndex) {
     if (state.isStreaming) {
       dom.btnSend.style.display = 'none';
       dom.btnStop.style.display = 'flex';
-      dom.inputMessage.disabled = true;
     } else {
       dom.btnSend.style.display = 'flex';
       dom.btnStop.style.display = 'none';
-      dom.inputMessage.disabled = false;
     }
   }
 
