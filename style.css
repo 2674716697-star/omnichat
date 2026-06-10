@@ -78,6 +78,9 @@
   --scene-radius: var(--radius-card);
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  --font-songti: "Songti SC", "宋体", "SimSun", "NSimSun", "Noto Serif SC", serif;
+  --font-yahei: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Heiti SC", sans-serif;
+  --font-kaiti: "Kaiti SC", "楷体", "KaiTi", "STKaiti", "楷体_GB2312", "Noto Serif SC", cursive;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
   --keyboard-inset: 0px;
@@ -89,6 +92,11 @@
   --transition-normal: 240ms var(--spring);
   --transition-slow: 360ms var(--spring);
 }
+
+/* --- Font selection via settings --- */
+html[data-font="songti"] body { --font-sans: var(--font-songti); }
+html[data-font="yahei"] body { --font-sans: var(--font-yahei); }
+html[data-font="kaiti"] body { --font-sans: var(--font-kaiti); }
 
 /* --- Reset & Base --- */
 *, *::before, *::after {

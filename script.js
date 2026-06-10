@@ -249,6 +249,7 @@
         chatBackground: state.chatBackground,
         worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
+        fontFamily: state.fontFamily,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -292,6 +293,7 @@
       state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
       state.worldStarterEnabled = data.worldStarterEnabled || false;
       state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
+      state.fontFamily = data.fontFamily || 'system';
       return true;
     } catch (e) {
       showToast('数据加载失败，将使用全新状态。', 'warning');
@@ -1764,6 +1766,7 @@ function getSceneBodyDetails(block) {
     dom.inputCaching = $('#inputCaching');
     dom.inputPreciseMode = $('#inputPreciseMode');
     dom.selectToolCallLimit = $('#selectToolCallLimit');
+    dom.selectFontFamily = $('#selectFontFamily');
     dom.chatBgOverlay = $('#chatBgOverlay');
     dom.bgPresets = $('#bgPresets');
     dom.inputBgOpacity = $('#inputBgOpacity');
@@ -3457,6 +3460,14 @@ function getSceneBodyDetails(block) {
     dom.inputActionElaborate.value = state.actionPrompts.elaborate || '';
 
     populateModelSelect();
+  }
+
+  function applyFontFamily(font) {
+    var f = font || state.fontFamily || 'system';
+    state.fontFamily = f;
+    document.documentElement.setAttribute('data-font', f === 'system' ? '' : f);
+    if (f === 'system') document.documentElement.removeAttribute('data-font');
+    saveToStorage();
   }
 
   function syncSettingsFromUI() {
@@ -6718,6 +6729,12 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
+    if (dom.selectFontFamily) {
+      dom.selectFontFamily.value = state.fontFamily || 'system';
+      dom.selectFontFamily.addEventListener('change', function() {
+        applyFontFamily(dom.selectFontFamily.value);
+      });
+    }
     dom.selectToolCallLimit.addEventListener('change', () => {
       updateToolWarning();
       const conv = getCurrentConv();
@@ -7276,6 +7293,7 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
   function init() {
     cacheDom();
     loadFromStorage();
+    applyFontFamily();
     setupViewportInsets();
 
     // ResizeObserver: keep --bottom-bar-h in sync with actual bottom bar height
