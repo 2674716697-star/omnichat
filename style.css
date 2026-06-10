@@ -64,6 +64,7 @@
   --code-bg: rgba(0, 0, 0, 0.32);
   --code-border: rgba(255, 255, 255, 0.07);
   --code-color: #e0a060;
+  --code-highlight: #e0a040;
   --overlay-bg: rgba(0, 0, 0, 0.50);
   --glass-blur: saturate(140%) blur(16px);
   /* === Scene variables (aliased to global) === */
@@ -914,15 +915,25 @@ html:not(.is-splashing) .top-bar {
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
+.conv-item-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
 .conv-item-btn:active {
-  background: var(--bg-tertiary);
+  background: rgba(255,255,255,0.10);
   color: var(--text-primary);
 }
 
+.conv-item-btn.danger:hover {
+  color: var(--danger-bright);
+}
 .conv-item-btn.danger:active {
   color: var(--danger-bright);
 }
 
+.conv-item {
+  transition: opacity 0.3s var(--spring);
+}
 .conv-item.archived {
   opacity: 0.55;
 }
@@ -2020,6 +2031,9 @@ html.welcome-visible .welcome-security {
   align-self: center;
 }
 
+.scene-npc-del:hover {
+  color: var(--danger-bright);
+}
 .scene-npc-del:active {
   background: rgba(255, 69, 58, 0.2);
   color: var(--danger-bright);
@@ -2061,6 +2075,12 @@ html.welcome-visible .welcome-security {
   color: rgba(255, 255, 255, 0.7);
   border: 0.5px solid rgba(255,255,255,0.05);
   white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.scene-stat-chip:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.12);
+}
 }
 
 /* --- Direction Choice Chips --- */
@@ -2286,7 +2306,7 @@ html.welcome-visible .welcome-security {
   background: var(--user-bubble-bg);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-bottom-right-radius: 4px;
-  color: #ffffff;
+  color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
@@ -2956,12 +2976,12 @@ html:not(.is-splashing) .bottom-bar {
 }
 
 .cache-hit {
-  color: #4caf84;
+  color: var(--success);
   font-weight: 500;
 }
 
 .cache-new {
-  color: #e0a040;
+  color: var(--code-highlight);
   font-weight: 500;
 }
 
@@ -3597,8 +3617,8 @@ html:not(.is-splashing) .bottom-bar {
   font-weight: 600;
 }
 
-.scene-tab-content { display: none; padding: 8px 10px 4px; }
-.scene-tab-content.active { display: block; min-height: 0; }
+.scene-tab-content { opacity: 0; visibility: hidden; max-height: 0; overflow: hidden; padding: 0 10px; transition: opacity 0.22s var(--spring), visibility 0.22s var(--spring); }
+.scene-tab-content.active { opacity: 1; visibility: visible; max-height: none; overflow: visible; padding: 8px 10px 4px; }
 
 .scene-tab-desc {
   font-size: 10.5px;
@@ -4512,6 +4532,7 @@ html.has-custom-bg .user .message-bubble {
   padding-top: calc(var(--safe-top, 0px) + 14px);
   padding-bottom: calc(var(--safe-bottom, 0px) + 10px);
   box-sizing: border-box;
+  animation: dialogIn 0.28s var(--spring);
 }
 .story-editor-sheet {
   display: flex; flex-direction: column;
