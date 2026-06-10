@@ -108,6 +108,7 @@
     preciseMode: false,
     keepThinkingOpen: true,
     sceneDetailLevel: 'medium',
+    memoryNotes: '',
     worldMode: false,
     storyAuxProvider: '',
     storyAuxModel: '',
@@ -1530,6 +1531,7 @@ function getSceneBodyDetails(block) {
           c.autoCompress = c.autoCompress || false;
           c.keepThinkingOpen = c.keepThinkingOpen !== undefined ? c.keepThinkingOpen : DEFAULTS.keepThinkingOpen;
           c.sceneDetailLevel = c.sceneDetailLevel || DEFAULTS.sceneDetailLevel;
+        c.memoryNotes = c.memoryNotes || DEFAULTS.memoryNotes;
           c.sceneWorld = createSceneWorld(c.sceneWorld);
           c.sceneCharacter = createSceneCharacter(c.sceneCharacter);
           c.sceneStatus = createSceneStatus(c.sceneStatus);
@@ -1824,6 +1826,9 @@ function getSceneBodyDetails(block) {
     dom.moodChips = $('#moodChips');
     dom.speciesChips = $('#speciesChips');
     dom.btnGenHints = $('#btnGenHints');
+    dom.btnQuickMemory = $('#btnQuickMemory');
+    dom.memoryPanel = $('#memoryPanel');
+    dom.memoryInput = $('#memoryInput');
     dom.npcImageInput = $('#npcImageInput');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
@@ -2203,6 +2208,7 @@ function getSceneBodyDetails(block) {
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
       worldMode: DEFAULTS.worldMode,
       sceneDetailLevel: DEFAULTS.sceneDetailLevel,
+      memoryNotes: DEFAULTS.memoryNotes,
       storyAuxProvider: DEFAULTS.storyAuxProvider,
       storyAuxModel: DEFAULTS.storyAuxModel,
       storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
@@ -5424,6 +5430,11 @@ function handleMessageAction(action, msgIndex) {
       systemPrompt = (systemPrompt || '') + '\n' + writingRules.join('\n');
     }
 
+    // Inject memory notes into system prompt
+    if (conv.memoryNotes && conv.memoryNotes.trim()) {
+      systemPrompt = (systemPrompt ? systemPrompt + '\n\n' : '') + '[用户补充的记忆/设定]\n' + conv.memoryNotes.trim();
+    }
+
     if (systemPrompt) {
       var sysMsg = { role: 'system', content: systemPrompt };
       if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
@@ -5848,6 +5859,10 @@ function handleMessageAction(action, msgIndex) {
     }
 
     if (fullSystemPrompt) {
+      // Inject memory notes
+      if (conv.memoryNotes && conv.memoryNotes.trim()) {
+        fullSystemPrompt += '\n\n[用户补充的记忆/设定]\n' + conv.memoryNotes.trim();
+      }
       const sysMsg = { role: 'system', content: fullSystemPrompt };
       if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
       messages.push(sysMsg);
@@ -7181,6 +7196,31 @@ function handleMessageAction(action, msgIndex) {
     $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
     $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
     $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
+    if (dom.btnQuickMemory) dom.btnQuickMemory.addEventListener('click', function() {
+      var panel = dom.memoryPanel;
+      var isOpen = panel.classList.contains('open');
+      if (isOpen) {
+        panel.classList.remove('open');
+      } else {
+        var conv = getCurrentConv();
+        if (conv && dom.memoryInput) dom.memoryInput.value = conv.memoryNotes || '';
+        panel.classList.add('open');
+        setTimeout(function() { if (dom.memoryInput) dom.memoryInput.focus(); }, 150);
+      }
+    });
+    if (dom.btnMemorySave) dom.btnMemorySave.addEventListener('click', function() {
+      var conv = getCurrentConv();
+      if (!conv) return;
+      var text = (dom.memoryInput.value || '').trim();
+      conv.memoryNotes = text;
+      dom.memoryPanel.classList.remove('open');
+      saveToStorage();
+      if (text) showToast('记忆已更新 — AI 将在下一轮看到', 'info');
+      else showToast('记忆已清空', 'info');
+    });
+    if (dom.btnMemoryClear) dom.btnMemoryClear.addEventListener('click', function() {
+      if (dom.memoryInput) dom.memoryInput.value = '';
+    });
 
     // NPC image upload
     if (dom.sceneNpcGrid) {

@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq86krkz">
+  <meta name="build-version" content="mq871m86">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -617,6 +617,17 @@
         <button class="btn-quick btn-quick-secondary" id="btnQuickPrecise" title="精确模式：低温 + 防幻觉">精确</button>
         <button class="btn-quick btn-quick-secondary" id="btnQuickExport" title="导出 Markdown">导出本聊</button>
         <button class="btn-quick btn-quick-secondary" id="btnGenHints" title="生成提示词" style="display:none">生成提示词</button>
+        <button class="btn-quick btn-quick-memory" id="btnQuickMemory" title="补充设定/记忆">+ 记忆</button>
+      </div>
+      <!-- Quick Memory Panel -->
+      <div class="memory-panel" id="memoryPanel">
+        <div class="memory-panel-inner">
+          <textarea class="memory-input" id="memoryInput" rows="2" placeholder="补充角色、世界观、NPC、状态…"></textarea>
+          <div class="memory-actions">
+            <button class="btn-memory-save" id="btnMemorySave">添加到记忆</button>
+            <button class="btn-memory-clear" id="btnMemoryClear">清空</button>
+          </div>
+        </div>
       </div>
       <div class="input-row">
         <textarea class="input-message" id="inputMessage" rows="1" placeholder="输入消息…" autocomplete="off"></textarea>
