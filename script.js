@@ -2735,6 +2735,7 @@ function getSceneBodyDetails(block) {
       for (let i = existingCount; i < messages.length; i++) {
         const el = createMessageElement(messages[i], i);
         dom.messagesContainer.appendChild(el);
+        animateBubbleIn(el);
       }
       ensureMessagesBottomSpacer();
     }
@@ -2747,6 +2748,7 @@ function getSceneBodyDetails(block) {
     for (let i = 0; i < messages.length; i++) {
       const el = createMessageElement(messages[i], i);
       dom.messagesContainer.appendChild(el);
+      animateBubbleIn(el);
     }
     ensureMessagesBottomSpacer();
   }
@@ -2871,6 +2873,22 @@ function getSceneBodyDetails(block) {
     }
 
     return div;
+  }
+
+  function animateBubbleIn(el) {
+    // GSAP spring entrance for new message bubbles.
+    // Degrades gracefully if GSAP isn't loaded.
+    if (typeof gsap === 'undefined' || !el) return;
+    var bubble = el.querySelector('.message-bubble');
+    if (!bubble) return;
+    var isUser = el.classList.contains('user');
+    gsap.from(bubble, {
+      opacity: 0,
+      y: isUser ? 8 : 12,
+      scale: 0.97,
+      duration: 0.35,
+      ease: 'back.out(1.2)'
+    });
   }
 
   function updateLastBubble(msg) {

@@ -63,6 +63,7 @@
   --ai-bubble: var(--bg-elevated);
   --code-bg: rgba(0, 0, 0, 0.32);
   --code-border: rgba(255, 255, 255, 0.07);
+  --code-color: #e0a060;
   --overlay-bg: rgba(0, 0, 0, 0.50);
   --glass-blur: saturate(140%) blur(16px);
   /* === Scene variables (aliased to global) === */
@@ -408,7 +409,9 @@ html.is-splashing .bottom-bar {
   .welcome-icon,
   .welcome-icon::after,
   .welcome-step.done,
-  .scene-finalizing-hint {
+  .scene-finalizing-hint,
+  .message-bubble .char-status-card,
+  .message-bubble .dir-choice-chip {
     animation: none;
   }
   .welcome-icon { opacity: 0.65; filter: none; }
@@ -684,8 +687,8 @@ html:not(.is-splashing) .top-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -759,7 +762,7 @@ html:not(.is-splashing) .top-bar {
   display: flex;
   flex-direction: column;
   transform: translateX(0);
-  transition: transform var(--transition-slow);
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: 2px 0 12px rgba(0,0,0,0.24);
 }
 
@@ -830,6 +833,7 @@ html:not(.is-splashing) .top-bar {
 
 .search-input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .search-input::placeholder {
@@ -1411,6 +1415,8 @@ html:not(.is-splashing) .top-bar {
   padding-bottom: 12px;
   overflow-anchor: none;
   contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }
 
 .chat-bg-overlay {
@@ -2302,9 +2308,8 @@ html.welcome-visible .welcome-security {
   background: var(--code-bg);
   padding: 2px 5px;
   border-radius: 4px;
-  color: #e0a060;
+  color: var(--code-color);
 }
-
 .message-bubble pre {
   margin: 8px 0;
   border-radius: var(--radius-sm);
@@ -2488,7 +2493,7 @@ html:not(.is-splashing) .bottom-bar {
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  min-height: 28px;
+  min-height: 36px;
   transition: background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 140ms ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -3067,6 +3072,32 @@ html:not(.is-splashing) .bottom-bar {
   animation: sceneFadeIn 300ms var(--spring);
 }
 @keyframes sceneFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Staggered entrance for character cards inside message bubbles */
+.message-bubble .char-status-card {
+  animation: cardStaggerIn 320ms var(--spring) both;
+}
+.message-bubble .char-status-card:nth-child(1) { animation-delay: 40ms; }
+.message-bubble .char-status-card:nth-child(2) { animation-delay: 100ms; }
+.message-bubble .char-status-card:nth-child(3) { animation-delay: 160ms; }
+.message-bubble .char-status-card:nth-child(4) { animation-delay: 220ms; }
+
+.message-bubble .dir-choice-chip {
+  animation: chipPopIn 280ms var(--spring) both;
+}
+.message-bubble .dir-choice-chip:nth-child(1) { animation-delay: 180ms; }
+.message-bubble .dir-choice-chip:nth-child(2) { animation-delay: 220ms; }
+.message-bubble .dir-choice-chip:nth-child(3) { animation-delay: 260ms; }
+.message-bubble .dir-choice-chip:nth-child(4) { animation-delay: 300ms; }
+
+@keyframes cardStaggerIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes chipPopIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 .scene-immersive .scene-panel:not(.collapsed) ~ .messages-container { display: none; }
 .scene-immersive .scene-panel.collapsed {
   flex: 0 0 auto;
