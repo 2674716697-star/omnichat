@@ -7347,6 +7347,13 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       document.documentElement.classList.add('is-standalone');
     }
 
+    // Register service worker explicitly for controlled lifecycle in PWA mode.
+    // Safari standalone may not auto-register from manifest, leading to stale
+    // cached assets and unpredictable SW timing on cold start.
+    if (isStandalone && navigator.serviceWorker && !navigator.serviceWorker.controller) {
+      navigator.serviceWorker.register('/omnichat/sw.js', { scope: '/omnichat/' });
+    }
+
     // Ensure at least one conversation exists
     if (state.conversations.length === 0) {
       const conv = createConversation();
