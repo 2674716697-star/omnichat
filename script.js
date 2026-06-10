@@ -1258,14 +1258,29 @@ function getSceneBodyDetails(block) {
   }
 
   function switchConversation(id) {
-    const conv = state.conversations.find((c) => c.id === id);
+    var conv = state.conversations.find(function(c) { return c.id === id; });
     if (!conv) return;
-    // Safety: ensure switched-to conversation is normalized to current schema
     normalizeConversation(conv);
     state.currentConversationId = id;
     closeDrawer('history');
-    renderAll();
-    scrollToBottom(true);
+
+    // GSAP fade-out → rebuild → fade-in for smooth transition
+    if (typeof gsap !== 'undefined') {
+      gsap.to(dom.messagesContainer, {
+        opacity: 0, y: 6, duration: 0.18, ease: 'power2.in',
+        onComplete: function() {
+          renderAll();
+          scrollToBottom(true);
+          gsap.fromTo(dom.messagesContainer,
+            { opacity: 0, y: 4 },
+            { opacity: 1, y: 0, duration: 0.3, ease: 'power3.out' }
+          );
+        }
+      });
+    } else {
+      renderAll();
+      scrollToBottom(true);
+    }
     debouncedSave();
   }
 
@@ -1801,13 +1816,11 @@ function getSceneBodyDetails(block) {
     dom.sceneCharStats = $('#sceneCharStats');
     dom.sceneCharGoal = $('#sceneCharGoal');
     dom.btnCopyCharCard = $('#btnCopyCharCard');
-    dom.btnGenOpeningPrompt = $('#btnGenOpeningPrompt');
     dom.sceneTabs = $('#sceneTabs');
     dom.sceneNpcGrid = $('#sceneNpcGrid');
     dom.moodChips = $('#moodChips');
     dom.speciesChips = $('#speciesChips');
     dom.btnGenHints = $('#btnGenHints');
-    dom.btnFinishSetup = $('#btnFinishSetup');
     dom.npcImageInput = $('#npcImageInput');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
@@ -1858,15 +1871,34 @@ function getSceneBodyDetails(block) {
   // TOAST
   // =========================================================================
 
-  function showToast(msg, type = 'info', duration = 3000) {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+  function showToast(msg, type, duration) {
+    if (type === undefined) type = 'info';
+    if (duration === undefined) duration = 3000;
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + type;
     toast.textContent = msg;
     dom.toastContainer.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 200ms ease';
-      setTimeout(() => toast.remove(), 200);
+
+    // GSAP enter animation
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(toast,
+        { opacity: 0, y: -10, scale: 0.95 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'power3.out' }
+      );
+    }
+
+    // Auto-dismiss with GSAP exit
+    setTimeout(function() {
+      if (typeof gsap !== 'undefined') {
+        gsap.to(toast, {
+          opacity: 0, y: 4, scale: 0.96, duration: 0.22, ease: 'power2.in',
+          onComplete: function() { toast.remove(); }
+        });
+      } else {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 200ms ease';
+        setTimeout(function() { toast.remove(); }, 200);
+      }
     }, duration);
   }
 
@@ -2649,6 +2681,20 @@ function getSceneBodyDetails(block) {
 
     dom.convList.innerHTML = html;
 
+    // GSAP stagger entrance for conversation list items
+    if (typeof gsap !== 'undefined') {
+      var items = dom.convList.querySelectorAll('.conv-item');
+      if (items.length) {
+        gsap.from(items, {
+          opacity: 0,
+          x: -10,
+          duration: 0.28,
+          stagger: 0.035,
+          ease: 'power3.out'
+        });
+      }
+    }
+
     updateArchiveToggleUI();
   }
 
@@ -2742,11 +2788,27 @@ function getSceneBodyDetails(block) {
   }
 
   function fullRenderMessages(messages) {
-    // Remove only message elements, keep welcome screen and spacer
-    dom.messagesContainer.querySelectorAll('.message').forEach((el) => el.remove());
+    // GSAP exit animation for existing messages, then render new ones
+    var oldMessages = dom.messagesContainer.querySelectorAll('.message');
+    if (typeof gsap !== 'undefined' && oldMessages.length) {
+      gsap.to(oldMessages, {
+        opacity: 0, y: -4, scale: 0.97, duration: 0.18, ease: 'power2.in',
+        stagger: 0.03,
+        onComplete: function() {
+          oldMessages.forEach(function(el) { el.remove(); });
+          _renderMessagesInto(messages);
+        }
+      });
+    } else {
+      oldMessages.forEach(function(el) { return el.remove(); });
+      _renderMessagesInto(messages);
+    }
+  }
+
+  function _renderMessagesInto(messages) {
     dom.welcomeScreen.classList.add('hidden');
-    for (let i = 0; i < messages.length; i++) {
-      const el = createMessageElement(messages[i], i);
+    for (var i = 0; i < messages.length; i++) {
+      var el = createMessageElement(messages[i], i);
       dom.messagesContainer.appendChild(el);
       animateBubbleIn(el);
     }
@@ -2876,18 +2938,61 @@ function getSceneBodyDetails(block) {
   }
 
   function animateBubbleIn(el) {
-    // GSAP spring entrance for new message bubbles.
+    // GSAP spring entrance for new message bubbles with staggered inner elements.
     // Degrades gracefully if GSAP isn't loaded.
     if (typeof gsap === 'undefined' || !el) return;
     var bubble = el.querySelector('.message-bubble');
     if (!bubble) return;
     var isUser = el.classList.contains('user');
-    gsap.from(bubble, {
+    var tl = gsap.timeline({ defaults: { duration: 0.38, ease: 'power3.out' } });
+    // Bubble body entrance
+    tl.from(bubble, {
       opacity: 0,
-      y: isUser ? 8 : 12,
+      y: isUser ? 6 : 10,
+      x: isUser ? 4 : -4,
       scale: 0.97,
-      duration: 0.35,
-      ease: 'back.out(1.2)'
+      duration: 0.38
+    });
+    // Stagger inner content elements
+    var inners = bubble.querySelectorAll('.message-content, .thinking-section, .story-part, .dir-choice-chip, .char-status-card');
+    if (inners.length) {
+      tl.from(inners, {
+        opacity: 0,
+        y: 6,
+        scale: 0.98,
+        stagger: 0.05,
+        duration: 0.28,
+        ease: 'power2.out'
+      }, '-=0.12');
+    }
+  }
+
+  function animeWelcomeSteps() {
+    // GSAP stagger entrance for welcome steps, replacing CSS delays.
+    if (typeof gsap === 'undefined') return;
+    var steps = document.querySelectorAll('.welcome-step');
+    if (!steps.length) return;
+    gsap.from(steps, {
+      opacity: 0,
+      y: 8,
+      duration: 0.4,
+      stagger: 0.1,
+      ease: 'power3.out'
+    });
+  }
+
+  function animeWelcomeGlow() {
+    // Warm gold ambient halo pulse on the welcome icon.
+    if (typeof gsap === 'undefined') return;
+    var icon = document.querySelector('.welcome-icon');
+    if (!icon) return;
+    // Replace the CSS @keyframes ambient pulse with a GSAP-driven warm version
+    gsap.to(icon, {
+      boxShadow: '0 0 40px rgba(196, 169, 98, 0.10), 0 0 80px rgba(196, 169, 98, 0.04)',
+      duration: 3,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: -1
     });
   }
 
@@ -3215,9 +3320,20 @@ function getSceneBodyDetails(block) {
     if (!show) {
       state.ui.detachedContentDirty = false;
       if (btn) {
-        btn.classList.remove('show');
-        btn.textContent = '';
-        btn.setAttribute('aria-hidden', 'true');
+        if (typeof gsap !== 'undefined') {
+          gsap.to(btn, {
+            opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
+            onComplete: function() {
+              btn.classList.remove('show');
+              btn.textContent = '';
+              btn.setAttribute('aria-hidden', 'true');
+            }
+          });
+        } else {
+          btn.classList.remove('show');
+          btn.textContent = '';
+          btn.setAttribute('aria-hidden', 'true');
+        }
       }
       return;
     }
@@ -3225,7 +3341,13 @@ function getSceneBodyDetails(block) {
     // --- Show path: only if streaming or detached dirty ---
     var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
     if (!shouldShow) {
-      if (btn) { btn.classList.remove('show'); btn.textContent = ''; }
+      if (btn) {
+        if (typeof gsap !== 'undefined') {
+          gsap.to(btn, { opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
+            onComplete: function() { btn.classList.remove('show'); btn.textContent = ''; }
+          });
+        } else { btn.classList.remove('show'); btn.textContent = ''; }
+      }
       return;
     }
 
@@ -3260,6 +3382,13 @@ function getSceneBodyDetails(block) {
     btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
     btn.removeAttribute('aria-hidden');
     btn.classList.add('show');
+    // GSAP spring entrance
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(btn,
+        { opacity: 0, scale: 0.6, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.38, ease: 'back.out(1.4)' }
+      );
+    }
   }
 
   // =========================================================================
@@ -3661,7 +3790,40 @@ function getSceneBodyDetails(block) {
       (function(card) {
         card.addEventListener('click', function(e) {
           if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea')) return;
-          card.classList.toggle('flipped');
+          var inner = card.querySelector('.npc-card-inner');
+          var isFlipping = card.classList.contains('flipped');
+          if (typeof gsap !== 'undefined' && inner) {
+            if (!isFlipping) {
+              // Flip front → back: 3D rotateY animation
+              gsap.to(inner, {
+                rotateY: 90,
+                duration: 0.18,
+                ease: 'power2.in',
+                onComplete: function() {
+                  card.classList.add('flipped');
+                  gsap.fromTo(inner, { rotateY: -90 }, { rotateY: 0, duration: 0.22, ease: 'power2.out' });
+                  // Stagger inner form fields
+                  var fields = card.querySelectorAll('.npc-back .npc-edit-field, .npc-back input, .npc-back textarea, .npc-back button');
+                  if (fields.length) {
+                    gsap.from(fields, { opacity: 0, y: 6, stagger: 0.04, duration: 0.25, ease: 'power2.out' });
+                  }
+                }
+              });
+            } else {
+              // Flip back → front: reverse animation
+              gsap.to(inner, {
+                rotateY: -90,
+                duration: 0.18,
+                ease: 'power2.in',
+                onComplete: function() {
+                  card.classList.remove('flipped');
+                  gsap.fromTo(inner, { rotateY: 90 }, { rotateY: 0, duration: 0.22, ease: 'power2.out' });
+                }
+              });
+            }
+          } else {
+            card.classList.toggle('flipped');
+          }
         });
       })(cards[ci]);
     }
@@ -4017,7 +4179,6 @@ function updateScenePanelUI() {
         hideConfirm();
       });
       if (genBtn) genBtn.addEventListener('click', function() {
-        if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.click();
         hideConfirm();
       });
     }, 50);
@@ -6552,9 +6713,34 @@ function handleMessageAction(action, msgIndex) {
     dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
     dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
 
-    // Scene panel
-    dom.scenePanelToggle.addEventListener('click', () => {
-      dom.scenePanel.classList.toggle('collapsed');
+    // Scene panel — with GSAP spring on expand
+    dom.scenePanelToggle.addEventListener('click', function() {
+      var panel = dom.scenePanel;
+      var isCollapsing = !panel.classList.contains('collapsed');
+      panel.classList.toggle('collapsed');
+
+      // GSAP spring animation on expand
+      if (!isCollapsing && typeof gsap !== 'undefined') {
+        var body = panel.querySelector('.scene-panel-body');
+        if (body) {
+          gsap.fromTo(body,
+            { opacity: 0, y: -6, scale: 0.98 },
+            { opacity: 1, y: 0, scale: 1, duration: 0.32, ease: 'power3.out' }
+          );
+        }
+        // Stagger inner cards/chips
+        var cards = panel.querySelectorAll('.scene-status-card, .npc-card, .char-card, .dir-choice-chip, .scene-chip');
+        if (cards.length) {
+          gsap.from(cards, {
+            opacity: 0,
+            y: 8,
+            scale: 0.97,
+            stagger: 0.05,
+            duration: 0.28,
+            ease: 'back.out(1.1)'
+          });
+        }
+      }
     });
     if (dom.sceneMental) dom.sceneMental.addEventListener('input', () => {
       const conv = getCurrentConv();
@@ -6683,68 +6869,6 @@ function handleMessageAction(action, msgIndex) {
       var card = buildCharacterCard(conv);
       if (!card) { showToast('角色卡为空，请先填写', 'warning'); return; }
       copyTextToClipboard(card, '角色卡已复制到剪贴板');
-    });
-
-    // Generate opening prompt button (hidden from UI, guarded)
-    if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
-      var conv = getCurrentConv();
-      if (!conv) return;
-      var sm = conv.storyMode;
-      var w = (sm && sm.world) ? sm.world : (conv.sceneWorld || {});
-      var ch = (sm && sm.character) ? sm.character : (conv.sceneCharacter || {});
-      var ss = (sm && sm.sceneState) ? sm.sceneState : (conv.sceneState || {});
-      var parts = [];
-      parts.push('请根据以下设定续写故事。');
-      if (w.openingName) parts.push('开局：' + w.openingName);
-      if (w.setting) parts.push('世界设定：' + w.setting);
-      if (ch.name) {
-        var charDesc = '主角：' + ch.name;
-        if (ch.age) charDesc += '，' + ch.age + '岁';
-        if (ch.role) charDesc += '，' + ch.role;
-        if (ch.species && ch.species !== '人类') charDesc += '，' + ch.species;
-        parts.push(charDesc);
-      }
-      if (ch.appearance) parts.push('外貌：' + ch.appearance);
-      if (ch.traits) parts.push('性格：' + ch.traits);
-      if (ch.stats) parts.push('状态属性：' + ch.stats);
-      if (ch.currentGoal) parts.push('当前目标：' + ch.currentGoal);
-      if (w.mood) parts.push('基调：' + w.mood);
-      if (ss.mental) parts.push('精神状态：' + ss.mental);
-      if (ss.physical) parts.push('身体细节：' + ss.physical);
-      if (ss.plot) parts.push('当前剧情：' + ss.plot);
-      // Phase 3: status bar
-      var st = (sm && sm.status) ? sm.status : conv.sceneStatus;
-      if (st) {
-        var stParts = [];
-        if (st.health) stParts.push('体力/生命：' + st.health);
-        if (st.stamina) stParts.push('精力：' + st.stamina);
-        if (st.composure) stParts.push('冷静/精神：' + st.composure);
-        if (st.focus) stParts.push('专注：' + st.focus);
-        if (st.currentObjective) stParts.push('当前目标：' + st.currentObjective);
-        if (st.constraints) stParts.push('限制/提醒：' + st.constraints);
-        if (stParts.length) parts.push('主角状态：\n' + stParts.join('\n'));
-      }
-      // Phase 3: NPCs
-      var npcs = (sm && sm.npcs) ? sm.npcs : conv.sceneNpcs;
-      if (npcs && npcs.length) {
-        var npcLines = [];
-        for (var ni = 0; ni < npcs.length; ni++) {
-          var n = npcs[ni];
-          if (!n.name) continue;
-          var line = n.name;
-          if (n.role) line += '（' + n.role + '）';
-          if (n.status) line += ' — ' + n.status;
-          if (n.notes) line += ' [' + n.notes + ']';
-          npcLines.push(line);
-        }
-        if (npcLines.length) parts.push('NPC：\n' + npcLines.join('\n'));
-      }
-      parts.push('请用生动细致的文笔，基于以上设定开始续写。注意保持人物一致性，推进剧情发展。');
-      dom.inputMessage.value = parts.join('\n');
-      dom.inputMessage.style.height = 'auto';
-      dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
-      dom.inputMessage.focus();
-      showToast('开场提示词已生成到输入框，可修改后发送', 'info');
     });
 
     // Status bar card toggle
@@ -6882,8 +7006,17 @@ function handleMessageAction(action, msgIndex) {
       saveToStorage();
     });
 
-    // Send / Stop
-    dom.btnSend.addEventListener('click', () => sendMessage());
+    // Send / Stop — with GSAP press spring feedback
+    dom.btnSend.addEventListener('click', function() { sendMessage(); });
+    dom.btnSend.addEventListener('pointerdown', function() {
+      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 0.92, duration: 0.1, ease: 'power2.in' });
+    });
+    dom.btnSend.addEventListener('pointerup', function() {
+      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 1, duration: 0.35, ease: 'elastic.out(1, 0.4)' });
+    });
+    dom.btnSend.addEventListener('pointerleave', function() {
+      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 1, duration: 0.25, ease: 'power2.out' });
+    });
     dom.btnStop.addEventListener('click', () => stopCurrentRequest());
     dom.inputMessage.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -7048,7 +7181,6 @@ function handleMessageAction(action, msgIndex) {
       this.value='';
     });
 if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
-    if (dom.btnFinishSetup) dom.btnFinishSetup.addEventListener('click', () => showSetupConfirm());
     if (dom.btnStartWorld) dom.btnStartWorld.addEventListener('click', () => startWorldMode());
 
     // Export / Import / Clear all
@@ -7176,9 +7308,12 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
 
     // Splash screen - dismiss after animation
     const splashDismissed = sessionStorage.getItem('omnichat_splash');
-    const onSplashDone = () => {
+    const onSplashDone = function() {
       document.documentElement.classList.remove('is-splashing');
       updateBottomBarHeight();
+      // Animate welcome steps with GSAP stagger
+      animeWelcomeSteps();
+      animeWelcomeGlow();
     };
     if (splashDismissed) {
       dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
