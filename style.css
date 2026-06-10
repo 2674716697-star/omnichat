@@ -173,7 +173,7 @@ html.is-splashing .app-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 400ms ease, visibility 400ms ease;
+  transition: opacity 400ms var(--spring), visibility 400ms ease;
 }
 
 .splash::after {
@@ -547,15 +547,13 @@ html:not(.is-splashing) .top-bar {
   height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: rgba(24, 24, 24,0.50);
-  border: 0.5px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: saturate(130%) blur(14px);
-  -webkit-backdrop-filter: saturate(130%) blur(14px);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
-  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 80ms var(--spring);
+  transition: background 0.18s var(--spring), border-color 0.18s var(--spring), box-shadow 0.18s var(--spring), color 0.18s var(--spring), transform 80ms var(--spring);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -593,7 +591,7 @@ html:not(.is-splashing) .top-bar {
   cursor: pointer;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
-  transition: background 200ms ease;
+  transition: background 200ms var(--spring);
   overflow: hidden;
 }
 
@@ -753,6 +751,7 @@ html:not(.is-splashing) .top-bar {
   background: var(--surface-glass-strong);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -1282,7 +1281,7 @@ html:not(.is-splashing) .top-bar {
   cursor: pointer;
   border: 2px solid rgba(255,255,255,0.12);
   box-shadow: 0 1px 4px rgba(0,0,0,0.20);
-  transition: box-shadow 160ms ease, transform 100ms ease;
+  transition: box-shadow 160ms var(--spring), transform 100ms ease;
 }
 .range::-webkit-slider-thumb:hover {
   box-shadow: 0 1px 6px rgba(0,0,0,0.28);
@@ -1567,7 +1566,7 @@ html:not(.is-splashing) .welcome-icon::after {
   color: var(--text-secondary);
   max-width: 300px;
   line-height: 1.55;
-  opacity: 0.72;
+  color: rgba(237, 235, 232, 0.62);
 }
 
 .welcome-status {
@@ -1592,9 +1591,9 @@ html:not(.is-splashing) .welcome-icon::after {
   line-height: 1.45;
   text-align: left;
   transition:
-    border-color 420ms ease,
-    border-left-color 420ms ease,
-    background 420ms ease,
+    border-color 420ms var(--spring),
+    border-left-color 420ms var(--spring),
+    background 420ms var(--spring),
     color 360ms ease;
 }
 
@@ -1652,7 +1651,7 @@ html:not(.is-splashing) .welcome-step:nth-child(2) { animation-delay: 230ms; }
   font-weight: 600;
   padding: 10px 22px;
   border-radius: var(--radius-md);
-  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  transition: background 150ms var(--spring), transform 150ms var(--spring), box-shadow 150ms ease;
 }
 
 .welcome-actions .btn-primary:hover {
@@ -1681,7 +1680,7 @@ html:not(.is-splashing) .welcome-step:nth-child(2) { animation-delay: 230ms; }
   color: var(--text-muted);
   position: relative;
   z-index: 1;
-  opacity: 0.7;
+  color: rgba(237, 235, 232, 0.42);
 }
 
 .welcome-security {
@@ -1770,7 +1769,7 @@ html.welcome-visible .welcome-security {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: background 200ms ease, color 200ms ease;
+  transition: background 200ms var(--spring), color 200ms ease;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
@@ -2079,7 +2078,7 @@ html.welcome-visible .welcome-security {
   font-size: 12px;
   line-height: 1.45;
   cursor: pointer;
-  transition: border-color 180ms ease, background 180ms ease;
+  transition: border-color 0.18s var(--spring), background 180ms ease;
   font-family: inherit;
   -webkit-tap-highlight-color: transparent;
 }
@@ -2280,7 +2279,7 @@ html.welcome-visible .welcome-security {
   word-break: break-word;
   overflow-wrap: break-word;
   letter-spacing: 0;
-  transition: border-color 180ms ease, opacity 120ms var(--spring);
+  transition: border-color 0.18s var(--spring), opacity 120ms var(--spring);
 }
 
 .message.user .message-bubble {
@@ -2483,7 +2482,7 @@ html.welcome-visible .welcome-security {
   padding: 8px 12px;
   border-radius: 18px;
   transition:
-    bottom 180ms ease,
+    bottom 0.18s var(--spring),
     transform 320ms var(--spring-smooth),
     background 300ms ease,
     border-color 300ms ease,
@@ -2545,7 +2544,7 @@ html:not(.is-splashing) .bottom-bar {
   font-weight: 500;
   cursor: pointer;
   min-height: 36px;
-  transition: background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 140ms ease;
+  transition: background 0.18s var(--spring), color 0.18s var(--spring), border-color 0.18s var(--spring), box-shadow 0.18s var(--spring), transform 140ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -2581,9 +2580,7 @@ html:not(.is-splashing) .bottom-bar {
   padding: 9px 14px;
   border: 0.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 15px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%), var(--surface-field);
-  backdrop-filter: saturate(140%) blur(16px);
-  -webkit-backdrop-filter: saturate(140%) blur(16px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%), var(--surface-field);
   color: var(--text-primary);
   font-size: 14px;
   resize: none;
@@ -2594,7 +2591,7 @@ html:not(.is-splashing) .bottom-bar {
   box-shadow:
     inset 0 0.5px 0 rgba(255, 255, 255, 0.04),
     inset 0 -0.5px 0 rgba(0, 0, 0, 0.06);
-  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  transition: border-color 200ms var(--spring), background 200ms var(--spring), box-shadow 200ms ease;
   -webkit-appearance: none;
   user-select: text;
   -webkit-user-select: text;
@@ -2756,10 +2753,10 @@ html:not(.is-splashing) .bottom-bar {
 }
 
 .dialog {
-  background: rgba(24, 24, 24,0.94);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(24, 24, 24, 0.94);
+  border: 0.5px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.04);
   padding: 20px;
   width: 100%;
   max-width: 300px;
@@ -3063,7 +3060,7 @@ html:not(.is-splashing) .bottom-bar {
   font-size: 15px;
   line-height: 1.75;
   letter-spacing: 0.08px;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition: transform 0.18s var(--spring), box-shadow 180ms ease;
 }
 
 
@@ -3569,9 +3566,9 @@ html:not(.is-splashing) .bottom-bar {
   font-weight: 500;
   cursor: pointer;
   transition:
-    background 160ms ease,
-    color 160ms ease,
-    border-color 160ms ease,
+    background 160ms var(--spring),
+    color 160ms var(--spring),
+    border-color 160ms var(--spring),
     transform 140ms ease,
     box-shadow 160ms ease;
   font-family: inherit;
@@ -4206,16 +4203,16 @@ html.is-standalone body {
 /* --- Message bubble: smooth entry / glass transition --- */
 .message-bubble {
   transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
+    transform 0.18s var(--spring),
+    box-shadow 0.18s var(--spring),
     border-color 180ms ease;
 }
 
 /* --- Input message: transition harmony --- */
 .input-message {
   transition:
-    border-color 180ms ease,
-    background 180ms ease,
+    border-color 0.18s var(--spring),
+    background 0.18s var(--spring),
     box-shadow 200ms ease;
 }
 
@@ -4260,7 +4257,7 @@ html.is-standalone body {
   border: 0.5px solid var(--hairline);
   background: var(--surface-hover);
   color: var(--text-secondary);
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition: background 160ms var(--spring), color 160ms var(--spring), border-color 160ms ease;
 }
 .btn-msg-action:hover {
   background: rgba(255,255,255,0.05);
@@ -4327,10 +4324,10 @@ html.is-standalone body {
   color: var(--text-primary);
   font-size: 11px;
   cursor: pointer;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
-  transition: opacity 250ms ease;
+  background: rgba(24, 24, 24, 0.92);
+  border: 0.5px solid rgba(255,255,255,0.06);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: opacity 250ms var(--spring);
   opacity: 0;
   pointer-events: none;
 }
