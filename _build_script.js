@@ -79,6 +79,7 @@ const REQUIRED = [
   'tryParseAuxResponse',
   'renderMarkdown',
   'renderContentFast',
+  'appendFastText',
   'getVisibleAssistantContent',
   'isSafeMarkdownUrl',
   'newConversation',

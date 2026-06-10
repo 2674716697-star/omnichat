@@ -207,7 +207,7 @@ check('aux provider API key fallback to main provider',
 
 // 7b-6: Aux failure uses repairSceneBlock, not local fallback.
 check('aux failure path uses repairSceneBlock',
-  /repairSceneBlock\(conv,\s*fullContent\)/.test(storyTurnFn));
+  /repairSceneBlock\(conv,\s*fullContent/.test(storyTurnFn));
 check('aux failure does NOT show "已使用备选选项" toast',
   !/已使用备选选项/.test(storyTurnFn));
 
@@ -216,15 +216,15 @@ check('sendStoryTurn inserts empty streaming placeholder, passes same ref to str
   /content:\s*''/.test(storyTurnFn) && /placeholderMsg/.test(storyTurnFn) && /assistantMsg\s*=\s*placeholderMsg/.test(storyTurnFn));
 check('sendStoryTurn Part1→Part2 continuous stream (no phase text gating)',
   !/Part 1 完成/.test(storyTurnFn) && !/正在续写/.test(storyTurnFn) && !/part1Preview/.test(storyTurnFn));
-check('sendStoryTurn defers reveal: _pendingContent stash → ensureStoryDirections → promote',
-  /_pendingContent\s*=\s*fullContent/.test(storyTurnFn) &&
-  /ensureStoryDirections\(assistantMsg[\s\S]*assistantMsg\.content\s*=\s*assistantMsg\._pendingContent/.test(storyTurnFn));
+check('sendStoryTurn promotes content immediately after stream (contentPromoted flag before aux chain)',
+  /contentPromoted\s*=\s*true/.test(storyTurnFn) &&
+  /contentPromoted\s*=\s*true[\s\S]*previousSceneState\s*=/.test(storyTurnFn));
 check('sendStoryTurn renders before streaming and on final reveal',
   /renderMessages\(\)/.test(storyTurnFn) && /scrollToBottomIfNeeded/.test(storyTurnFn));
-check('sendStoryTurn reveals content after directions ready (promoted assistantMsg)',
-  /assistantMsg\.content\s*=\s*assistantMsg\._pendingContent/.test(storyTurnFn) && /assistantMsg\.displayParts\s*=\s*assistantMsg\._pendingDisplayParts/.test(storyTurnFn));
-check('aux call has timeout protection (withTimeout)',
-  /withTimeout\(/.test(storyTurnFn));
+check('sendStoryTurn promotes content before aux (stripStoryMetaFromVisibleContent, not _pendingContent reveal)',
+  /assistantMsg\.content\s*=\s*stripStoryMetaFromVisibleContent\(fullContent\)/.test(storyTurnFn));
+check('aux call has timeout protection (withTimeoutAbort)',
+  /withTimeoutAbort\(/.test(storyTurnFn));
 check('repair call has timeout protection (withTimeout)',
   /repairSceneBlock/.test(storyTurnFn) && storyTurnFn.indexOf('withTimeout') < storyTurnFn.lastIndexOf('repairSceneBlock'));
 check('sendStoryTurn finally sets isStreaming=false',
@@ -239,8 +239,10 @@ check('sendStoryTurn finally calls updateScrollToBottomButton(false)',
   /finally[\s\S]*updateScrollToBottomButton\(false\)/.test(storyTurnFn));
 check('action buttons show for all non-streaming assistants (not gated by _showActions)',
   /if\s*\(\s*!msg\._streaming\s*\)\s*\{[\s\S]*msg-actions/.test(js) || /!msg\._streaming[\s\S]*msg-actions/.test(js));
-check('aux timeout ≤ 25s',
-  storyTurnFn.indexOf('20000') > 0 || storyTurnFn.indexOf('25000') > 0);
+check('aux timeout ≥ 20s (not truncated)',
+  storyTurnFn.indexOf('20000') > 0 && storyTurnFn.indexOf('25000') > 0);
+check('aux call uses JSON mode',
+  /responseFormat:\s*['"]json_object['"]/.test(storyTurnFn));
 
 // 7f: scrollToBottomBtn state machine — no stuck button
 var scrollBtnFn = (js.match(/function\s+updateScrollToBottomButton[\s\S]*?^  \}/m) || [''])[0];
@@ -317,8 +319,8 @@ check('updateLastBubble rebuilds thinking-section when thinkDiv missing',
   /!thinkDiv/.test(updateLastFn) && /bubble\.innerHTML\s*=\s*renderBubbleHTML/.test(updateLastFn));
 check('updateLastBubble keeps thinking-section open during streaming (no !msg.content guard)',
   updateLastFn.includes('details.open = true') && !updateLastFn.includes('!msg.content'));
-check('updateLastBubble tracks _lastRenderedReasoningLength',
-  /_lastRenderedReasoningLength/.test(updateLastFn));
+check('updateLastBubble tracks _lastRenderedReasoningText',
+  /_lastRenderedReasoningText/.test(updateLastFn));
 
 check('no fake/hardcoded reasoning text (no 预先生成的思考)',
   !/预先生成/.test(js) && !/fake.?reason/i.test(js));
@@ -355,9 +357,9 @@ check('_showActions gated by parseDirectionOptions length >= 4',
   /parseDirectionOptions\(finalDirs\)\.length\s*>=\s*4/.test(storyTurnFn));
 check('fallback writes assistantMsg.sceneSnapshot (not just conv.sceneState)',
   /assistantMsg\.sceneSnapshot\s*=/.test(storyTurnFn));
-check('sendStoryTurn waits to reveal final content until directions are ready',
-  /_pendingContent\s*=\s*fullContent/.test(storyTurnFn) &&
-  /ensureStoryDirections\(assistantMsg[\s\S]*assistantMsg\.content\s*=\s*assistantMsg\._pendingContent/.test(storyTurnFn));
+check('sendStoryTurn reveals content immediately (contentPromoted before ensureStoryDirections)',
+  /contentPromoted\s*=\s*true/.test(storyTurnFn) &&
+  /contentPromoted\s*=\s*true[\s\S]*ensureStoryDirections\(assistantMsg/.test(storyTurnFn));
 
 // 7e-streaming: world story uses continuous streaming (no segmented reveal)
 console.log('\n--- World story streaming ---');
@@ -385,11 +387,10 @@ check('sendStoryTurn does NOT show "Part 1 完成" segmented preview',
   !/Part 1 完成/.test(storyTurnFn));
 check('sendStoryTurn does NOT replace content with "正在提取" placeholder',
   !/正在提取场景状态与剧情走向/.test(storyTurnFn));
-check('sendStoryTurn keeps _streaming=true until directions ready (after ensureStoryDirections)',
-  /ensureStoryDirections\(assistantMsg[\s\S]*_streaming\s*=\s*false/.test(storyTurnFn));
-check('sendStoryTurn reveals content from _pendingContent after directions',
-  /_streaming\s*=\s*false[\s\S]*assistantMsg\.content\s*=\s*assistantMsg\._pendingContent/.test(storyTurnFn) ||
-  /assistantMsg\.content\s*=\s*assistantMsg\._pendingContent[\s\S]*_streaming\s*=\s*false/.test(storyTurnFn));
+check('sendStoryTurn sets _streaming=false before aux chain (immediate content reveal)',
+  /_streaming\s*=\s*false[\s\S]*var\s+previousSceneState\s*=/.test(storyTurnFn));
+check('sendStoryTurn promotes content without _pendingContent stash (stripStoryMetaFromVisibleContent)',
+  /stripStoryMetaFromVisibleContent\(fullContent\)/.test(storyTurnFn));
 check('streamStoryPart only shows thinking from reasoning_content delta (no fake reasoning)',
   /delta\.reasoning/.test(js.match(/function\s+streamStoryPart[\s\S]*?^  \}/m)?.[0] || ''));
 check('sendStoryTurn does NOT reference part1Content/part2Content (single story flow)',
@@ -444,7 +445,7 @@ check('index.html build-commit matches omnichat.html',
 // 9. SERVICE WORKER
 // =========================================================================
 console.log('\n--- Service worker ---');
-check('sw CACHE_NAME omnichat-v3', /CACHE_NAME\s*=\s*['"]omnichat-v3['"]/.test(sw));
+check('sw CACHE_NAME omnichat-v4', /CACHE_NAME\s*=\s*['"]omnichat-v4['"]/.test(sw));
 
 // =========================================================================
 // 10. SECURITY ARTIFACTS
@@ -662,12 +663,38 @@ check('char limit constraint appends to user message',
 // Constraint tells model to ignore historical reply length
 check('char limit constraint says ignore historical reply length',
   /不要参考历史回复的长度/.test(js));
-// Escalation flag set on truncation or scene repair failure
-check('_charLimitEscalate set on finishReason=length or _sceneRepairFailed',
-  /_charLimitEscalate\s*=\s*true/.test(js));
-// Escalation warning message
+// Escalation: _escalateStreak counter (replaces old _charLimitEscalate boolean)
+check('_escalateStreak incremented on finishReason=length',
+  /_escalateStreak\s*=\s*\(conv\._escalateStreak\s*\|\|\s*0\)\s*\+\s*1/.test(js));
+check('_escalateStreak resets to 0 on normal completion',
+  /_escalateStreak\s*=\s*0/.test(js));
+check('no _charLimitEscalate left behind',
+  !/_charLimitEscalate/.test(js));
+// Escalation warning message (now gated by _escalateStreak > 0)
 check('escalation adds warning about previous abnormal reply',
   /上一轮回复异常/.test(js));
+// Adaptive max tokens
+check('computeAdaptiveMaxTokens function exists',
+  /function\s+computeAdaptiveMaxTokens/.test(js));
+check('recordTokenUsage function exists',
+  /function\s+recordTokenUsage/.test(js));
+check('computeAdaptiveMaxTokens uses tokenRatio default 2.0',
+  /tokenRatio\s*=\s*2\.0/.test(js));
+check('computeAdaptiveMaxTokens clamps tokenRatio to [1.2, 3.0]',
+  /tokenRatio\s*<\s*1\.2/.test(js) && /tokenRatio\s*>\s*3\.0/.test(js));
+check('computeAdaptiveMaxTokens has escalation-based margin',
+  /streak\s*>=\s*2\s*\?\s*2\.0/.test(js) && /streak\s*>=\s*1\s*\?\s*1\.5/.test(js));
+check('computeAdaptiveMaxTokens caps at user maxTokens and providerCap',
+  /userCap/.test(js) && /providerCap/.test(js));
+check('sendStoryTurn passes adaptive max to streamStoryPart',
+  /computeAdaptiveMaxTokens\(conv,\s*conv\.replyCharLimit\)/.test(storyTurnFn) &&
+  /maxTokens:\s*adaptiveMax/.test(storyTurnFn));
+check('sendMessage uses adaptive max in buildRequestBody',
+  /computeAdaptiveMaxTokens\(conv,\s*conv\.replyCharLimit/.test(js) &&
+  /reqConv/.test(js) && /maxTokens:\s*adaptiveMaxBody/.test(js));
+// Truncation toast shows adaptive budget
+check('truncation toast mentions next-turn budget',
+  /下轮 Token 预算/.test(js));
 // Must not break aux model parsing
 check('buildAuxMessages does NOT contain char limit constraint',
   !/回复字数约束/.test(js.match(/function\s+buildAuxMessages[\s\S]*?^  \}/m)?.[0] || ''));

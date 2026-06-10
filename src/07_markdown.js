@@ -51,6 +51,24 @@
     return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
   }
 
+  function appendFastText(el, delta) {
+    // Incrementally append a text delta to a DOM element.
+    // Splits on \n and appends text nodes + <br> elements — no innerHTML,
+    // so XSS-safe and avoids full re-parse cost on long streaming content.
+    if (!delta) return;
+    var s = String(delta);
+    if (!s) return;
+    var parts = s.split('\n');
+    for (var i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        el.appendChild(document.createElement('br'));
+      }
+      if (parts[i]) {
+        el.appendChild(document.createTextNode(parts[i]));
+      }
+    }
+  }
+
   function getVisibleAssistantContent(text, isStreaming) {
     const value = String(text || '');
     return isStreaming ? value.replace(/\n?@@SCENE[\s\S]*$/m, '').trimEnd() : value;

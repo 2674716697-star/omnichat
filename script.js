@@ -632,9 +632,9 @@ function createSceneWorld(seed) {
     return headers;
   }
 
-  function buildRequestBody(conv, model, messages) {
+  function buildRequestBody(conv, model, messages, responseFormat) {
     // Default OpenAI-compatible body — works for all 8 providers
-    return {
+    var body = {
       model: model,
       messages: messages,
       temperature: conv.temperature,
@@ -642,6 +642,10 @@ function createSceneWorld(seed) {
       max_tokens: conv.maxTokens,
       stream: conv.stream,
     };
+    if (responseFormat === 'json_object') {
+      body.response_format = { type: 'json_object' };
+    }
+    return body;
   }
 
   function parseModelList(provider, data) {
@@ -1068,6 +1072,24 @@ function getSceneBodyDetails(block) {
   function renderContentFast(text) {
     // Fast path for streaming: just escape + newlines, skip full markdown parse
     return escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+  }
+
+  function appendFastText(el, delta) {
+    // Incrementally append a text delta to a DOM element.
+    // Splits on \n and appends text nodes + <br> elements — no innerHTML,
+    // so XSS-safe and avoids full re-parse cost on long streaming content.
+    if (!delta) return;
+    var s = String(delta);
+    if (!s) return;
+    var parts = s.split('\n');
+    for (var i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        el.appendChild(document.createElement('br'));
+      }
+      if (parts[i]) {
+        el.appendChild(document.createTextNode(parts[i]));
+      }
+    }
   }
 
   function getVisibleAssistantContent(text, isStreaming) {
@@ -2769,6 +2791,10 @@ function getSceneBodyDetails(block) {
       html += '<div class="message-content">' + contentHTML + '</div>';
     }
 
+    if (msg._sceneFinalizing) {
+      html += '<div class="scene-finalizing-hint">整理剧情走向…</div>';
+    }
+
     if (msg.sceneSnapshot && !msg._streaming) {
       html += renderSceneStatusTable(msg, msgIndex);
     }
@@ -2848,55 +2874,80 @@ function getSceneBodyDetails(block) {
   }
 
   function updateLastBubble(msg) {
-    const items = dom.messagesContainer.querySelectorAll('.message');
-    const lastItem = items[items.length - 1];
+    // Walk backwards from last child to find the nearest .message element — O(1) near
+    var lastItem = dom.messagesContainer.lastElementChild;
+    while (lastItem && !lastItem.classList.contains('message')) {
+      lastItem = lastItem.previousElementSibling;
+    }
     if (!lastItem) return;
-    const bubble = lastItem.querySelector('.message-bubble');
+    var bubble = lastItem.querySelector('.message-bubble');
     if (!bubble) return;
 
-    const conv = getCurrentConv();
-    const msgIndex = conv && Array.isArray(conv.messages)
+    var conv = getCurrentConv();
+    var msgIndex = conv && Array.isArray(conv.messages)
       ? conv.messages.indexOf(msg)
       : parseInt(lastItem.dataset.index, 10);
 
     if (msg._streaming) {
-      var newContentLen = (msg.content || '').length;
-      var newReasonLen = (msg.reasoning || '').length;
-      var lastCLen = msg._lastRenderedContentLength || 0;
-      var lastRLen = msg._lastRenderedReasoningLength || 0;
+      // ---- Content incremental render ----
+      var visibleText = getVisibleAssistantContent(msg.content || '', true);
+      var prevVisible = msg._lastRenderedVisibleText || '';
 
-      // Update content div only if content changed
-      if (newContentLen !== lastCLen) {
-        var contentDiv = bubble.querySelector('.message-content');
-        if (!contentDiv) {
-          // Content div doesn't exist yet — need full rebuild (first render)
-          bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-          msg._lastRenderedContentLength = newContentLen;
-          msg._lastRenderedReasoningLength = newReasonLen;
+      var contentDiv = bubble.querySelector('.message-content');
+      if (!contentDiv && visibleText) {
+        // First time content appears — need full rebuild
+        bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
+        msg._lastRenderedVisibleText = visibleText;
+        msg._lastRenderedReasoningText = msg.reasoning || '';
+      } else if (contentDiv && visibleText !== prevVisible) {
+        if (visibleText.indexOf(prevVisible) === 0) {
+          // Normal streaming: append only the delta
+          appendFastText(contentDiv, visibleText.slice(prevVisible.length));
         } else {
-          contentDiv.innerHTML = renderContentFast(getVisibleAssistantContent(msg.content || '', true));
-          msg._lastRenderedContentLength = newContentLen;
+          // Fallback: visible text diverged (e.g. SCENE tag stripped mid-stream)
+          contentDiv.innerHTML = renderContentFast(visibleText);
         }
+        msg._lastRenderedVisibleText = visibleText;
       }
 
-      // Update thinking section only if reasoning changed
-      if (newReasonLen !== lastRLen) {
-        var reasoning = msg.reasoning || '';
-        if (reasoning) {
-          var thinkDiv = bubble.querySelector('.thinking-content');
-          if (!thinkDiv) {
-            bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-            msg._lastRenderedContentLength = newContentLen;
-          } else {
-            thinkDiv.innerHTML = renderContentFast(reasoning);
-          }
-          var details = bubble.querySelector('.thinking-section');
-          if (details) details.open = true;
+      // ---- Reasoning incremental render ----
+      var reasoning = msg.reasoning || '';
+      var prevReasoning = msg._lastRenderedReasoningText || '';
+
+      if (reasoning !== prevReasoning) {
+        var thinkDiv = bubble.querySelector('.thinking-content');
+        var details = bubble.querySelector('.thinking-section');
+
+        if (!thinkDiv && reasoning) {
+          // First reasoning chunk — need full rebuild to create thinking section
+          bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
+          msg._lastRenderedVisibleText = visibleText;
+        } else if (thinkDiv && reasoning.indexOf(prevReasoning) === 0) {
+          // Normal streaming: append only the delta
+          appendFastText(thinkDiv, reasoning.slice(prevReasoning.length));
+        } else if (thinkDiv) {
+          // Fallback: reasoning diverged
+          thinkDiv.innerHTML = renderContentFast(reasoning);
         }
-        msg._lastRenderedReasoningLength = newReasonLen;
+
+        if (details) details.open = true;
+        msg._lastRenderedReasoningText = reasoning;
       }
 
       bubble.classList.add('streaming-cursor');
+
+      // Scene finalizing hint — show/hide as needed
+      var hintDiv = bubble.querySelector('.scene-finalizing-hint');
+      if (msg._sceneFinalizing) {
+        if (!hintDiv) {
+          hintDiv = document.createElement('div');
+          hintDiv.className = 'scene-finalizing-hint';
+          hintDiv.textContent = '整理剧情走向…';
+          bubble.appendChild(hintDiv);
+        }
+      } else if (hintDiv) {
+        hintDiv.remove();
+      }
     } else {
       // Full render when streaming ends — proper markdown everywhere
       bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
@@ -4249,7 +4300,7 @@ function handleMessageAction(action, msgIndex) {
     var reqConv = Object.assign({}, conv, { stream: stream, maxTokens: maxTokens });
     if (opts.temperature !== undefined) reqConv.temperature = opts.temperature;
     var headers = buildRequestHeaders(provider, apiKey, reqConv);
-    var body = buildRequestBody(reqConv, model, messages);
+    var body = buildRequestBody(reqConv, model, messages, opts.responseFormat);
 
     var resp = await fetch(pConf.apiUrl, {
       method: 'POST', headers: headers, body: JSON.stringify(body), signal: signal,
@@ -4327,6 +4378,7 @@ function handleMessageAction(action, msgIndex) {
       '- characterStatuses 至少包含主角',
       '- 精神状态要有具体触发原因，如"因听见脚步声而警觉升高"',
       '- 身体细节要具体可感知：呼吸、肌肉、视线等',
+      '\n请严格按照上述 JSON 格式输出。',
     ].join('\n');
 
     return [
@@ -4609,6 +4661,7 @@ function handleMessageAction(action, msgIndex) {
     var resp = await callChatModel(conv, model, messages, {
       stream: true,
       signal: state.abortController.signal,
+      maxTokens: opts.maxTokens,
     });
 
     var reader = resp.body.getReader();
@@ -4623,6 +4676,11 @@ function handleMessageAction(action, msgIndex) {
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
       if (_renderPending || renderTimer) return;
+      if (state.ui.detachedDuringStreaming) {
+        state.ui.detachedContentDirty = true;
+        updateScrollToBottomButton(true);
+        return;
+      }
       _renderPending = true;
       var elapsed = performance.now() - lastRenderAt;
       var doRender = function () {
@@ -4699,12 +4757,80 @@ function handleMessageAction(action, msgIndex) {
 
     // Final render for this part — caller keeps _streaming=true
     if (isCurrentTurn()) {
-      updateLastBubble(assistantMsg);
-      scrollToBottomIfNeeded({ smooth: false });
+      if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+        state.ui.detachedContentDirty = true;
+        updateScrollToBottomButton(true);
+      } else {
+        updateLastBubble(assistantMsg);
+        scrollToBottomIfNeeded({ smooth: false });
+      }
     }
 
     var partContent = (assistantMsg.content || '').slice(startLen);
     return partContent;
+  }
+
+  // =========================================================================
+  // ADAPTIVE MAX TOKENS — self-calibrating token budget from replyCharLimit
+  // =========================================================================
+
+  function computeAdaptiveMaxTokens(conv, charLimit) {
+    charLimit = charLimit || 500;
+    var tokenRatio = 2.0; // default: conservative for Chinese
+    var history = conv._tokenHistory;
+    if (history && history.length > 0) {
+      var weights = [0.5, 0.3, 0.2];
+      var totalWeight = 0, weightedSum = 0;
+      var n = Math.min(history.length, weights.length);
+      for (var i = 0; i < n; i++) {
+        weightedSum += history[history.length - 1 - i].ratio * weights[i];
+        totalWeight += weights[i];
+      }
+      tokenRatio = totalWeight > 0 ? weightedSum / totalWeight : 2.0;
+      if (tokenRatio < 1.2) tokenRatio = 1.2;
+      if (tokenRatio > 3.0) tokenRatio = 3.0;
+    }
+
+    var baseTokens = Math.ceil(charLimit * tokenRatio);
+
+    var modelId = resolveModel(conv);
+    var isReasoning = /reasoner|r1|thinking|o1|o3/i.test(modelId);
+    var overhead = isReasoning ? 1200 : 400;
+
+    var streak = conv._escalateStreak || 0;
+    var margin = streak >= 2 ? 2.0 : (streak >= 1 ? 1.5 : 1.25);
+
+    var adaptive = Math.ceil((baseTokens + overhead) * margin);
+
+    // Context window budget: prevent API rejection when input tokens grow large
+    var estimatedInputTokens = Math.ceil(countApproxChars(conv) / 3);
+    var contextWindow = 128000; // conservative default (DeepSeek V3/V4, GPT-4o class)
+    var workingReserve = Math.ceil(contextWindow * 0.1); // 10% for model to breathe
+    var maxSafeOutput = contextWindow - estimatedInputTokens - workingReserve;
+    if (maxSafeOutput < adaptive) {
+      adaptive = Math.max(maxSafeOutput, 500); // never below 500
+    }
+
+    var userCap = conv.maxTokens || 5000;
+    var providerCap = getProviderCap(conv.provider);
+    adaptive = Math.min(adaptive, userCap, providerCap);
+    adaptive = Math.max(adaptive, 500);
+
+    return adaptive;
+  }
+
+  function recordTokenUsage(conv, usage, contentLen, finishReason) {
+    if (usage && usage.completion_tokens && contentLen > 0) {
+      var ratio = usage.completion_tokens / contentLen;
+      if (!conv._tokenHistory) conv._tokenHistory = [];
+      conv._tokenHistory.push({ ratio: ratio, tokens: usage.completion_tokens, chars: contentLen });
+      if (conv._tokenHistory.length > 5) conv._tokenHistory.shift();
+    }
+    if (finishReason === 'length') {
+      conv._escalateStreak = (conv._escalateStreak || 0) + 1;
+    } else {
+      conv._escalateStreak = 0;
+    }
   }
 
   // =========================================================================
@@ -4766,22 +4892,48 @@ function handleMessageAction(action, msgIndex) {
     var model = resolveModel(conv);
     var storyContent = '';
     var assistantMsg = placeholderMsg; // reused throughout
+    var contentPromoted = false; // true once story content is visible to user
 
     try {
       // ===== Single story generation (streaming) =====
       var messages = _buildStoryMessages(conv, text);
-      storyContent = await streamStoryPart(conv, model, messages, assistantMsg, { label: 'Story' });
+      var adaptiveMax = computeAdaptiveMaxTokens(conv, conv.replyCharLimit);
+      storyContent = await streamStoryPart(conv, model, messages, assistantMsg, { label: 'Story', maxTokens: adaptiveMax });
       if (!storyContent) throw new Error('故事生成失败：模型未返回正文。');
 
-      // Build displayParts from streamed content
+      // === Immediately promote content for user to read (don't wait for aux/directions) ===
       var fullContent = assistantMsg.content;
-      var displayParts = [{ content: storyContent, hideRole: false }];
-      // Stash final content — keep _streaming=true until directions are guaranteed
-      assistantMsg._pendingContent = fullContent;
-      assistantMsg._pendingDisplayParts = displayParts;
+      assistantMsg.content = stripStoryMetaFromVisibleContent(fullContent);
+      assistantMsg.displayParts = [{ content: assistantMsg.content, hideRole: false }];
+      assistantMsg._streaming = false;
+      assistantMsg._showActions = false;
       assistantMsg._keepThinkingOpen = conv.keepThinkingOpen !== false;
+      assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
+      assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
+      contentPromoted = true;
+      if (state.currentConversationId === turnConvId) {
+        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+          state.ui.detachedContentDirty = true;
+          updateScrollToBottomButton(true);
+        } else {
+          renderMessages();
+          scrollToBottomIfNeeded({ smooth: false });
+        }
+      }
 
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+
+      // ===== Scene finalizing: show light status while aux/repair runs =====
+      assistantMsg._sceneFinalizing = true;
+      if (state.currentConversationId === turnConvId) {
+        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+          state.ui.detachedContentDirty = true;
+          updateScrollToBottomButton(true);
+        } else {
+          updateLastBubble(assistantMsg);
+          scrollToBottomIfNeeded({ smooth: false });
+        }
+      }
 
       // ===== Aux model: JSON state extraction (non-streaming, two attempts) =====
       // Save a clean snapshot before aux/repair may mutate conv.sceneState
@@ -4824,6 +4976,7 @@ function handleMessageAction(action, msgIndex) {
           provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
           temperature: 0.2,
           signal: auxTO1.signal,
+          responseFormat: 'json_object',
         });
         var auxContent1 = auxResp1.content || '';
         if (auxContent1) {
@@ -4853,6 +5006,7 @@ function handleMessageAction(action, msgIndex) {
             provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
             temperature: 0.1,
             signal: auxTO2.signal,
+            responseFormat: 'json_object',
           });
           var auxContent2 = auxResp2.content || '';
           if (auxContent2) {
@@ -4904,58 +5058,85 @@ function handleMessageAction(action, msgIndex) {
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       await ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState);
 
-      // ===== Reveal: directions are now guaranteed — promote to final state =====
-      assistantMsg.content = assistantMsg._pendingContent || fullContent;
-      assistantMsg.displayParts = assistantMsg._pendingDisplayParts || displayParts;
-      delete assistantMsg._pendingContent;
-      delete assistantMsg._pendingDisplayParts;
-      assistantMsg._streaming = false;
-
-      assistantMsg.sceneStatusSnapshot = createSceneStatus(conv.sceneStatus);
-      assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
-      // Hard guarantee: ensureStoryDirections always provides 4+ parseable directions.
+      // ===== Update action buttons — directions now guaranteed =====
+      delete assistantMsg._sceneFinalizing;
       var finalDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
       assistantMsg._showActions = !!(finalDirs && parseDirectionOptions(finalDirs).length >= 4);
       assistantMsg._actionIndex = conv.messages.length;
 
-      // Strip any stray @@SCENE (belt-and-suspenders)
-      assistantMsg.content = stripStoryMetaFromVisibleContent(assistantMsg.content);
+      // Record token usage for adaptive calibration
+      recordTokenUsage(conv, assistantMsg.usage,
+        stripStoryMetaFromVisibleContent(fullContent).length,
+        assistantMsg.finishReason);
+
+      // Truncation warning for story mode
+      if (assistantMsg.finishReason === 'length' && state.currentConversationId === turnConvId) {
+        var nextBudget = computeAdaptiveMaxTokens(conv, conv.replyCharLimit);
+        showToast('回复被截断。下轮 Token 预算自动增加到 ' + nextBudget, 'warning');
+      }
+
       updateScenePanelUI();
+      // Re-render to show action buttons
+      if (state.currentConversationId === turnConvId) {
+        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+          state.ui.detachedContentDirty = true;
+          updateScrollToBottomButton(true);
+        } else {
+          renderMessages();
+          scrollToBottomIfNeeded({ smooth: false });
+        }
+      }
 
     } catch (e) {
-      // Data cleanup on old conv is always safe (conv is still stored).
-      // Toast and render only if still on this conversation.
-      if (e.name === 'AbortError') {
-        var partialContent = (placeholderMsg.content || '').trim();
-        if (partialContent) {
-          // Keep whatever streamed so far visible with stopped marker
-          placeholderMsg.content = partialContent + '\n\n[已停止]';
-          placeholderMsg.displayParts = [{ content: partialContent, hideRole: false }];
-          delete placeholderMsg._pendingContent;
-          delete placeholderMsg._pendingDisplayParts;
-          placeholderMsg._streaming = false;
+      if (contentPromoted) {
+        // Content is already visible — keep it, don't remove placeholder
+        if (e.name === 'AbortError') {
+          placeholderMsg.content += '\n\n[已停止]';
           placeholderMsg._showActions = false;
+          if (state.currentConversationId === turnConvId) {
+            renderMessages();
+            showToast(ERR_MSGS.userAborted, 'info');
+          }
+        } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
+          if (state.currentConversationId === turnConvId) {
+            showToast(ERR_MSGS.cors, 'error', 6000);
+          }
         } else {
-          // No content yet — remove empty placeholder
-          conv.messages.pop();
-        }
-        if (state.currentConversationId === turnConvId) {
-          renderMessages();
-          showToast(ERR_MSGS.userAborted, 'info');
-        }
-      } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
-        conv.messages.splice(placeholderIdx, 1);
-        if (!isRegenerate) { var lui = conv.messages.length - 1; if (conv.messages[lui] && conv.messages[lui].role === 'user') conv.messages.pop(); }
-        if (state.currentConversationId === turnConvId) {
-          showToast(ERR_MSGS.cors, 'error', 6000);
-          renderMessages();
+          if (state.currentConversationId === turnConvId) {
+            showToast(e.message || ERR_MSGS.network, 'error');
+          }
         }
       } else {
-        conv.messages.splice(placeholderIdx, 1);
-        if (!isRegenerate) { var lui2 = conv.messages.length - 1; if (conv.messages[lui2] && conv.messages[lui2].role === 'user') conv.messages.pop(); }
-        if (state.currentConversationId === turnConvId) {
-          showToast(e.message || ERR_MSGS.network, 'error');
-          renderMessages();
+        // Content was never promoted — clean up (original behavior)
+        if (e.name === 'AbortError') {
+          var partialContent = (placeholderMsg.content || '').trim();
+          if (partialContent) {
+            placeholderMsg.content = partialContent + '\n\n[已停止]';
+            placeholderMsg.displayParts = [{ content: partialContent, hideRole: false }];
+            delete placeholderMsg._sceneFinalizing;
+            placeholderMsg._streaming = false;
+            placeholderMsg._showActions = false;
+          } else {
+            conv.messages.pop();
+          }
+          if (state.currentConversationId === turnConvId) {
+            renderMessages();
+            showToast(ERR_MSGS.userAborted, 'info');
+          }
+        } else if (e.name === 'TypeError' && /fetch/i.test(e.message)) {
+          conv.messages.splice(placeholderIdx, 1);
+          if (!isRegenerate) { var lui = conv.messages.length - 1; if (conv.messages[lui] && conv.messages[lui].role === 'user') conv.messages.pop(); }
+          if (state.currentConversationId === turnConvId) {
+            showToast(ERR_MSGS.cors, 'error', 6000);
+            renderMessages();
+          }
+        } else {
+          conv.messages.splice(placeholderIdx, 1);
+          if (!isRegenerate) { var lui2 = conv.messages.length - 1; if (conv.messages[lui2] && conv.messages[lui2].role === 'user') conv.messages.pop(); }
+          if (state.currentConversationId === turnConvId) {
+            showToast(e.message || ERR_MSGS.network, 'error');
+            renderMessages();
+          }
         }
       }
     } finally {
@@ -4967,12 +5148,7 @@ function handleMessageAction(action, msgIndex) {
         updateSendUI();
       }
       if (placeholderMsg) {
-        if (placeholderMsg._pendingContent) {
-          placeholderMsg.content = placeholderMsg._pendingContent;
-          placeholderMsg.displayParts = placeholderMsg._pendingDisplayParts || null;
-          delete placeholderMsg._pendingContent;
-          delete placeholderMsg._pendingDisplayParts;
-        }
+        delete placeholderMsg._sceneFinalizing;
         placeholderMsg._streaming = false;
       }
       // Only render/scroll/toast if still on this conversation
@@ -5046,9 +5222,8 @@ function handleMessageAction(action, msgIndex) {
     var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (stCharLimit) {
       var stCharMsg = '\n\n[回复字数约束] 本轮剧情正文目标约 ' + stCharLimit + ' 字，允许 ±50 字。优先自然完整，不要为了凑字数堆砌心理描写、气氛描写或情绪升级。';
-      if (conv._charLimitEscalate) {
+      if (conv._escalateStreak > 0) {
         stCharMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
-        conv._charLimitEscalate = false;
       }
       // Append to last user message (stronger weight than system message)
       for (var smi = messages.length - 1; smi >= 0; smi--) {
@@ -5490,9 +5665,8 @@ function handleMessageAction(action, msgIndex) {
     var charLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
     if (charLimit) {
       var charLimitMsg = '\n\n[回复字数约束] 本轮回复目标约 ' + charLimit + ' 字，允许 ±50 字误差（' + (charLimit - 50) + '–' + (charLimit + 50) + ' 字）。不要参考历史回复的长度，每轮独立遵守此约束。除非用户明确要求更短或更长，请严格控制在范围内，不要超出 ' + (charLimit + 50) + ' 字。';
-      if (conv._charLimitEscalate) {
+      if (conv._escalateStreak > 0) {
         charLimitMsg += '\n⚠️ 上一轮回复异常（超长截断或格式不完整），本轮务必严格遵守上述字数限制。';
-        conv._charLimitEscalate = false;
       }
       // Append to last user message (stronger weight than system message)
       for (var umi = messages.length - 1; umi >= 0; umi--) {
@@ -5533,11 +5707,15 @@ function handleMessageAction(action, msgIndex) {
       showToast('上下文较长，可能被服务商拒绝。你可以手动开启自动压缩或清理历史。', 'warning', 4000);
     }
 
+    // --- Adaptive max tokens ---
+    var adaptiveMaxBody = computeAdaptiveMaxTokens(conv, conv.replyCharLimit || DEFAULTS.replyCharLimit);
+    var reqConv = Object.assign({}, conv, { maxTokens: adaptiveMaxBody, stream: conv.stream });
+
     // --- Debug budget diagnostics (before fetch) ---
     var _dbgBodyPreview = null;
     if (isDebugBudget()) {
       const headers = buildRequestHeaders(conv.provider, apiKey, conv);
-      var body = buildRequestBody(conv, model, messages);
+      var body = buildRequestBody(reqConv, model, messages);
       _dbgBodyPreview = body;
       var diag = diagnoseRequestBudget(conv, messages, body);
       _logBudgetDebug(diag);
@@ -5545,7 +5723,7 @@ function handleMessageAction(action, msgIndex) {
 
     try {
       const headers = buildRequestHeaders(conv.provider, apiKey, conv);
-      const body = buildRequestBody(conv, model, messages);
+      const body = buildRequestBody(reqConv, model, messages);
 
       const resp = await fetch(pConf.apiUrl, {
         method: 'POST',
@@ -5788,14 +5966,16 @@ function handleMessageAction(action, msgIndex) {
         }
       }
 
-      // --- Truncation warning (visible to all users, not just debug) ---
-      if (assistantMsg.finishReason === 'length' && state.currentConversationId === sendConvId) {
-        showToast('回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。', 'warning');
+      // --- Adaptive token tracking + truncation warning ---
+      recordTokenUsage(conv, assistantMsg.usage,
+        stripStoryMetaFromVisibleContent(assistantMsg.content || '').length,
+        assistantMsg.finishReason);
+      if (assistantMsg._sceneRepairFailed) {
+        conv._escalateStreak = (conv._escalateStreak || 0) + 1;
       }
-
-      // --- Escalate char limit for next turn when response is abnormal ---
-      if (assistantMsg.finishReason === 'length' || assistantMsg._sceneRepairFailed) {
-        conv._charLimitEscalate = true;
+      if (assistantMsg.finishReason === 'length' && state.currentConversationId === sendConvId) {
+        var nextBudget = computeAdaptiveMaxTokens(conv, conv.replyCharLimit || DEFAULTS.replyCharLimit);
+        showToast('回复被截断。下轮 Token 预算自动增加到 ' + nextBudget, 'warning');
       }
 
       // --- Story output completeness diagnostics (debug only) ---

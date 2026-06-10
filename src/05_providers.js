@@ -36,9 +36,9 @@
     return headers;
   }
 
-  function buildRequestBody(conv, model, messages) {
+  function buildRequestBody(conv, model, messages, responseFormat) {
     // Default OpenAI-compatible body — works for all 8 providers
-    return {
+    var body = {
       model: model,
       messages: messages,
       temperature: conv.temperature,
@@ -46,6 +46,10 @@
       max_tokens: conv.maxTokens,
       stream: conv.stream,
     };
+    if (responseFormat === 'json_object') {
+      body.response_format = { type: 'json_object' };
+    }
+    return body;
   }
 
   function parseModelList(provider, data) {

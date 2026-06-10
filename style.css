@@ -407,7 +407,8 @@ html.is-splashing .bottom-bar {
   .splash-tagline { animation: none; opacity: 1; transform: none; }
   .welcome-icon,
   .welcome-icon::after,
-  .welcome-step.done {
+  .welcome-step.done,
+  .scene-finalizing-hint {
     animation: none;
   }
   .welcome-icon { opacity: 0.65; filter: none; }
@@ -2389,6 +2390,20 @@ html.welcome-visible .welcome-security {
   will-change: opacity;
 }
 
+/* --- Scene Finalizing Hint --- */
+.scene-finalizing-hint {
+  font-size: 0.78em;
+  color: var(--text-muted, #8a8a8a);
+  padding: 6px 0 2px;
+  opacity: 0.7;
+  animation: hintPulse 2s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -2811,7 +2826,8 @@ html:not(.is-splashing) .bottom-bar {
   color: var(--text-secondary);
   background: rgba(74, 158, 255, 0.04);
   border-top: 1px solid var(--border-light);
-  overflow: visible;
+  max-height: none !important;
+  overflow: visible !important;
   animation: thinkingFadeIn 200ms ease;
 }
 
@@ -3197,6 +3213,8 @@ html:not(.is-splashing) .bottom-bar {
 .scene-immersive .thinking-content {
   background: rgba(255, 255, 255, 0.02);
   border-color: var(--glass-border);
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 /* -- Redesigned Scene Status Card -- */
@@ -4224,6 +4242,8 @@ html.is-standalone body {
 .thinking-content {
   font-size: 12.5px;
   color: rgba(255,255,255,0.56);
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 /* Scroll-to-bottom button: floating glass pill */
