@@ -1439,7 +1439,6 @@ html:not(.is-splashing) .top-bar {
   padding-bottom: 12px;
   overflow-anchor: none;
   contain: layout style paint;
-  content-visibility: auto;
   contain-intrinsic-size: auto 500px;
 }
 
