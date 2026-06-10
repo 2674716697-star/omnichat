@@ -2125,7 +2125,7 @@ html.welcome-visible .welcome-security {
   pointer-events: none;
   position: relative;
 }
-.dir-choices-list.locked::before {
+.dir-choices-list.locked:not(.pending)::before {
   content: '历史分支';
   display: block;
   font-size: 10px;
