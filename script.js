@@ -5102,19 +5102,12 @@ function handleMessageAction(action, msgIndex) {
 
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      // ===== Scene finalizing: show light status while aux/repair runs =====
+      // ===== Scene finalizing: run aux/repair silently, don't interrupt reading flow =====
       assistantMsg._sceneFinalizing = true;
-      // Carry previous directions so they show as pending chips during loading
-      if (conv.sceneState && conv.sceneState.directions) {
-        assistantMsg._pendingDirections = conv.sceneState.directions;
-      }
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
           state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
-        } else {
-          updateLastBubble(assistantMsg);
-          scrollToBottomIfNeeded({ smooth: false });
         }
       }
 
@@ -5259,14 +5252,24 @@ function handleMessageAction(action, msgIndex) {
       }
 
       updateScenePanelUI();
-      // Re-render to show action buttons
+      // Show action buttons — directly update the bubble for smooth transition
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
           state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
         } else {
-          renderMessages();
+          updateLastBubble(assistantMsg);
           scrollToBottomIfNeeded({ smooth: false });
+          // GSAP stagger for freshly appeared direction chips
+          if (typeof gsap !== 'undefined') {
+            var bubble = document.querySelector('.message:last-child .message-bubble');
+            if (bubble) {
+              var chips = bubble.querySelectorAll('.dir-choice-chip:not(.disabled):not(.locked)');
+              if (chips.length) {
+                gsap.from(chips, { opacity: 0, y: 6, scale: 0.96, stagger: 0.05, duration: 0.28, ease: 'back.out(1.1)' });
+              }
+            }
+          }
         }
       }
 

@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq82semi">
+  <meta name="build-version" content="mq833jxi">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -4994,16 +4994,10 @@ scrollToBottomIfNeeded({ smooth: false });
 }
 if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 assistantMsg._sceneFinalizing = true;
-if (conv.sceneState && conv.sceneState.directions) {
-assistantMsg._pendingDirections = conv.sceneState.directions;
-}
 if (state.currentConversationId === turnConvId) {
 if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
 state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
-} else {
-updateLastBubble(assistantMsg);
-scrollToBottomIfNeeded({ smooth: false });
 }
 }
 var previousSceneState = createSceneState(conv.sceneState);
@@ -5133,8 +5127,17 @@ if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
 state.ui.detachedContentDirty = true;
 updateScrollToBottomButton(true);
 } else {
-renderMessages();
+updateLastBubble(assistantMsg);
 scrollToBottomIfNeeded({ smooth: false });
+if (typeof gsap !== 'undefined') {
+var bubble = document.querySelector('.message:last-child .message-bubble');
+if (bubble) {
+var chips = bubble.querySelectorAll('.dir-choice-chip:not(.disabled):not(.locked)');
+if (chips.length) {
+gsap.from(chips, { opacity: 0, y: 6, scale: 0.96, stagger: 0.05, duration: 0.28, ease: 'back.out(1.1)' });
+}
+}
+}
 }
 }
 } catch (e) {
