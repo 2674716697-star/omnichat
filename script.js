@@ -5440,6 +5440,16 @@ function handleMessageAction(action, msgIndex) {
     // Conversation history
     messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
 
+    // Story mode: keep only recent context (character card + scene state already in system prompt)
+    var keepRecent = 10;
+    var kept = 0;
+    for (var mi = messages.length - 1; mi >= 0; mi--) {
+      if (messages[mi].role !== 'system') {
+        kept++;
+        if (kept > keepRecent) messages.splice(mi, 1);
+      }
+    }
+
     // Reply character count constraint for world story (single pass)
     // Append to last user message for stronger adherence (vs. system message)
     var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;

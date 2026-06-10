@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq84z6ba">
+  <meta name="build-version" content="mq85fdsj">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -5296,6 +5296,14 @@ if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
 messages.push(sysMsg);
 }
 messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
+var keepRecent = 10;
+var kept = 0;
+for (var mi = messages.length - 1; mi >= 0; mi--) {
+if (messages[mi].role !== 'system') {
+kept++;
+if (kept > keepRecent) messages.splice(mi, 1);
+}
+}
 var stCharLimit = conv.replyCharLimit || DEFAULTS.replyCharLimit;
 if (stCharLimit) {
 var stCharMsg = '\n\n[回复字数约束] 本轮剧情正文目标约 ' + stCharLimit + ' 字，允许 ±50 字。优先自然完整，不要为了凑字数堆砌心理描写、气氛描写或情绪升级。';
