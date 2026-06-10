@@ -2857,6 +2857,18 @@ function getSceneBodyDetails(block) {
 
     if (msg._sceneFinalizing) {
       html += '<div class="scene-finalizing-hint">整理剧情走向…</div>';
+      // Show previous directions as pending chips so user isn't blocked
+      if (msg._pendingDirections) {
+        var prevOpts = parseDirectionOptions(msg._pendingDirections);
+        if (prevOpts.length >= 4) {
+          html += '<div class="dir-choices-list locked pending">';
+          for (var pi = 0; pi < prevOpts.length; pi++) {
+            var po = prevOpts[pi];
+            html += '<button class="dir-choice-chip disabled pending" disabled>' + escapeHtml(po.letter) + '. ' + escapeHtml(po.content) + '</button>';
+          }
+          html += '</div>';
+        }
+      }
     }
 
     if (msg.sceneSnapshot && !msg._streaming) {
@@ -4776,8 +4788,8 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // C: repairSceneBlock (25s timeout)
-    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 25000);
+    // C: repairSceneBlock (15s timeout)
+    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 15000);
     try {
       var repairResult = await repairSceneBlock(conv, fullContent, repTO1.signal);
       // repairSceneBlock already validates ≥4 parseable directions internally
@@ -5104,6 +5116,10 @@ function handleMessageAction(action, msgIndex) {
 
       // ===== Scene finalizing: show light status while aux/repair runs =====
       assistantMsg._sceneFinalizing = true;
+      // Carry previous directions so they show as pending chips during loading
+      if (conv.sceneState && conv.sceneState.directions) {
+        assistantMsg._pendingDirections = conv.sceneState.directions;
+      }
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
           state.ui.detachedContentDirty = true;
@@ -5148,8 +5164,8 @@ function handleMessageAction(action, msgIndex) {
         if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
       }
 
-      // Attempt 1: non-streaming, temperature 0.2, 20s timeout
-      var auxTO1 = withTimeoutAbort(requestController.signal, 20000);
+      // Attempt 1: non-streaming, temperature 0.2, 12s timeout
+      var auxTO1 = withTimeoutAbort(requestController.signal, 12000);
       try {
         var auxResp1 = await callChatModel(conv, auxModel, auxMsgs, {
           provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
@@ -5178,7 +5194,7 @@ function handleMessageAction(action, msgIndex) {
       // Attempt 2: stricter prompt, temperature 0.1, 20s timeout
       if (!auxOk) {
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var auxTO2 = withTimeoutAbort(requestController.signal, 20000);
+        var auxTO2 = withTimeoutAbort(requestController.signal, 12000);
         try {
           var auxMsgs2 = buildAuxMessagesStrict(conv, storyContent);
           var auxResp2 = await callChatModel(conv, auxModel, auxMsgs2, {
@@ -5210,7 +5226,7 @@ function handleMessageAction(action, msgIndex) {
       if (!auxOk) {
         showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var repTO = withTimeoutAbort(requestController.signal, 25000);
+        var repTO = withTimeoutAbort(requestController.signal, 15000);
         try {
           var repairResult = await repairSceneBlock(conv, fullContent, repTO.signal);
           if (repairResult) {
@@ -5272,6 +5288,24 @@ function handleMessageAction(action, msgIndex) {
         if (e.name === 'AbortError') {
           placeholderMsg.content += '\n\n[已停止]';
           placeholderMsg._showActions = false;
+          // Run fallback direction generation so user still gets buttons
+          var prevState = createSceneState(conv.sceneState);
+          ensureStoryDirections(placeholderMsg, conv, fullContent, prevState).then(function() {
+            delete placeholderMsg._sceneFinalizing;
+            delete placeholderMsg._pendingDirections;
+            placeholderMsg._streaming = false;
+            placeholderMsg._showActions = !!(placeholderMsg.sceneSnapshot && placeholderMsg.sceneSnapshot.directions && parseDirectionOptions(placeholderMsg.sceneSnapshot.directions).length >= 4);
+            if (state.currentConversationId === turnConvId) {
+              renderMessages();
+              scrollToBottomIfNeeded({ smooth: false });
+            }
+          }).catch(function() {
+            delete placeholderMsg._sceneFinalizing;
+            delete placeholderMsg._pendingDirections;
+            placeholderMsg._streaming = false;
+            if (state.currentConversationId === turnConvId) renderMessages();
+          });
+          // Still render immediately with [已停止] while fallback runs
           if (state.currentConversationId === turnConvId) {
             renderMessages();
             showToast(ERR_MSGS.userAborted, 'info');
@@ -5328,6 +5362,7 @@ function handleMessageAction(action, msgIndex) {
       }
       if (placeholderMsg) {
         delete placeholderMsg._sceneFinalizing;
+        delete placeholderMsg._pendingDirections;
         placeholderMsg._streaming = false;
       }
       // Only render/scroll/toast if still on this conversation

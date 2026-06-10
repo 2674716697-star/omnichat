@@ -2123,6 +2123,29 @@ html.welcome-visible .welcome-security {
 /* Historically locked direction list - all chips non-interactive */
 .dir-choices-list.locked {
   pointer-events: none;
+  position: relative;
+}
+.dir-choices-list.locked::before {
+  content: '历史分支';
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  opacity: 0.6;
+}
+
+/* Pending direction chips during scene finalizing */
+.dir-choice-chip.pending {
+  opacity: 0.48;
+  cursor: wait;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.015);
+  border-color: var(--glass-border);
+  animation: pendingPulse 2s ease-in-out infinite;
+}
+@keyframes pendingPulse {
+  0%, 100% { opacity: 0.40; }
+  50% { opacity: 0.56; }
 }
 
 .dir-choice-chip:last-child {
