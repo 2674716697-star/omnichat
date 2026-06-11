@@ -4789,35 +4789,35 @@ function handleMessageAction(action, msgIndex) {
 
   function setupEvents() {
     // History drawer
-    dom.btnToggleHistory.addEventListener('click', () => openDrawer('history'));
-    dom.btnCloseHistory.addEventListener('click', () => closeDrawer('history'));
-    dom.historyOverlay.addEventListener('click', () => closeDrawer('history'));
-    dom.btnToggleArchived.addEventListener('click', () => toggleShowArchived());
+    dom.btnToggleHistory?.addEventListener('click', () => openDrawer('history'));
+    dom.btnCloseHistory?.addEventListener('click', () => closeDrawer('history'));
+    dom.historyOverlay?.addEventListener('click', () => closeDrawer('history'));
+    dom.btnToggleArchived?.addEventListener('click', () => toggleShowArchived());
 
     // Settings drawer
-    dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
-    dom.btnToggleBg.addEventListener('click', () => openDrawer('theme'));
-    if (dom.btnCloseTheme) dom.btnCloseTheme.addEventListener('click', () => closeDrawer('theme'));
-    if (dom.themeOverlay) dom.themeOverlay.addEventListener('click', () => closeDrawer('theme'));
-    dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
-    dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
+    dom.btnToggleSettings?.addEventListener('click', () => openDrawer('settings'));
+    dom.btnToggleBg?.addEventListener('click', () => openDrawer('theme'));
+    if (dom.btnCloseTheme) dom.btnCloseTheme?.addEventListener('click', () => closeDrawer('theme'));
+    if (dom.themeOverlay) dom.themeOverlay?.addEventListener('click', () => closeDrawer('theme'));
+    dom.btnCloseSettings?.addEventListener('click', () => closeDrawer('settings'));
+    dom.settingsOverlay?.addEventListener('click', () => closeDrawer('settings'));
 
     // Welcome actions
     if (dom.btnWelcomeSetup) {
-      dom.btnWelcomeSetup.addEventListener('click', () => openDrawer('settings'));
+      dom.btnWelcomeSetup?.addEventListener('click', () => openDrawer('settings'));
     }
     if (dom.btnWelcomeHistory) {
-      dom.btnWelcomeHistory.addEventListener('click', () => openDrawer('history'));
+      dom.btnWelcomeHistory?.addEventListener('click', () => openDrawer('history'));
     }
 
     // Top bar title click → rename
-    dom.topBarInfo.addEventListener('click', () => {
+    dom.topBarInfo?.addEventListener('click', () => {
       const conv = getCurrentConv();
       if (conv) renameConversation(conv.id);
     });
 
     // Conversation list clicks
-    dom.convList.addEventListener('click', (e) => {
+    dom.convList?.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
       const item = e.target.closest('.conv-item');
 
@@ -4844,17 +4844,17 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // Search
-    dom.searchInput.addEventListener('input', () => renderConvList());
+    dom.searchInput?.addEventListener('input', () => renderConvList());
 
     // Settings changes - auto save
-    dom.selectProvider.addEventListener('change', () => { syncSettingsFromUI(); updateMaxTokensCap(); });
-    dom.inputApiKey.addEventListener('input', () => {
+    dom.selectProvider?.addEventListener('change', () => { syncSettingsFromUI(); updateMaxTokensCap(); });
+    dom.inputApiKey?.addEventListener('input', () => {
       const provider = dom.selectProvider.value;
       state.apiKeys[provider] = dom.inputApiKey.value.trim();
       updateWelcomeUI();
       saveToStorage();
     });
-    dom.selectModel.addEventListener('change', () => {
+    dom.selectModel?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.model = dom.selectModel.value;
@@ -4864,7 +4864,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputCustomModel.addEventListener('input', () => {
+    dom.inputCustomModel?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.customModel = dom.inputCustomModel.value.trim();
@@ -4874,7 +4874,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputSystemPrompt.addEventListener('input', () => {
+    dom.inputSystemPrompt?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.systemPrompt = dom.inputSystemPrompt.value;
@@ -4882,7 +4882,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputTemperature.addEventListener('input', () => {
+    dom.inputTemperature?.addEventListener('input', () => {
       dom.tempVal.textContent = dom.inputTemperature.value;
       const conv = getCurrentConv();
       if (conv) {
@@ -4891,7 +4891,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputTopP.addEventListener('input', () => {
+    dom.inputTopP?.addEventListener('input', () => {
       dom.topPVal.textContent = dom.inputTopP.value;
       const conv = getCurrentConv();
       if (conv) {
@@ -4900,7 +4900,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputMaxTokens.addEventListener('input', () => {
+    dom.inputMaxTokens?.addEventListener('input', () => {
       updateMaxTokensCap();
       const conv = getCurrentConv();
       if (conv) {
@@ -4918,10 +4918,10 @@ function handleMessageAction(action, msgIndex) {
           debouncedSave();
         }
       };
-      dom.inputReplyCharLimit.addEventListener('input', syncReplyCharLimit);
-      dom.inputReplyCharLimit.addEventListener('change', syncReplyCharLimit);
+      dom.inputReplyCharLimit?.addEventListener('input', syncReplyCharLimit);
+      dom.inputReplyCharLimit?.addEventListener('change', syncReplyCharLimit);
     }
-    dom.inputStream.addEventListener('change', () => {
+    dom.inputStream?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.stream = dom.inputStream.checked;
@@ -4929,7 +4929,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputCaching.addEventListener('change', () => {
+    dom.inputCaching?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.enableCaching = dom.inputCaching.checked;
@@ -4937,7 +4937,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.inputStoryMode) dom.inputStoryMode.addEventListener('change', () => {
+    if (dom.inputStoryMode) dom.inputStoryMode?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.storyMode = conv.storyMode || createStoryMode();
@@ -4950,7 +4950,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputAutoCompress.addEventListener('change', () => {
+    dom.inputAutoCompress?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.autoCompress = dom.inputAutoCompress.checked;
@@ -4958,7 +4958,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.inputKeepThinking.addEventListener('change', () => {
+    dom.inputKeepThinking?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.keepThinkingOpen = dom.inputKeepThinking.checked;
@@ -4966,7 +4966,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.inputSceneDetail) dom.inputSceneDetail.addEventListener('change', () => {
+    if (dom.inputSceneDetail) dom.inputSceneDetail?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.sceneDetailLevel = dom.inputSceneDetail.value;
@@ -4976,7 +4976,7 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // Story aux provider
-    if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider.addEventListener('change', () => {
+    if (dom.selectStoryAuxProvider) dom.selectStoryAuxProvider?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.storyAuxProvider = dom.selectStoryAuxProvider.value;
@@ -4993,7 +4993,7 @@ function handleMessageAction(action, msgIndex) {
 
     // Story aux API key
     if (dom.inputStoryAuxApiKey) {
-      dom.inputStoryAuxApiKey.addEventListener('input', () => {
+      dom.inputStoryAuxApiKey?.addEventListener('input', () => {
         var conv = getCurrentConv();
         if (conv) {
           conv.storyAuxApiKey = dom.inputStoryAuxApiKey.value.trim();
@@ -5005,14 +5005,14 @@ function handleMessageAction(action, msgIndex) {
 
     // Story aux model preset dropdown → toggle custom input
     if (dom.selectStoryAuxModel && dom.inputStoryAuxModel) {
-      dom.selectStoryAuxModel.addEventListener('change', () => {
+      dom.selectStoryAuxModel?.addEventListener('change', () => {
         var isCustom = dom.selectStoryAuxModel.value === '__custom__';
         var customRow = document.getElementById('storyAuxCustomRow');
         if (customRow) customRow.hidden = !isCustom;
         if (!isCustom) dom.inputStoryAuxModel.value = '';
         syncSettingsFromUI();
       });
-      dom.inputStoryAuxModel.addEventListener('input', () => {
+      dom.inputStoryAuxModel?.addEventListener('input', () => {
         syncSettingsFromUI();
       });
     }
@@ -5027,11 +5027,11 @@ function handleMessageAction(action, msgIndex) {
           debouncedSave();
         }
       };
-      dom.inputStoryAuxMaxTokens.addEventListener('input', syncStoryAuxMaxTokens);
-      dom.inputStoryAuxMaxTokens.addEventListener('change', syncStoryAuxMaxTokens);
+      dom.inputStoryAuxMaxTokens?.addEventListener('input', syncStoryAuxMaxTokens);
+      dom.inputStoryAuxMaxTokens?.addEventListener('change', syncStoryAuxMaxTokens);
     }
 
-    dom.inputPreciseMode.addEventListener('change', () => {
+    dom.inputPreciseMode?.addEventListener('change', () => {
       const conv = getCurrentConv();
       if (conv) {
         conv.preciseMode = dom.inputPreciseMode.checked;
@@ -5048,7 +5048,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    dom.selectToolCallLimit.addEventListener('change', () => {
+    dom.selectToolCallLimit?.addEventListener('change', () => {
       updateToolWarning();
       const conv = getCurrentConv();
       if (conv) {
@@ -5059,10 +5059,10 @@ function handleMessageAction(action, msgIndex) {
       }
     });
 
-    dom.btnRefreshModels.addEventListener('click', () => refreshModels());
+    dom.btnRefreshModels?.addEventListener('click', () => refreshModels());
 
     // Background presets
-    dom.bgPresets.addEventListener('click', (e) => {
+    dom.bgPresets?.addEventListener('click', (e) => {
       const btn = e.target.closest('.bg-preset');
       if (!btn) return;
       const themeKey = btn.dataset.theme;
@@ -5073,7 +5073,7 @@ function handleMessageAction(action, msgIndex) {
       }
     });
     // GitHub URL apply button
-    dom.btnApplyBgUrl.addEventListener('click', () => {
+    dom.btnApplyBgUrl?.addEventListener('click', () => {
       const url = dom.inputBgUrl.value.trim();
       if (!url) { showToast('请输入图片 URL', 'warning'); return; }
       if (!url.startsWith('http://') && !url.startsWith('https://')) { showToast('URL 必须以 http:// 或 https:// 开头', 'warning'); return; }
@@ -5081,14 +5081,14 @@ function handleMessageAction(action, msgIndex) {
       dom.inputBgUrl.value = '';
       showToast('背景已应用', 'success');
     });
-    dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
-    dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
+    dom.btnPickBgImage?.addEventListener('click', () => dom.inputBgFile.click());
+    dom.btnRemoveBgImage?.addEventListener('click', () => removeBgImage());
 
     // Scene panel
-    dom.scenePanelToggle.addEventListener('click', () => {
+    dom.scenePanelToggle?.addEventListener('click', () => {
       dom.scenePanel.classList.toggle('collapsed');
     });
-    if (dom.sceneMental) dom.sceneMental.addEventListener('input', () => {
+    if (dom.sceneMental) dom.sceneMental?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.mental = dom.sceneMental.value;
@@ -5096,7 +5096,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.sceneMentalScore) dom.sceneMentalScore.addEventListener('input', () => {
+    if (dom.sceneMentalScore) dom.sceneMentalScore?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.mentalScore = normalizeMentalScore(dom.sceneMentalScore.value);
@@ -5105,7 +5105,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.scenePhysical) dom.scenePhysical.addEventListener('input', () => {
+    if (dom.scenePhysical) dom.scenePhysical?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.physical = dom.scenePhysical.value;
@@ -5113,7 +5113,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.scenePlot) dom.scenePlot.addEventListener('input', () => {
+    if (dom.scenePlot) dom.scenePlot?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.plot = dom.scenePlot.value;
@@ -5121,7 +5121,7 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.sceneDirections) dom.sceneDirections.addEventListener('input', () => {
+    if (dom.sceneDirections) dom.sceneDirections?.addEventListener('input', () => {
       const conv = getCurrentConv();
       if (conv && conv.sceneState) {
         conv.sceneState.directions = dom.sceneDirections.value;
@@ -5133,7 +5133,7 @@ function handleMessageAction(action, msgIndex) {
 
     // Scene panel tab switching
     if (dom.sceneTabs) {
-      dom.sceneTabs.addEventListener('click', function(e) {
+      dom.sceneTabs?.addEventListener('click', function(e) {
         var tab = e.target.closest('.scene-tab');
         if (!tab) return;
         var tabName = tab.dataset.tab;
@@ -5149,67 +5149,67 @@ function handleMessageAction(action, msgIndex) {
       });
     }
 // World opening card inputs
-    dom.sceneOpeningName.addEventListener('input', function() {
+    dom.sceneOpeningName?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.openingName = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneSetting.addEventListener('input', function() {
+    dom.sceneSetting?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.setting = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneLocations.addEventListener('input', function() {
+    dom.sceneLocations?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.locations = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneRules.addEventListener('input', function() {
+    dom.sceneRules?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.rules = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneMood.addEventListener('change', function() {
+    dom.sceneMood?.addEventListener('change', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.mood = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneWorldNotes.addEventListener('input', function() {
+    dom.sceneWorldNotes?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneWorld) { conv.sceneWorld.notes = this.value; updateTimestamp(conv); debouncedSave(); }
     });
 
     // Character card inputs
-    dom.sceneCharName.addEventListener('input', function() {
+    dom.sceneCharName?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.name = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharAge.addEventListener('input', function() {
+    dom.sceneCharAge?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.age = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharRole.addEventListener('input', function() {
+    dom.sceneCharRole?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.role = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    if (dom.sceneCharSpecies) dom.sceneCharSpecies.addEventListener('change', function() {
+    if (dom.sceneCharSpecies) dom.sceneCharSpecies?.addEventListener('change', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.species = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharAppearance.addEventListener('input', function() {
+    dom.sceneCharAppearance?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.appearance = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharTraits.addEventListener('input', function() {
+    dom.sceneCharTraits?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.traits = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharStats.addEventListener('input', function() {
+    dom.sceneCharStats?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.stats = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneCharGoal.addEventListener('input', function() {
+    dom.sceneCharGoal?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneCharacter) { conv.sceneCharacter.currentGoal = this.value; updateTimestamp(conv); debouncedSave(); }
     });
 
     // Copy character card button
-    if (dom.btnCopyCharCard) dom.btnCopyCharCard.addEventListener('click', function() { if(!checkAge18Plus()) return;
+    if (dom.btnCopyCharCard) dom.btnCopyCharCard?.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
       var card = buildCharacterCard(conv);
@@ -5218,7 +5218,7 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // Generate opening prompt button (hidden from UI, guarded)
-    if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
+    if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt?.addEventListener('click', function() { if(!checkAge18Plus()) return;
       var conv = getCurrentConv();
       if (!conv) return;
       var sm = conv.storyMode;
@@ -5281,19 +5281,19 @@ function handleMessageAction(action, msgIndex) {
 
     // Status bar card toggle
     if (dom.sceneStatusToggle) {
-      dom.sceneStatusToggle.addEventListener('click', function() {
+      dom.sceneStatusToggle?.addEventListener('click', function() {
         dom.sceneStatusCard.classList.toggle('collapsed');
       });
     }
     // NPC card toggle
     if (dom.sceneNpcToggle) {
-      dom.sceneNpcToggle.addEventListener('click', function() {
+      dom.sceneNpcToggle?.addEventListener('click', function() {
         dom.sceneNpcCard.classList.toggle('collapsed');
       });
     }
     // Add NPC button
     if (dom.btnAddNpc) {
-      dom.btnAddNpc.addEventListener('click', function() { addNpc(); });
+      dom.btnAddNpc?.addEventListener('click', function() { addNpc(); });
     }
 
     // Status bar input events
@@ -5305,17 +5305,17 @@ function handleMessageAction(action, msgIndex) {
     ];
     for (var si = 0; si < statusFields.length; si++) {
       (function(field) {
-        field.dom.addEventListener('input', function() {
+        field.dom?.addEventListener('input', function() {
           var conv = getCurrentConv();
           if (conv && conv.sceneStatus) { conv.sceneStatus[field.key] = this.value; updateTimestamp(conv); debouncedSave(); }
         });
       })(statusFields[si]);
     }
-    dom.sceneObjective.addEventListener('input', function() {
+    dom.sceneObjective?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneStatus) { conv.sceneStatus.currentObjective = this.value; updateTimestamp(conv); debouncedSave(); }
     });
-    dom.sceneConstraints.addEventListener('input', function() {
+    dom.sceneConstraints?.addEventListener('input', function() {
       var conv = getCurrentConv();
       if (conv && conv.sceneStatus) { conv.sceneStatus.constraints = this.value; updateTimestamp(conv); debouncedSave(); }
     });
@@ -5323,7 +5323,7 @@ function handleMessageAction(action, msgIndex) {
     // World/Character cards removed (now tabbed) — toggles handled by tab switching
 
     // Message action buttons (event delegation)
-    dom.messagesContainer.addEventListener('click', (e) => {
+    dom.messagesContainer?.addEventListener('click', (e) => {
       // Direction choice chip
       const chip = e.target.closest('.dir-choice-chip');
       if (chip && !state.isStreaming) {
@@ -5383,31 +5383,31 @@ function handleMessageAction(action, msgIndex) {
         handleMessageAction(action, msgIndex);
       }
     });
-    dom.inputBgFile.addEventListener('change', (e) => {
+    dom.inputBgFile?.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleBgImagePick(e.target.files[0]);
         e.target.value = '';
       }
     });
     // Custom action prompts
-    dom.inputActionRegenerate.addEventListener('input', () => {
+    dom.inputActionRegenerate?.addEventListener('input', () => {
       state.actionPrompts.regenerate = dom.inputActionRegenerate.value.trim();
       debouncedSave();
     });
-    dom.inputActionContinue.addEventListener('input', () => {
+    dom.inputActionContinue?.addEventListener('input', () => {
       state.actionPrompts.continue = dom.inputActionContinue.value.trim();
       debouncedSave();
     });
-    dom.inputActionSummarize.addEventListener('input', () => {
+    dom.inputActionSummarize?.addEventListener('input', () => {
       state.actionPrompts.summarize = dom.inputActionSummarize.value.trim();
       debouncedSave();
     });
-    dom.inputActionElaborate.addEventListener('input', () => {
+    dom.inputActionElaborate?.addEventListener('input', () => {
       state.actionPrompts.elaborate = dom.inputActionElaborate.value.trim();
       debouncedSave();
     });
 
-    dom.inputBgOpacity.addEventListener('input', () => {
+    dom.inputBgOpacity?.addEventListener('input', () => {
       const val = parseInt(dom.inputBgOpacity.value, 10);
       state.chatBackground.opacity = val;
       applyChatBackground();
@@ -5415,7 +5415,7 @@ function handleMessageAction(action, msgIndex) {
     });
     // --- Background adjustment overlay ---
     let adjState = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
-    dom.btnAdjustBg && dom.btnAdjustBg.addEventListener('click', () => {
+    dom.btnAdjustBg && dom.btnAdjustBg?.addEventListener('click', () => {
       const t = CHARACTER_THEMES[state.activeTheme];
       const src = t ? t.wallpaper : (state.chatBackground.value || '');
       if (!src) { showToast('请先选择主题', 'warning'); return; }
@@ -5426,8 +5426,8 @@ function handleMessageAction(action, msgIndex) {
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
       dom.bgAdjustOverlay.classList.add('open');
     });
-    dom.btnBgAdjustClose.addEventListener('click', () => dom.bgAdjustOverlay.classList.remove('open'));
-    dom.btnBgAdjustSave.addEventListener('click', () => {
+    dom.btnBgAdjustClose?.addEventListener('click', () => dom.bgAdjustOverlay.classList.remove('open'));
+    dom.btnBgAdjustSave?.addEventListener('click', () => {
       setBgOverride('scale', Math.round(adjState.scale * 100));
       // Calculate position offset as percentage of image size vs viewport
       var vpw = dom.bgAdjustViewport.clientWidth;
@@ -5440,14 +5440,14 @@ function handleMessageAction(action, msgIndex) {
       dom.bgAdjustOverlay.classList.remove('open');
     });
     // Mouse wheel zoom
-    dom.bgAdjustViewport && dom.bgAdjustViewport.addEventListener('wheel', (e) => {
+    dom.bgAdjustViewport && dom.bgAdjustViewport?.addEventListener('wheel', (e) => {
       e.preventDefault();
       var ds = e.deltaY < 0 ? 1.08 : 0.92;
       adjState.scale = Math.max(0.2, Math.min(5, adjState.scale * ds));
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
     }, { passive: false });
     // Mouse drag
-    dom.bgAdjustImage && dom.bgAdjustImage.addEventListener('mousedown', (e) => {
+    dom.bgAdjustImage && dom.bgAdjustImage?.addEventListener('mousedown', (e) => {
       adjState.dragging = true; adjState.startX = e.clientX; adjState.startY = e.clientY;
       adjState.imgX = adjState.x; adjState.imgY = adjState.y;
       e.preventDefault();
@@ -5461,7 +5461,7 @@ function handleMessageAction(action, msgIndex) {
     window.addEventListener('mouseup', () => { adjState.dragging = false; });
     // Touch gestures
     let tStartDist = 0, tStartScale = 1;
-    dom.bgAdjustImage.addEventListener('touchstart', (e) => {
+    dom.bgAdjustImage?.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         adjState.dragging = true; adjState.startX = e.touches[0].clientX; adjState.startY = e.touches[0].clientY;
         adjState.imgX = adjState.x; adjState.imgY = adjState.y;
@@ -5471,7 +5471,7 @@ function handleMessageAction(action, msgIndex) {
         tStartScale = adjState.scale;
       }
     }, { passive: false });
-    dom.bgAdjustImage.addEventListener('touchmove', (e) => {
+    dom.bgAdjustImage?.addEventListener('touchmove', (e) => {
       if (e.touches.length === 1 && adjState.dragging) {
         adjState.x = adjState.imgX + (e.touches[0].clientX - adjState.startX);
         adjState.y = adjState.imgY + (e.touches[0].clientY - adjState.startY);
@@ -5481,7 +5481,7 @@ function handleMessageAction(action, msgIndex) {
       }
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
     }, { passive: false });
-    dom.bgAdjustImage.addEventListener('touchend', () => { adjState.dragging = false; tStartDist = 0; });
+    dom.bgAdjustImage?.addEventListener('touchend', () => { adjState.dragging = false; tStartDist = 0; });
 
     // Gesture-based background scale + position (per-theme overrides)
     function bgOverride(key, def) {
@@ -5493,7 +5493,7 @@ function handleMessageAction(action, msgIndex) {
       state.themeOverrides[state.activeTheme][key] = val;
     }
     let bgGestureStart = null;
-    dom.chatBgOverlay.addEventListener('wheel', (e) => {
+    dom.chatBgOverlay?.addEventListener('wheel', (e) => {
       if (!state.ui.isThemeOpen) return;
       e.preventDefault();
       const cur = bgOverride('scale', 100);
@@ -5501,7 +5501,7 @@ function handleMessageAction(action, msgIndex) {
       setBgOverride('scale', Math.max(50, Math.min(200, scale)));
       applyBgControls(); saveToStorage();
     }, { passive: false });
-    dom.chatBgOverlay.addEventListener('mousedown', (e) => {
+    dom.chatBgOverlay?.addEventListener('mousedown', (e) => {
       if (!state.ui.isThemeOpen) return;
       bgGestureStart = { x: e.clientX, y: e.clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
       e.preventDefault();
@@ -5519,7 +5519,7 @@ function handleMessageAction(action, msgIndex) {
     });
     // Touch: pinch zoom + drag pan
     let touchStartDist = 0, touchStartScale = 100;
-    dom.chatBgOverlay.addEventListener('touchstart', (e) => {
+    dom.chatBgOverlay?.addEventListener('touchstart', (e) => {
       if (!state.ui.isThemeOpen) return;
       if (e.touches.length === 1) {
         bgGestureStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
@@ -5531,7 +5531,7 @@ function handleMessageAction(action, msgIndex) {
         touchStartScale = bgOverride('scale', 100);
       }
     }, { passive: false });
-    dom.chatBgOverlay.addEventListener('touchmove', (e) => {
+    dom.chatBgOverlay?.addEventListener('touchmove', (e) => {
       if (!state.ui.isThemeOpen) return;
       if (e.touches.length === 1 && bgGestureStart) {
         const dx = (e.touches[0].clientX - bgGestureStart.x) / window.innerWidth * 100;
@@ -5549,30 +5549,30 @@ function handleMessageAction(action, msgIndex) {
         }
       }
     }, { passive: false });
-    dom.chatBgOverlay.addEventListener('touchend', () => {
+    dom.chatBgOverlay?.addEventListener('touchend', () => {
       if (bgGestureStart) { saveToStorage(); bgGestureStart = null; }
       touchStartDist = 0;
     });
 
-    dom.inputBgBrightness.addEventListener('input', () => {
+    dom.inputBgBrightness?.addEventListener('input', () => {
       const val = parseInt(dom.inputBgBrightness.value, 10);
       if (state.activeTheme) setBgOverride('brightness', val);
       else state.chatBackground.brightness = val;
       applyBgControls(); saveToStorage();
     });
-    dom.inputUIOpacity.addEventListener('input', () => {
+    dom.inputUIOpacity?.addEventListener('input', () => {
       state.chatBackground.inputOpacity = parseInt(dom.inputUIOpacity.value, 10);
       applyBgControls(); saveToStorage();
     });
-    dom.inputBubbleOpacity.addEventListener('input', () => {
+    dom.inputBubbleOpacity?.addEventListener('input', () => {
       state.chatBackground.bubbleOpacity = parseInt(dom.inputBubbleOpacity.value, 10);
       applyBgControls(); saveToStorage();
     });
 
     // Send / Stop
-    dom.btnSend.addEventListener('click', () => sendMessage());
-    dom.btnStop.addEventListener('click', () => stopCurrentRequest());
-    dom.inputMessage.addEventListener('keydown', (e) => {
+    dom.btnSend?.addEventListener('click', () => sendMessage());
+    dom.btnStop?.addEventListener('click', () => stopCurrentRequest());
+    dom.inputMessage?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (!state.isStreaming) sendMessage();
@@ -5580,7 +5580,7 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // Auto-resize textarea
-    dom.inputMessage.addEventListener('input', () => {
+    dom.inputMessage?.addEventListener('input', () => {
       dom.inputMessage.style.height = 'auto';
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
       updateBottomBarHeight();
@@ -5607,16 +5607,16 @@ function handleMessageAction(action, msgIndex) {
         });
       }
     };
-    dom.mainContent.addEventListener('scroll', onScrollEvent, { passive: true });
-    dom.mainContent.addEventListener('wheel', onScrollEvent, { passive: true });
-    dom.mainContent.addEventListener('touchstart', function() { state.ui.programmaticScroll = false; }, { passive: true });
-    dom.mainContent.addEventListener('touchmove', onScrollEvent, { passive: true });
-    dom.mainContent.addEventListener('pointerdown', function() { state.ui.programmaticScroll = false; }, { passive: true });
+    dom.mainContent?.addEventListener('scroll', onScrollEvent, { passive: true });
+    dom.mainContent?.addEventListener('wheel', onScrollEvent, { passive: true });
+    dom.mainContent?.addEventListener('touchstart', function() { state.ui.programmaticScroll = false; }, { passive: true });
+    dom.mainContent?.addEventListener('touchmove', onScrollEvent, { passive: true });
+    dom.mainContent?.addEventListener('pointerdown', function() { state.ui.programmaticScroll = false; }, { passive: true });
 
     // Quick actions
     // Story editor toggle: click "世界故事 · ON" pill → open overlay editor
     if (dom.sceneCapsule) {
-      dom.sceneCapsule.addEventListener('click', function(e) {
+      dom.sceneCapsule?.addEventListener('click', function(e) {
         e.stopPropagation();
         openStoryEditor();
       });
@@ -5684,16 +5684,16 @@ function handleMessageAction(action, msgIndex) {
       });
     }
 
-    $('#btnQuickNew').addEventListener('click', () => newConversation());
-    $('#btnQuickClear').addEventListener('click', () => clearCurrentConversation());
-    $('#btnQuickDeleteLast').addEventListener('click', () => deleteLastRound());
-    $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
-    $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
-    $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
+    $('#btnQuickNew')?.addEventListener('click', () => newConversation());
+    $('#btnQuickClear')?.addEventListener('click', () => clearCurrentConversation());
+    $('#btnQuickDeleteLast')?.addEventListener('click', () => deleteLastRound());
+    $('#btnQuickCopy')?.addEventListener('click', () => copyLastAssistantReply());
+    $('#btnQuickPrecise')?.addEventListener('click', () => togglePreciseMode());
+    $('#btnQuickExport')?.addEventListener('click', () => exportConversationMarkdown());
 
     // NPC image upload
     if (dom.sceneNpcGrid) {
-      dom.sceneNpcGrid.addEventListener('click', function(e) {
+      dom.sceneNpcGrid?.addEventListener('click', function(e) {
         var btn = e.target.closest('.npc-img-btn');
         if (!btn) return;
         e.stopPropagation();
@@ -5712,7 +5712,7 @@ function handleMessageAction(action, msgIndex) {
         }
       });
     }
-    if (dom.npcImageInput) dom.npcImageInput.addEventListener('change', function() {
+    if (dom.npcImageInput) dom.npcImageInput?.addEventListener('change', function() {
       var file = this.files && this.files[0];
       if (!file) return;
       var npcId = this._npcId;
@@ -5744,9 +5744,9 @@ function handleMessageAction(action, msgIndex) {
       reader.readAsDataURL(file);
       this.value='';
     });
-if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
-    if (dom.btnFinishSetup) dom.btnFinishSetup.addEventListener('click', () => showSetupConfirm());
-    if (dom.btnStartWorld) dom.btnStartWorld.addEventListener('click', () => startWorldMode());
+if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSceneHints());
+    if (dom.btnFinishSetup) dom.btnFinishSetup?.addEventListener('click', () => showSetupConfirm());
+    if (dom.btnStartWorld) dom.btnStartWorld?.addEventListener('click', () => startWorldMode());
 
     // Export / Import / Clear all
     // Clear cache button in settings
@@ -5758,11 +5758,11 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       });
     }
 
-    dom.btnExportAll.addEventListener('click', () => exportAllJSON());
-    dom.btnImport.addEventListener('click', () => dom.importFileInput.click());
-    dom.btnClearAll.addEventListener('click', () => clearAllConversations());
-    dom.btnClearArchived.addEventListener('click', () => clearArchivedConversations());
-    dom.importFileInput.addEventListener('change', (e) => {
+    dom.btnExportAll?.addEventListener('click', () => exportAllJSON());
+    dom.btnImport?.addEventListener('click', () => dom.importFileInput.click());
+    dom.btnClearAll?.addEventListener('click', () => clearAllConversations());
+    dom.btnClearArchived?.addEventListener('click', () => clearArchivedConversations());
+    dom.importFileInput?.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         importJSON(e.target.files[0]);
         e.target.value = '';
@@ -5770,15 +5770,15 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
     });
 
     // Dialog
-    dom.dialogConfirm.addEventListener('click', () => {
+    dom.dialogConfirm?.addEventListener('click', () => {
       if (state.pendingConfirmAction) state.pendingConfirmAction();
     });
-    dom.dialogCancel.addEventListener('click', () => hideConfirm());
+    dom.dialogCancel?.addEventListener('click', () => hideConfirm());
 
     // Rename dialog
-    dom.renameConfirm.addEventListener('click', () => doRename());
-    dom.renameCancel.addEventListener('click', () => hideRenameDialog());
-    dom.renameInput.addEventListener('keydown', (e) => {
+    dom.renameConfirm?.addEventListener('click', () => doRename());
+    dom.renameCancel?.addEventListener('click', () => hideRenameDialog());
+    dom.renameInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         doRename();
