@@ -5829,6 +5829,8 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
   } else {
     init();
   }
+  // Ensure API keys and state are saved even on sudden page close
+  window.addEventListener('beforeunload', () => saveToStorage());
 
   // Expose for debugging / external use
   window.__omnichat = {
