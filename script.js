@@ -3484,8 +3484,6 @@ function getSceneBodyDetails(block) {
   }
 
   const CHARACTER_THEMES = {
-    'sakura-original': { name:'桜', game:'原创', wallpaper:'https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/376365.jpg', gradient:'linear-gradient(150deg,#fadadd 0%,#ebb5b8 25%,#d8a8c8 55%,#b8c8e8 80%,#90a8d8 100%)', ...themeColors('#e8b0c0') },
-    'yozora': { name:'夜空', game:'原创', wallpaper:'', gradient:'linear-gradient(160deg,#0a0e1e 0%,#111d3e 30%,#1a2a5e 55%,#2d1a50 80%,#0f0f20 100%)', ...themeColors('#8098c8') },
     // 原神
     'raiden': { name:'雷电将军', game:'原神', wallpaper:'bg/raiden.jpg', gradient:'', ...themeColors('#b870f0') },
     'eula': { name:'优菈', game:'原神', wallpaper:'bg/eula.gif', gradient:'', ...themeColors('#88c0e8') },
