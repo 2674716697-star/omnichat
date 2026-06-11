@@ -1571,6 +1571,15 @@ html:not(.is-splashing) .top-bar {
   transition: opacity 400ms var(--spring), background-image 600ms var(--spring);
 }
 
+/* Theme-open: background becomes interactive for gestures */
+html.is-theme-open .chat-bg-overlay {
+  pointer-events: auto;
+  cursor: grab;
+}
+html.is-theme-open .chat-bg-overlay:active {
+  cursor: grabbing;
+}
+
 /* UI transparency controls */
 html {
   --bg-scale: 1;

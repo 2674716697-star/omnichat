@@ -1675,6 +1675,7 @@ function getSceneBodyDetails(block) {
     apiKeys: {},
     models: { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] },
     chatBackground: { type: 'none', value: '', opacity: 35 },
+    themeOverrides: {},
     activeTheme: '',
     actionPrompts: { regenerate: '', continue: '', summarize: '', elaborate: '' },
     worldStarterEnabled: false,
@@ -1758,9 +1759,6 @@ function getSceneBodyDetails(block) {
     dom.chatBgOverlay = $('#chatBgOverlay');
     dom.bgPresets = $('#bgPresets');
     dom.inputBgOpacity = $('#inputBgOpacity');
-    dom.inputBgScale = $('#inputBgScale');
-    dom.inputBgPosX = $('#inputBgPosX');
-    dom.inputBgPosY = $('#inputBgPosY');
     dom.inputBgBrightness = $('#inputBgBrightness');
     dom.inputUIOpacity = $('#inputUIOpacity');
     dom.inputBubbleOpacity = $('#inputBubbleOpacity');
@@ -2295,6 +2293,7 @@ function getSceneBodyDetails(block) {
       dom.themeDrawer.classList.add('open');
       dom.themeOverlay.classList.add('open');
       state.ui.isThemeOpen = true;
+      document.documentElement.classList.add('is-theme-open');
     } else {
       dom.settingsDrawer.classList.add('open');
       dom.settingsOverlay.classList.add('open');
@@ -2312,6 +2311,7 @@ function getSceneBodyDetails(block) {
       dom.themeDrawer.classList.remove('open');
       dom.themeOverlay.classList.remove('open');
       state.ui.isThemeOpen = false;
+      document.documentElement.classList.remove('is-theme-open');
     } else {
       dom.settingsDrawer.classList.remove('open');
       dom.settingsOverlay.classList.remove('open');
@@ -3621,15 +3621,23 @@ function getSceneBodyDetails(block) {
     else document.documentElement.style.removeProperty('--splash-accent2');
   }
 
+  function bgOverride(key, def) {
+    return state.themeOverrides[state.activeTheme] && state.themeOverrides[state.activeTheme][key] != null
+      ? state.themeOverrides[state.activeTheme][key] : def;
+  }
+
   function applyBgControls() {
-    var bg = state.chatBackground;
     var s = document.documentElement.style;
-    s.setProperty('--bg-scale', (bg.scale || 100) / 100);
-    s.setProperty('--bg-pos-x', (bg.posX || 50) + '%');
-    s.setProperty('--bg-pos-y', (bg.posY || 50) + '%');
-    s.setProperty('--bg-brightness', (bg.brightness || 100) / 100);
-    s.setProperty('--input-opacity', (bg.inputOpacity || 100) / 100);
-    s.setProperty('--bubble-opacity', (bg.bubbleOpacity || 100) / 100);
+    var scale = state.activeTheme ? bgOverride('scale', 100) : (state.chatBackground.scale || 100);
+    var posX = state.activeTheme ? bgOverride('posX', 50) : (state.chatBackground.posX || 50);
+    var posY = state.activeTheme ? bgOverride('posY', 50) : (state.chatBackground.posY || 50);
+    var brightness = state.activeTheme ? bgOverride('brightness', 100) : (state.chatBackground.brightness || 100);
+    s.setProperty('--bg-scale', scale / 100);
+    s.setProperty('--bg-pos-x', posX + '%');
+    s.setProperty('--bg-pos-y', posY + '%');
+    s.setProperty('--bg-brightness', brightness / 100);
+    s.setProperty('--input-opacity', (state.chatBackground.inputOpacity || 100) / 100);
+    s.setProperty('--bubble-opacity', (state.chatBackground.bubbleOpacity || 100) / 100);
   }
 
   function setChatBackground(type, value, accent, accent2) {
@@ -3648,7 +3656,7 @@ function getSceneBodyDetails(block) {
     dom.inputBgScale.value = bg.scale || 100;
     dom.inputBgPosX.value = bg.posX || 50;
     dom.inputBgPosY.value = bg.posY || 50;
-    dom.inputBgBrightness.value = bg.brightness || 100;
+    dom.inputBgBrightness.value = state.activeTheme ? bgOverride('brightness', 100) : (bg.brightness || 100);
     dom.inputUIOpacity.value = bg.inputOpacity || 100;
     dom.inputBubbleOpacity.value = bg.bubbleOpacity || 100;
     // Update active preset button
@@ -7048,20 +7056,81 @@ function handleMessageAction(action, msgIndex) {
       applyChatBackground();
       saveToStorage();
     });
-    dom.inputBgScale.addEventListener('input', () => {
-      state.chatBackground.scale = parseInt(dom.inputBgScale.value, 10);
+    // Gesture-based background scale + position (per-theme overrides)
+    function bgOverride(key, def) {
+      return state.themeOverrides[state.activeTheme] && state.themeOverrides[state.activeTheme][key] != null
+        ? state.themeOverrides[state.activeTheme][key] : def;
+    }
+    function setBgOverride(key, val) {
+      if (!state.themeOverrides[state.activeTheme]) state.themeOverrides[state.activeTheme] = {};
+      state.themeOverrides[state.activeTheme][key] = val;
+    }
+    let bgGestureStart = null;
+    dom.chatBgOverlay.addEventListener('wheel', (e) => {
+      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      e.preventDefault();
+      const cur = bgOverride('scale', 100);
+      const scale = cur + (e.deltaY < 0 ? 8 : -8);
+      setBgOverride('scale', Math.max(50, Math.min(200, scale)));
       applyBgControls(); saveToStorage();
+    }, { passive: false });
+    dom.chatBgOverlay.addEventListener('mousedown', (e) => {
+      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      bgGestureStart = { x: e.clientX, y: e.clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
+      e.preventDefault();
     });
-    dom.inputBgPosX.addEventListener('input', () => {
-      state.chatBackground.posX = parseInt(dom.inputBgPosX.value, 10);
-      applyBgControls(); saveToStorage();
+    window.addEventListener('mousemove', (e) => {
+      if (!bgGestureStart) return;
+      const dx = (e.clientX - bgGestureStart.x) / window.innerWidth * 100;
+      const dy = (e.clientY - bgGestureStart.y) / window.innerHeight * 100;
+      setBgOverride('posX', Math.max(0, Math.min(100, bgGestureStart.posX + dx)));
+      setBgOverride('posY', Math.max(0, Math.min(100, bgGestureStart.posY + dy)));
+      applyBgControls();
     });
-    dom.inputBgPosY.addEventListener('input', () => {
-      state.chatBackground.posY = parseInt(dom.inputBgPosY.value, 10);
-      applyBgControls(); saveToStorage();
+    window.addEventListener('mouseup', () => {
+      if (bgGestureStart) { saveToStorage(); bgGestureStart = null; }
     });
+    // Touch: pinch zoom + drag pan
+    let touchStartDist = 0, touchStartScale = 100;
+    dom.chatBgOverlay.addEventListener('touchstart', (e) => {
+      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (e.touches.length === 1) {
+        bgGestureStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
+      } else if (e.touches.length === 2) {
+        bgGestureStart = null;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDist = Math.hypot(dx, dy);
+        touchStartScale = bgOverride('scale', 100);
+      }
+    }, { passive: false });
+    dom.chatBgOverlay.addEventListener('touchmove', (e) => {
+      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (e.touches.length === 1 && bgGestureStart) {
+        const dx = (e.touches[0].clientX - bgGestureStart.x) / window.innerWidth * 100;
+        const dy = (e.touches[0].clientY - bgGestureStart.y) / window.innerHeight * 100;
+        setBgOverride('posX', Math.max(0, Math.min(100, bgGestureStart.posX + dx)));
+        setBgOverride('posY', Math.max(0, Math.min(100, bgGestureStart.posY + dy)));
+        applyBgControls();
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (touchStartDist > 0) {
+          setBgOverride('scale', Math.max(50, Math.min(200, Math.round(touchStartScale * dist / touchStartDist))));
+          applyBgControls();
+        }
+      }
+    }, { passive: false });
+    dom.chatBgOverlay.addEventListener('touchend', () => {
+      if (bgGestureStart) { saveToStorage(); bgGestureStart = null; }
+      touchStartDist = 0;
+    });
+
     dom.inputBgBrightness.addEventListener('input', () => {
-      state.chatBackground.brightness = parseInt(dom.inputBgBrightness.value, 10);
+      const val = parseInt(dom.inputBgBrightness.value, 10);
+      if (state.activeTheme) setBgOverride('brightness', val);
+      else state.chatBackground.brightness = val;
       applyBgControls(); saveToStorage();
     });
     dom.inputUIOpacity.addEventListener('input', () => {
