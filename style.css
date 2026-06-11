@@ -103,6 +103,64 @@ html[data-font="songti"] body { --font-sans: var(--font-songti); }
 html[data-font="yahei"] body { --font-sans: var(--font-yahei); }
 html[data-font="kaiti"] body { --font-sans: var(--font-kaiti); }
 
+/* --- Theme System --- */
+html[data-theme] {
+  --accent: var(--theme-accent);
+  --accent-bright: var(--theme-accent-bright);
+  --accent-soft: var(--theme-accent-soft);
+  --accent-glow: var(--theme-accent-glow);
+  --hairline: var(--theme-hairline);
+  --border-field: var(--theme-border-field);
+  --surface-glass: var(--theme-surface-glass);
+  --surface-glass-strong: var(--theme-surface-glass-strong);
+  --top-bar-glass: var(--theme-top-bar-glass);
+  --top-bar-glass-strong: var(--theme-top-bar-glass-strong);
+  --user-bubble-bg: var(--theme-user-bubble);
+  --scene-accent: var(--theme-accent);
+  --scene-accent-bright: var(--theme-accent-bright);
+  --scene-accent-dim: var(--theme-accent-soft);
+  transition: --accent 600ms var(--glide), --accent-bright 600ms var(--glide),
+              --hairline 600ms var(--glide), --surface-glass 600ms var(--glide);
+}
+
+/* Themed splash: character wallpaper background */
+html[data-theme] .splash {
+  background: #0a0a0f;
+}
+html[data-theme] .splash-bg {
+  background-image: var(--splash-wallpaper, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(14px) brightness(0.22);
+}
+
+/* Themed component overrides */
+html[data-theme] .bottom-bar:focus-within {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.28),
+              inset 0 1px 0 rgba(255,255,255,0.035),
+              0 0 0 2px var(--accent-soft), 0 0 32px var(--accent-glow);
+}
+html[data-theme] .btn-send {
+  background: var(--accent);
+  opacity: 0.85;
+}
+html[data-theme] .btn-send:hover {
+  opacity: 0.95;
+}
+html[data-theme] .message.assistant .message-bubble {
+  border-left-color: var(--accent-soft);
+}
+html[data-theme] .input-message:focus {
+  border-color: var(--accent);
+  box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.04),
+              inset 0 -0.5px 0 rgba(0,0,0,0.06),
+              0 0 0 1px var(--accent-soft);
+}
+html[data-theme] .chat-bg-overlay {
+  background-size: cover;
+  background-position: center;
+}
+
 /* --- Reset & Base --- */
 *, *::before, *::after {
   box-sizing: border-box;
