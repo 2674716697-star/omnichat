@@ -1853,9 +1853,9 @@
     'hov': { name:'空之律者', game:'崩坏3', wallpaper:'bg/hov.jpg', gradient:'', ...themeColors('#d8b8e8') },
     'sushang': { name:'李素裳', game:'崩坏3', wallpaper:'bg/sushang.jpg', gradient:'', ...themeColors('#80b8d8') },
     // GitHub presets
-    'gh-raiden': { name:'雷电将军·官方', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/character/%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%BF%83%E6%B5%B7.jpg', gradient:'', ...themeColors('#b870f0') },
-    'gh-jade': { name:'群玉阁', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/scenery/%E7%BE%A4%E7%8E%89%E9%98%81.png', gradient:'', ...themeColors('#c8a860') },
-    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/FxDc7gLWcAMdzj2.jpg', gradient:'', ...themeColors('#8890d8') },
+    'gh-raiden': { name:'雷电将军·官方', game:'原神', wallpaper:'bg/gh-raiden.jpg', gradient:'', ...themeColors('#b870f0') },
+    'gh-jade': { name:'群玉阁', game:'原神', wallpaper:'bg/gh-jade.png', gradient:'', ...themeColors('#c8a860') },
+    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'bg/gh-hsr.jpg', gradient:'', ...themeColors('#8890d8') },
   };
 
   function applyTheme(themeKey) {
