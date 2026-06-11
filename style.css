@@ -156,7 +156,7 @@ html[data-theme] .input-message:focus {
 }
 html[data-theme] .chat-bg-overlay {
   background-size: cover;
-  background-position: center;
+  background-position: var(--bg-pos-x, 50%) var(--bg-pos-y, 50%);
 }
 
 /* --- Reset & Base --- */
@@ -2935,7 +2935,8 @@ html:not(.is-splashing) .bottom-bar {
 }
 
 .input-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: flex-end;
   gap: 8px;
 }
@@ -2989,6 +2990,8 @@ html:not(.is-splashing) .bottom-bar {
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
+  grid-row: 1;
+  grid-column: 2;
   transition:
     opacity 220ms var(--glide),
     transform 280ms var(--bounce-spring),
@@ -4743,7 +4746,7 @@ html.is-standalone body {
 
 /* Bottom bar: softer, cleaner input area */
 .bottom-bar .input-row {
-  display: flex; align-items: flex-end; gap: 8px;
+  display: grid; grid-template-columns: 1fr auto; align-items: flex-end; gap: 8px;
 }
 
 /* Action chips (regenerate / continue / summarize / elaborate) */
@@ -4886,7 +4889,7 @@ html.is-standalone body {
 /* Custom background image: cover + center + dark unified overlay for readability */
 html.has-custom-bg .chat-bg-overlay {
   background-size: cover;
-  background-position: center;
+  background-position: var(--bg-pos-x, 50%) var(--bg-pos-y, 50%);
 }
 /* Extra dark scrim over custom bg images */
 html.has-custom-bg .chat-bg-overlay::after {

@@ -194,6 +194,11 @@
     dom.inputMessage = $('#inputMessage');
     dom.btnSend = $('#btnSend');
     dom.btnStop = $('#btnStop');
+    dom.btnQuickMemory = $('#btnQuickMemory');
+    dom.memoryPanel = $('#memoryPanel');
+    dom.memoryInput = $('#memoryInput');
+    dom.btnMemorySave = $('#btnMemorySave');
+    dom.btnMemoryClear = $('#btnMemoryClear');
 
     dom.toastContainer = $('#toastContainer');
     dom.dialogOverlay = $('#dialogOverlay');
@@ -1943,7 +1948,6 @@
     } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
       overlay.style.backgroundImage = 'url(' + bg.value + ')';
       overlay.style.backgroundSize = 'cover';
-      overlay.style.backgroundPosition = 'center';
       overlay.style.display = '';
       document.documentElement.classList.add('has-custom-bg');
       applyBgSplashTheme(bg);
@@ -4729,10 +4733,7 @@ function handleMessageAction(action, msgIndex) {
       dom.btnSend.classList.remove('hidden-streaming');
       dom.btnStop.classList.add('hidden-streaming');
       dom.inputMessage.disabled = false;
-      // Restore has-text if input has content
-      if (dom.inputMessage.value.trim().length > 0) {
-        dom.btnSend.classList.add('has-text');
-      }
+      dom.btnSend.classList.toggle('has-text', dom.inputMessage.value.trim().length > 0);
     }
   }
 
@@ -5419,9 +5420,21 @@ function handleMessageAction(action, msgIndex) {
       const src = t ? t.wallpaper : (state.chatBackground.value || '');
       if (!src) { showToast('请先选择主题', 'warning'); return; }
       dom.bgAdjustImage.src = src;
-      // Restore saved overrides or start fresh
-      adjState.scale = bgOverride('scale', 100) / 100;
-      adjState.x = 0; adjState.y = 0;
+      // Restore saved scale and position
+      var savedScale = bgOverride('scale', 100);
+      adjState.scale = savedScale / 100;
+      var vpw = dom.bgAdjustViewport.clientWidth;
+      var vph = dom.bgAdjustViewport.clientHeight;
+      var posX = bgOverride('posX', 50);
+      var posY = bgOverride('posY', 50);
+      var iw = dom.bgAdjustImage.naturalWidth * adjState.scale;
+      var ih = dom.bgAdjustImage.naturalHeight * adjState.scale;
+      if (iw && ih) {
+        adjState.x = vpw/2 - iw * (posX/100 - 0.5);
+        adjState.y = vph/2 - ih * (posY/100 - 0.5);
+      } else {
+        adjState.x = 0; adjState.y = 0;
+      }
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
       dom.bgAdjustOverlay.classList.add('open');
     });
@@ -5498,14 +5511,21 @@ function handleMessageAction(action, msgIndex) {
     }, { passive: false });
     dom.bgAdjustImage?.addEventListener('touchend', () => { adjState.dragging = false; tStartDist = 0; });
 
-    // Gesture-based background scale + position (per-theme overrides)
+    // Gesture-based background scale + position (per-theme or custom bg)
     function bgOverride(key, def) {
-      return state.themeOverrides[state.activeTheme] && state.themeOverrides[state.activeTheme][key] != null
-        ? state.themeOverrides[state.activeTheme][key] : def;
+      if (state.activeTheme) {
+        return state.themeOverrides[state.activeTheme] && state.themeOverrides[state.activeTheme][key] != null
+          ? state.themeOverrides[state.activeTheme][key] : def;
+      }
+      return state.chatBackground[key] != null ? state.chatBackground[key] : def;
     }
     function setBgOverride(key, val) {
-      if (!state.themeOverrides[state.activeTheme]) state.themeOverrides[state.activeTheme] = {};
-      state.themeOverrides[state.activeTheme][key] = val;
+      if (state.activeTheme) {
+        if (!state.themeOverrides[state.activeTheme]) state.themeOverrides[state.activeTheme] = {};
+        state.themeOverrides[state.activeTheme][key] = val;
+      } else {
+        state.chatBackground[key] = val;
+      }
     }
     let bgGestureStart = null;
     dom.chatBgOverlay?.addEventListener('wheel', (e) => {
@@ -5603,6 +5623,57 @@ function handleMessageAction(action, msgIndex) {
       var hasText = dom.inputMessage.value.trim().length > 0;
       dom.btnSend.classList.toggle('has-text', hasText && !state.isStreaming);
     });
+
+    // --- Quick Memory Panel ---
+    var memoryToggle = function(force) {
+      var isOpen = dom.memoryPanel.classList.contains('open');
+      var shouldOpen = typeof force === 'boolean' ? force : !isOpen;
+      if (shouldOpen) {
+        dom.memoryPanel.classList.add('open');
+        dom.btnQuickMemory.setAttribute('aria-expanded', 'true');
+        dom.memoryInput.focus();
+      } else {
+        dom.memoryPanel.classList.remove('open');
+        dom.btnQuickMemory.setAttribute('aria-expanded', 'false');
+      }
+      updateBottomBarHeight();
+    };
+
+    dom.btnQuickMemory?.addEventListener('click', function(e) {
+      e.stopPropagation();
+      memoryToggle();
+    });
+
+    // Escape closes memory panel
+    dom.memoryInput?.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { memoryToggle(false); }
+    });
+
+    dom.btnMemorySave?.addEventListener('click', function() {
+      var text = dom.memoryInput.value.trim();
+      if (!text) return;
+      var conv = getCurrentConv();
+      if (!conv) return;
+      var ts = '[' + new Date().toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', month: 'numeric', day: 'numeric' }) + '] ';
+      var entry = ts + text;
+      // Append to sceneWorld.notes
+      if (!conv.sceneWorld) conv.sceneWorld = {};
+      conv.sceneWorld.notes = conv.sceneWorld.notes ? conv.sceneWorld.notes + '\n' + entry : entry;
+      // Sync to storyMode.world.notes if story mode is active
+      if (conv.storyMode && conv.storyMode.world) {
+        conv.storyMode.world.notes = conv.storyMode.world.notes ? conv.storyMode.world.notes + '\n' + entry : entry;
+      }
+      dom.memoryInput.value = '';
+      memoryToggle(false);
+      updateTimestamp(conv);
+      saveToStorage();
+      updateScenePanelUI();
+    });
+
+    dom.btnMemoryClear?.addEventListener('click', function() {
+      dom.memoryInput.value = '';
+    });
+    // --- end Quick Memory Panel ---
 
     // Smart scroll tracking — auto-follow unless user manually scrolls away
     function updateTopBarScrollState() {
@@ -5986,6 +6057,13 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
         };
       });
     };
+
+    // Clean up stale activeTheme references to themes that no longer exist
+    // (e.g. deleted gh-raiden/gh-jade/gh-hsr). Only clear the reference —
+    // keep themeOverrides data so it's not lost if the theme is ever re-added.
+    if (state.activeTheme && !CHARACTER_THEMES[state.activeTheme]) {
+      state.activeTheme = '';
+    }
 
     // Apply chat background
     applyChatBackground();

@@ -13,6 +13,7 @@
         models: state.models,
         activeTheme: state.activeTheme || '',
         chatBackground: state.chatBackground,
+        themeOverrides: state.themeOverrides,
         worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
       }));
@@ -43,6 +44,7 @@
           if (prefs.models) state.models = prefs.models;
           if (prefs.hasOwnProperty('activeTheme')) state.activeTheme = prefs.activeTheme;
           if (prefs.chatBackground) state.chatBackground = prefs.chatBackground;
+          if (prefs.themeOverrides) state.themeOverrides = prefs.themeOverrides;
           if (prefs.hasOwnProperty('worldStarterEnabled')) state.worldStarterEnabled = prefs.worldStarterEnabled;
           if (prefs.actionPrompts) state.actionPrompts = prefs.actionPrompts;
         }
@@ -64,6 +66,7 @@
         models: state.models,
         activeTheme: state.activeTheme || '',
         chatBackground: state.chatBackground,
+        themeOverrides: state.themeOverrides,
         worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
       };
@@ -131,14 +134,27 @@
         if (!state.activeTheme && data.activeTheme) {
           state.activeTheme = data.activeTheme;
         }
-        if (!state.chatBackground || !state.chatBackground.type) {
-          state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
+        // ChatBackground: prefs always wins. Only fall back to main data when
+        // state still has the initial default stub (type='none' AND no value
+        // AND default opacity). Never discard prefs-restored opacity settings
+        // just because type is 'none'.
+        var cbIsDefault = state.chatBackground
+          && state.chatBackground.type === 'none'
+          && !state.chatBackground.value
+          && state.chatBackground.opacity === 35;
+        if (!state.chatBackground || cbIsDefault) {
+          if (data.chatBackground) state.chatBackground = data.chatBackground;
+          else if (!state.chatBackground) state.chatBackground = { type: 'none', value: '', opacity: 35 };
         }
         if (!state.worldStarterEnabled && data.worldStarterEnabled) {
           state.worldStarterEnabled = data.worldStarterEnabled;
         }
         if (!state.actionPrompts || Object.keys(state.actionPrompts).length === 0) {
           state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
+        }
+        // ThemeOverrides: prefs wins, main data fills gaps
+        if (!state.themeOverrides || Object.keys(state.themeOverrides).length === 0) {
+          if (data.themeOverrides) state.themeOverrides = data.themeOverrides;
         }
 
         mainOk = true;
