@@ -630,8 +630,8 @@
       renderConvList();
       setTimeout(() => dom.searchInput.focus(), 300);
     } else if (side === 'theme') {
-      dom.themeDrawer.classList.add('open');
-      dom.themeOverlay.classList.add('open');
+      if (dom.themeDrawer) dom.themeDrawer.classList.add('open');
+      if (dom.themeOverlay) dom.themeOverlay.classList.add('open');
       state.ui.isThemeOpen = true;
       document.documentElement.classList.add('is-theme-open');
     } else {
@@ -4797,8 +4797,8 @@ function handleMessageAction(action, msgIndex) {
     // Settings drawer
     dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
     dom.btnToggleBg.addEventListener('click', () => openDrawer('theme'));
-    dom.btnCloseTheme.addEventListener('click', () => closeDrawer('theme'));
-    dom.themeOverlay.addEventListener('click', () => closeDrawer('theme'));
+    if (dom.btnCloseTheme) dom.btnCloseTheme.addEventListener('click', () => closeDrawer('theme'));
+    if (dom.themeOverlay) dom.themeOverlay.addEventListener('click', () => closeDrawer('theme'));
     dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
 
