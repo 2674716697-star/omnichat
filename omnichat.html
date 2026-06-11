@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq9icdc2">
+  <meta name="build-version" content="mq9iqc76">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -6762,7 +6762,7 @@ applyChatBackground();
 saveToStorage();
 });
 let adjState = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
-dom.btnAdjustBg.addEventListener('click', () => {
+dom.btnAdjustBg && dom.btnAdjustBg.addEventListener('click', () => {
 const t = CHARACTER_THEMES[state.activeTheme];
 const src = t ? t.wallpaper : (state.chatBackground.value || '');
 if (!src) { showToast('请先选择主题', 'warning'); return; }
@@ -6784,13 +6784,13 @@ setBgOverride('posY', Math.round(Math.max(0, Math.min(100, ((vph/2 - adjState.y)
 applyBgControls(); saveToStorage();
 dom.bgAdjustOverlay.classList.remove('open');
 });
-dom.bgAdjustViewport.addEventListener('wheel', (e) => {
+dom.bgAdjustViewport && dom.bgAdjustViewport.addEventListener('wheel', (e) => {
 e.preventDefault();
 var ds = e.deltaY < 0 ? 1.08 : 0.92;
 adjState.scale = Math.max(0.2, Math.min(5, adjState.scale * ds));
 dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
 }, { passive: false });
-dom.bgAdjustImage.addEventListener('mousedown', (e) => {
+dom.bgAdjustImage && dom.bgAdjustImage.addEventListener('mousedown', (e) => {
 adjState.dragging = true; adjState.startX = e.clientX; adjState.startY = e.clientY;
 adjState.imgX = adjState.x; adjState.imgY = adjState.y;
 e.preventDefault();

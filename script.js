@@ -7082,7 +7082,7 @@ function handleMessageAction(action, msgIndex) {
     });
     // --- Background adjustment overlay ---
     let adjState = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
-    dom.btnAdjustBg.addEventListener('click', () => {
+    dom.btnAdjustBg && dom.btnAdjustBg.addEventListener('click', () => {
       const t = CHARACTER_THEMES[state.activeTheme];
       const src = t ? t.wallpaper : (state.chatBackground.value || '');
       if (!src) { showToast('请先选择主题', 'warning'); return; }
@@ -7107,14 +7107,14 @@ function handleMessageAction(action, msgIndex) {
       dom.bgAdjustOverlay.classList.remove('open');
     });
     // Mouse wheel zoom
-    dom.bgAdjustViewport.addEventListener('wheel', (e) => {
+    dom.bgAdjustViewport && dom.bgAdjustViewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       var ds = e.deltaY < 0 ? 1.08 : 0.92;
       adjState.scale = Math.max(0.2, Math.min(5, adjState.scale * ds));
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
     }, { passive: false });
     // Mouse drag
-    dom.bgAdjustImage.addEventListener('mousedown', (e) => {
+    dom.bgAdjustImage && dom.bgAdjustImage.addEventListener('mousedown', (e) => {
       adjState.dragging = true; adjState.startX = e.clientX; adjState.startY = e.clientY;
       adjState.imgX = adjState.x; adjState.imgY = adjState.y;
       e.preventDefault();
