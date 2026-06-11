@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq96ecoq">
+  <meta name="build-version" content="mq97pmli">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -243,13 +243,26 @@
         <div class="setting-group">
           <label class="setting-label">聊天背景</label>
           <div class="bg-presets" id="bgPresets">
-            <button class="bg-preset bg-preset-none active" data-bg="none" aria-label="默认"></button>
-            <button class="bg-preset" data-bg="gradient-ocean" style="background:linear-gradient(135deg,#0c1445,#1a2a6c,#1e3a5f)" aria-label="海洋"></button>
-            <button class="bg-preset" data-bg="gradient-sunset" style="background:linear-gradient(135deg,#2d0a1e,#5c1a3a,#3d1525)" aria-label="日落"></button>
-            <button class="bg-preset" data-bg="gradient-forest" style="background:linear-gradient(135deg,#0a1a0a,#1a3a1a,#0d2d0d)" aria-label="森林"></button>
-            <button class="bg-preset" data-bg="gradient-ink" style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)" aria-label="墨蓝"></button>
-            <button class="bg-preset" data-bg="gradient-charcoal" style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d,#1a1a1a)" aria-label="炭灰"></button>
+            <!-- None -->
+            <button class="bg-preset bg-preset-none active" data-bg="none" aria-label="无背景"></button>
+            <!-- CSS Anime Gradients -->
+            <button class="bg-preset" data-bg="gradient-sakura" style="background:linear-gradient(150deg,#fadadd 0%,#ebb5b8 25%,#d8a8c8 55%,#b8c8e8 80%,#90a8d8 100%)" aria-label="桜"></button>
+            <button class="bg-preset" data-bg="gradient-yozora" style="background:linear-gradient(160deg,#0a0e1e 0%,#111d3e 30%,#1a2a5e 55%,#2d1a50 80%,#0f0f20 100%)" aria-label="夜空"></button>
+            <button class="bg-preset" data-bg="gradient-akebono" style="background:linear-gradient(150deg,#fcd8b8 0%,#f0b890 20%,#e8a0b8 50%,#c8a0d8 75%,#8098c8 100%)" aria-label="朝焼け"></button>
+            <button class="bg-preset" data-bg="gradient-shion" style="background:linear-gradient(145deg,#e8d8f8 0%,#d0c0e8 25%,#b0a0d8 50%,#8898c8 75%,#7888c0 100%)" aria-label="紫苑"></button>
+            <button class="bg-preset" data-bg="gradient-kaiyo" style="background:linear-gradient(150deg,#c0e0f8 0%,#88b8e0 25%,#5890c8 50%,#3070a0 80%,#1a3858 100%)" aria-label="海洋"></button>
+            <button class="bg-preset" data-bg="gradient-midori" style="background:linear-gradient(155deg,#c8e8d8 0%,#a8d8b8 25%,#78b890 55%,#4a7058 80%,#2a3a2a 100%)" aria-label="翠森"></button>
+            <!-- GitHub URL Presets -->
+            <button class="bg-preset bg-preset-gh" data-bg="url" onclick="return false" data-bg-url="https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/376365.jpg" style="background-image:url(https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/376365.jpg);background-size:cover" aria-label="桜景色"></button>
+            <button class="bg-preset bg-preset-gh" data-bg="url" onclick="return false" data-bg-url="https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/377026.jpg" style="background-image:url(https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/377026.jpg);background-size:cover" aria-label="桜空"></button>
+            <button class="bg-preset bg-preset-gh" data-bg="url" onclick="return false" data-bg-url="https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Anime/cat-girl.jpg" style="background-image:url(https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Anime/cat-girl.jpg);background-size:cover" aria-label="角色"></button>
           </div>
+          <!-- GitHub URL Input -->
+          <div class="bg-url-row">
+            <input type="text" class="bg-url-input" id="inputBgUrl" placeholder="粘贴 GitHub raw 图片 URL…">
+            <button class="btn btn-secondary btn-sm" id="btnApplyBgUrl">应用</button>
+          </div>
+          <div class="setting-hint" style="margin-top:3px;font-size:10px;color:var(--text-muted)">可在 <a href="https://github.com/topics/anime-wallpaper" target="_blank" rel="noopener" style="color:var(--accent)">GitHub</a> 找素材，粘贴 raw URL 即可使用</div>
           <div class="setting-hint" style="margin-top:8px;display:flex;align-items:center;gap:8px">
             <button class="btn btn-secondary btn-sm" id="btnPickBgImage" style="flex-shrink:0">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>

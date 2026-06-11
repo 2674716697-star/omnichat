@@ -90,6 +90,8 @@
     dom.btnPickBgImage = $('#btnPickBgImage');
     dom.btnRemoveBgImage = $('#btnRemoveBgImage');
     dom.inputBgFile = $('#inputBgFile');
+    dom.inputBgUrl = $('#inputBgUrl');
+    dom.btnApplyBgUrl = $('#btnApplyBgUrl');
     dom.inputActionRegenerate = $('#inputActionRegenerate');
     dom.inputActionContinue = $('#inputActionContinue');
     dom.inputActionSummarize = $('#inputActionSummarize');
@@ -1835,8 +1837,14 @@
       const btnBg = btn.dataset.bg;
       if (bg.type === 'none' && btnBg === 'none') {
         btn.classList.add('active');
-      } else if (bg.type === 'gradient' && btnBg === bg.value) {
-        btn.classList.add('active');
+      } else if (bg.type === 'gradient' && btnBg && btnBg.startsWith('gradient-')) {
+        // Match by computed background (gradient presets store the CSS value)
+        const style = getComputedStyle(btn);
+        const btnVal = style.backgroundImage || style.background;
+        btn.classList.toggle('active', btnVal === bg.value);
+      } else if (bg.type === 'url' && btnBg === 'url') {
+        const url = btn.dataset.bgUrl;
+        btn.classList.toggle('active', url === bg.value);
       } else {
         btn.classList.remove('active');
       }
@@ -4884,10 +4892,22 @@ function handleMessageAction(action, msgIndex) {
       const bg = btn.dataset.bg;
       if (bg === 'none') {
         setChatBackground('none', '');
+      } else if (bg === 'url') {
+        const url = btn.dataset.bgUrl;
+        if (url) setChatBackground('url', url);
       } else if (bg.startsWith('gradient-')) {
         const style = getComputedStyle(btn);
         setChatBackground('gradient', style.backgroundImage || style.background);
       }
+    });
+    // GitHub URL apply button
+    dom.btnApplyBgUrl.addEventListener('click', () => {
+      const url = dom.inputBgUrl.value.trim();
+      if (!url) { showToast('请输入图片 URL', 'warning'); return; }
+      if (!url.startsWith('http://') && !url.startsWith('https://')) { showToast('URL 必须以 http:// 或 https:// 开头', 'warning'); return; }
+      setChatBackground('url', url);
+      dom.inputBgUrl.value = '';
+      showToast('背景已应用', 'success');
     });
     dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
     dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
