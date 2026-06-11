@@ -4534,13 +4534,18 @@ function handleMessageAction(action, msgIndex) {
 
   function updateSendUI() {
     if (state.isStreaming) {
-      dom.btnSend.style.display = 'none';
-      dom.btnStop.style.display = 'flex';
+      dom.btnSend.classList.add('hidden-streaming');
+      dom.btnStop.classList.remove('hidden-streaming');
       dom.inputMessage.disabled = true;
+      dom.btnSend.classList.remove('has-text');
     } else {
-      dom.btnSend.style.display = 'flex';
-      dom.btnStop.style.display = 'none';
+      dom.btnSend.classList.remove('hidden-streaming');
+      dom.btnStop.classList.add('hidden-streaming');
       dom.inputMessage.disabled = false;
+      // Restore has-text if input has content
+      if (dom.inputMessage.value.trim().length > 0) {
+        dom.btnSend.classList.add('has-text');
+      }
     }
   }
 
@@ -5232,15 +5237,25 @@ function handleMessageAction(action, msgIndex) {
       dom.inputMessage.style.height = 'auto';
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
       updateBottomBarHeight();
+      // Toggle send button breathe glow when input has text
+      var hasText = dom.inputMessage.value.trim().length > 0;
+      dom.btnSend.classList.toggle('has-text', hasText && !state.isStreaming);
     });
 
     // Smart scroll tracking — auto-follow unless user manually scrolls away
+    function updateTopBarScrollState() {
+      var el = getScrollContainer();
+      if (!el || !dom.topBar) return;
+      dom.topBar.classList.toggle('scrolled', el.scrollTop > 20);
+    }
+
     var scrollTick = false;
     var onScrollEvent = function() {
       if (!scrollTick) {
         scrollTick = true;
         requestAnimationFrame(function() {
           onUserScrollIntent();
+          updateTopBarScrollState();
           scrollTick = false;
         });
       }

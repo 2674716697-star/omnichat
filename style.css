@@ -88,9 +88,14 @@
   --bottom-content-gap: 32px;
   --spring: cubic-bezier(0.25, 0.1, 0.25, 1);
   --spring-smooth: cubic-bezier(0.42, 0, 0.58, 1);
+  --bounce-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --glide: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-fast: 160ms var(--spring);
   --transition-normal: 240ms var(--spring);
   --transition-slow: 360ms var(--spring);
+  /* Top bar glass tokens */
+  --top-bar-glass: rgba(24, 24, 24, 0.45);
+  --top-bar-glass-strong: rgba(24, 24, 24, 0.72);
 }
 
 /* --- Font selection via settings --- */
@@ -431,6 +436,26 @@ html.is-splashing .bottom-bar {
     will-change: auto;
   }
   .scene-capsule::before { animation: none; opacity: 0.8; }
+  /* Phase 2-3: disable new animations */
+  .btn-send.has-text { animation: none; }
+  .btn-send.hidden-streaming,
+  .btn-stop.hidden-streaming { opacity: 0; transform: none; }
+  .memory-panel { transform: none; transition: opacity 0.15s ease, max-height 0.2s ease; }
+  .memory-panel.open { transform: none; max-height: 200px; }
+  /* Top bar: instant glass, no transition */
+  .top-bar {
+    transition: none;
+  }
+  .top-bar.scrolled {
+    background: var(--top-bar-glass-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom-color: var(--hairline);
+  }
+  .top-bar .btn-icon { transition: background 0.1s ease, color 0.1s ease; }
+  .btn-quick { transition: background 0.1s ease, color 0.1s ease; }
+  .btn-send, .btn-stop { transition: opacity 0.1s ease, background 0.1s ease; }
+  .input-message::placeholder { transition: none; }
 }
 
 /* --- App Container --- */
@@ -505,10 +530,23 @@ html:not(.is-splashing) .app-container {
   padding: 4px 10px;
   padding-top: calc(4px + var(--safe-top));
   background: transparent;
-  border-bottom: none;
+  border-bottom: 0.5px solid transparent;
   box-shadow: none;
   min-height: var(--top-bar-h);
   isolation: isolate;
+  transition:
+    background 400ms var(--glide),
+    border-color 400ms var(--glide),
+    box-shadow 400ms var(--glide),
+    backdrop-filter 400ms ease;
+}
+/* Scroll-aware glass: appears when content scrolls behind top bar */
+.top-bar.scrolled {
+  background: var(--top-bar-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: var(--hairline);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 html:not(.is-splashing) .top-bar {
@@ -544,17 +582,31 @@ html:not(.is-splashing) .top-bar {
     0 1px 3px rgba(0, 0, 0, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
-  transition: background 0.18s var(--spring), border-color 0.18s var(--spring), box-shadow 0.18s var(--spring), color 0.18s var(--spring), transform 80ms var(--spring);
+  transition:
+    background 0.2s var(--spring),
+    border-color 0.2s var(--spring),
+    box-shadow 0.2s var(--spring),
+    color 0.2s var(--spring),
+    transform 200ms var(--bounce-spring);
+}
+/* Settings gear subtle rotate on hover */
+.top-bar .btn-icon .gear-icon {
+  transition: transform 400ms var(--spring);
+}
+.top-bar .btn-icon:hover .gear-icon {
+  transform: rotate(30deg);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .top-bar .btn-icon:hover {
-    background: var(--surface-glass);
-    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.14);
     color: var(--text-primary);
     box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.14),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      0 2px 8px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 12px rgba(200, 155, 156, 0.06);
   }
 }
 
@@ -562,7 +614,7 @@ html:not(.is-splashing) .top-bar {
   background: var(--surface-active);
   border-color: rgba(255, 255, 255, 0.14);
   color: var(--text-primary);
-  transform: scale(0.94);
+  transform: scale(0.92);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -595,15 +647,16 @@ html:not(.is-splashing) .top-bar {
 }
 
 .conv-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
-  letter-spacing: 0;
-  text-shadow: none;
-  color: rgba(237, 235, 232, 0.82);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.18);
+  color: rgba(237, 235, 232, 0.90);
+  transition: opacity 200ms var(--spring);
 }
 
 .top-bar-meta {
@@ -637,7 +690,8 @@ html:not(.is-splashing) .top-bar {
 }
 
 .badge-provider[data-provider] {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--accent-soft);
+  color: var(--accent-bright);
 }
 
 /* Hide placeholder "--" badges on fresh install (no provider configured) */
@@ -2487,11 +2541,11 @@ html.welcome-visible .welcome-security {
   padding: 8px 12px;
   border-radius: 18px;
   transition:
-    bottom 0.18s var(--spring),
+    bottom 0.22s var(--spring),
     transform 320ms var(--spring-smooth),
-    background 300ms ease,
-    border-color 300ms ease,
-    box-shadow 300ms ease;
+    background 400ms var(--glide),
+    border-color 400ms var(--glide),
+    box-shadow 400ms var(--glide);
 }
 
 /* Focus-within: subtle material lift + edge highlight */
@@ -2502,9 +2556,9 @@ html.welcome-visible .welcome-security {
     0 1px 4px rgba(0,0,0,0.06),
     0 8px 24px rgba(0,0,0,0.24),
     inset 0 1px 0 rgba(255,255,255,0.035),
-    0 0 0 1px rgba(200, 155, 156, 0.18);
+    0 0 0 1.5px rgba(200, 155, 156, 0.22),
+    0 0 28px rgba(200, 155, 156, 0.06);
   transform: translateX(-50%) translateY(-1px);
-  will-change: transform;
 }
 
 html:not(.is-splashing) .bottom-bar {
@@ -2554,11 +2608,11 @@ html:not(.is-splashing) .bottom-bar {
 }
 
 .btn-quick:hover {
-  background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.10);
   color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+  transform: translateY(-2px);
 }
 
 .btn-quick:focus-visible {
@@ -2570,8 +2624,8 @@ html:not(.is-splashing) .bottom-bar {
   background: var(--surface-active);
   color: var(--text-primary);
   border-color: rgba(255, 255, 255, 0.11);
-  box-shadow: none;
-  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transform: scale(0.95);
 }
 
 .input-row {
@@ -2613,6 +2667,10 @@ html:not(.is-splashing) .bottom-bar {
 
 .input-message::placeholder {
   color: rgba(237, 235, 232, 0.24);
+  transition: color 300ms var(--spring);
+}
+.input-message:focus::placeholder {
+  color: rgba(237, 235, 232, 0.12);
 }
 
 .btn-send, .btn-stop {
@@ -2626,12 +2684,24 @@ html:not(.is-splashing) .bottom-bar {
   cursor: pointer;
   flex-shrink: 0;
   transition:
+    opacity 220ms var(--glide),
+    transform 280ms var(--bounce-spring),
     background 150ms var(--spring),
     box-shadow 150ms var(--spring),
-    transform 80ms var(--spring),
-    border-color 150ms var(--spring),
-    opacity 200ms var(--spring);
+    border-color 150ms var(--spring);
   -webkit-tap-highlight-color: transparent;
+}
+/* Smooth send↔stop morph via opacity+scale (no display toggle) */
+.btn-send.hidden-streaming,
+.btn-stop.hidden-streaming {
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+}
+.btn-send:not(.hidden-streaming),
+.btn-stop:not(.hidden-streaming) {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .btn-send {
@@ -2683,6 +2753,25 @@ html:not(.is-splashing) .bottom-bar {
 }
 .btn-send:focus-visible {
   box-shadow: 0 0 0 2px rgba(200, 155, 156, 0.40), 0 1px 4px rgba(0,0,0,0.14);
+}
+
+/* Send button breathing glow when input has text */
+@keyframes sendPulse {
+  0%, 100% {
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 0 12px rgba(200, 155, 156, 0.10);
+  }
+  50% {
+    box-shadow:
+      0 1px 6px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 0 22px rgba(200, 155, 156, 0.20);
+  }
+}
+.btn-send.has-text {
+  animation: sendPulse 2.8s ease-in-out infinite;
 }
 .btn-stop:focus-visible {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
@@ -3027,15 +3116,17 @@ html {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(8px) scale(0.97);
-  transition: max-height 0.32s var(--spring), opacity 0.24s var(--spring), transform 0.28s var(--spring);
+  transform: translateY(4px);
+  transition: max-height 0.32s var(--glide), opacity 0.24s var(--spring), transform 0.28s var(--glide), margin-bottom 0.28s var(--glide);
   margin-bottom: 0;
+  pointer-events: none;
 }
 .memory-panel.open {
-  max-height: 140px;
+  max-height: 200px;
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   margin-bottom: 8px;
+  pointer-events: auto;
 }
 .memory-panel-inner {
   background: rgba(24, 24, 24, 0.90);
@@ -3137,6 +3228,14 @@ html {
   border-bottom: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+/* Prevent scroll glass from appearing in scene-immersive mode */
+.scene-immersive .top-bar.scrolled {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .scene-immersive .top-bar::before {

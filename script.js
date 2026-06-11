@@ -85,14 +85,14 @@
   // Per-provider maximum output token caps.
   // Used to validate user input before sending requests.
   const PROVIDER_CAPS = {
-    openai:     { maxOutputTokens: 32000, contextWindow: 128000 },
-    xai:        { maxOutputTokens: 32000, contextWindow: 128000 },
-    deepseek:   { maxOutputTokens: 384000, contextWindow: 160000 },
-    openrouter: { maxOutputTokens: 32000, contextWindow: 200000 },
-    groq:       { maxOutputTokens: 32000, contextWindow: 128000 },
-    moonshot:   { maxOutputTokens: 32000, contextWindow: 128000 },
-    zhipu:      { maxOutputTokens: 32000, contextWindow: 128000 },
-    siliconflow:{ maxOutputTokens: 32000, contextWindow: 128000 },
+    openai:     { maxOutputTokens: 32000 },
+    xai:        { maxOutputTokens: 32000 },
+    deepseek:   { maxOutputTokens: 384000 },
+    openrouter: { maxOutputTokens: 32000 },
+    groq:       { maxOutputTokens: 32000 },
+    moonshot:   { maxOutputTokens: 32000 },
+    zhipu:      { maxOutputTokens: 32000 },
+    siliconflow:{ maxOutputTokens: 32000 },
   };
 
   const DEFAULTS = {
@@ -108,7 +108,6 @@
     preciseMode: false,
     keepThinkingOpen: true,
     sceneDetailLevel: 'medium',
-    memoryNotes: '',
     worldMode: false,
     storyAuxProvider: '',
     storyAuxModel: '',
@@ -250,7 +249,6 @@
         chatBackground: state.chatBackground,
         worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
-        fontFamily: state.fontFamily,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -294,7 +292,6 @@
       state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
       state.worldStarterEnabled = data.worldStarterEnabled || false;
       state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
-      state.fontFamily = data.fontFamily || 'system';
       return true;
     } catch (e) {
       showToast('数据加载失败，将使用全新状态。', 'warning');
@@ -1261,29 +1258,14 @@ function getSceneBodyDetails(block) {
   }
 
   function switchConversation(id) {
-    var conv = state.conversations.find(function(c) { return c.id === id; });
+    const conv = state.conversations.find((c) => c.id === id);
     if (!conv) return;
+    // Safety: ensure switched-to conversation is normalized to current schema
     normalizeConversation(conv);
     state.currentConversationId = id;
     closeDrawer('history');
-
-    // GSAP fade-out → rebuild → fade-in for smooth transition
-    if (typeof gsap !== 'undefined') {
-      gsap.to(dom.messagesContainer, {
-        opacity: 0, y: 6, duration: 0.18, ease: 'power2.in',
-        onComplete: function() {
-          renderAll();
-          scrollToBottom(true);
-          gsap.fromTo(dom.messagesContainer,
-            { opacity: 0, y: 4 },
-            { opacity: 1, y: 0, duration: 0.3, ease: 'power3.out' }
-          );
-        }
-      });
-    } else {
-      renderAll();
-      scrollToBottom(true);
-    }
+    renderAll();
+    scrollToBottom(true);
     debouncedSave();
   }
 
@@ -1531,7 +1513,6 @@ function getSceneBodyDetails(block) {
           c.autoCompress = c.autoCompress || false;
           c.keepThinkingOpen = c.keepThinkingOpen !== undefined ? c.keepThinkingOpen : DEFAULTS.keepThinkingOpen;
           c.sceneDetailLevel = c.sceneDetailLevel || DEFAULTS.sceneDetailLevel;
-        c.memoryNotes = c.memoryNotes || DEFAULTS.memoryNotes;
           c.sceneWorld = createSceneWorld(c.sceneWorld);
           c.sceneCharacter = createSceneCharacter(c.sceneCharacter);
           c.sceneStatus = createSceneStatus(c.sceneStatus);
@@ -1768,7 +1749,6 @@ function getSceneBodyDetails(block) {
     dom.inputCaching = $('#inputCaching');
     dom.inputPreciseMode = $('#inputPreciseMode');
     dom.selectToolCallLimit = $('#selectToolCallLimit');
-    dom.selectFontFamily = $('#selectFontFamily');
     dom.chatBgOverlay = $('#chatBgOverlay');
     dom.bgPresets = $('#bgPresets');
     dom.inputBgOpacity = $('#inputBgOpacity');
@@ -1821,16 +1801,13 @@ function getSceneBodyDetails(block) {
     dom.sceneCharStats = $('#sceneCharStats');
     dom.sceneCharGoal = $('#sceneCharGoal');
     dom.btnCopyCharCard = $('#btnCopyCharCard');
+    dom.btnGenOpeningPrompt = $('#btnGenOpeningPrompt');
     dom.sceneTabs = $('#sceneTabs');
     dom.sceneNpcGrid = $('#sceneNpcGrid');
     dom.moodChips = $('#moodChips');
     dom.speciesChips = $('#speciesChips');
     dom.btnGenHints = $('#btnGenHints');
-    dom.btnQuickMemory = $('#btnQuickMemory');
-    dom.memoryPanel = $('#memoryPanel');
-    dom.memoryInput = $('#memoryInput');
-    dom.btnMemorySave = $('#btnMemorySave');
-    dom.btnMemoryClear = $('#btnMemoryClear');
+    dom.btnFinishSetup = $('#btnFinishSetup');
     dom.npcImageInput = $('#npcImageInput');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
@@ -1881,34 +1858,15 @@ function getSceneBodyDetails(block) {
   // TOAST
   // =========================================================================
 
-  function showToast(msg, type, duration) {
-    if (type === undefined) type = 'info';
-    if (duration === undefined) duration = 3000;
-    var toast = document.createElement('div');
-    toast.className = 'toast ' + type;
+  function showToast(msg, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
     toast.textContent = msg;
     dom.toastContainer.appendChild(toast);
-
-    // GSAP enter animation
-    if (typeof gsap !== 'undefined') {
-      gsap.fromTo(toast,
-        { opacity: 0, y: -10, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'power3.out' }
-      );
-    }
-
-    // Auto-dismiss with GSAP exit
-    setTimeout(function() {
-      if (typeof gsap !== 'undefined') {
-        gsap.to(toast, {
-          opacity: 0, y: 4, scale: 0.96, duration: 0.22, ease: 'power2.in',
-          onComplete: function() { toast.remove(); }
-        });
-      } else {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 200ms ease';
-        setTimeout(function() { toast.remove(); }, 200);
-      }
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 200ms ease';
+      setTimeout(() => toast.remove(), 200);
     }, duration);
   }
 
@@ -2210,7 +2168,6 @@ function getSceneBodyDetails(block) {
       keepThinkingOpen: DEFAULTS.keepThinkingOpen,
       worldMode: DEFAULTS.worldMode,
       sceneDetailLevel: DEFAULTS.sceneDetailLevel,
-      memoryNotes: DEFAULTS.memoryNotes,
       storyAuxProvider: DEFAULTS.storyAuxProvider,
       storyAuxModel: DEFAULTS.storyAuxModel,
       storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
@@ -2692,20 +2649,6 @@ function getSceneBodyDetails(block) {
 
     dom.convList.innerHTML = html;
 
-    // GSAP stagger entrance for conversation list items
-    if (typeof gsap !== 'undefined') {
-      var items = dom.convList.querySelectorAll('.conv-item');
-      if (items.length) {
-        gsap.from(items, {
-          opacity: 0,
-          x: -10,
-          duration: 0.28,
-          stagger: 0.035,
-          ease: 'power3.out'
-        });
-      }
-    }
-
     updateArchiveToggleUI();
   }
 
@@ -2799,27 +2742,11 @@ function getSceneBodyDetails(block) {
   }
 
   function fullRenderMessages(messages) {
-    // GSAP exit animation for existing messages, then render new ones
-    var oldMessages = dom.messagesContainer.querySelectorAll('.message');
-    if (typeof gsap !== 'undefined' && oldMessages.length) {
-      gsap.to(oldMessages, {
-        opacity: 0, y: -4, scale: 0.97, duration: 0.18, ease: 'power2.in',
-        stagger: 0.03,
-        onComplete: function() {
-          oldMessages.forEach(function(el) { el.remove(); });
-          _renderMessagesInto(messages);
-        }
-      });
-    } else {
-      oldMessages.forEach(function(el) { return el.remove(); });
-      _renderMessagesInto(messages);
-    }
-  }
-
-  function _renderMessagesInto(messages) {
+    // Remove only message elements, keep welcome screen and spacer
+    dom.messagesContainer.querySelectorAll('.message').forEach((el) => el.remove());
     dom.welcomeScreen.classList.add('hidden');
-    for (var i = 0; i < messages.length; i++) {
-      var el = createMessageElement(messages[i], i);
+    for (let i = 0; i < messages.length; i++) {
+      const el = createMessageElement(messages[i], i);
       dom.messagesContainer.appendChild(el);
       animateBubbleIn(el);
     }
@@ -2867,7 +2794,7 @@ function getSceneBodyDetails(block) {
     }
 
     if (msg._sceneFinalizing) {
-      html += '<div class="scene-finalizing-hint"><span class="finalizing-dot"></span> 整理剧情走向…</div>';
+      html += '<div class="scene-finalizing-hint">整理剧情走向…</div>';
     }
 
     if (msg.sceneSnapshot && !msg._streaming) {
@@ -2949,51 +2876,19 @@ function getSceneBodyDetails(block) {
   }
 
   function animateBubbleIn(el) {
-    // GSAP spring entrance for new message bubbles with staggered inner elements.
+    // GSAP spring entrance for new message bubbles.
     // Degrades gracefully if GSAP isn't loaded.
     if (typeof gsap === 'undefined' || !el) return;
     var bubble = el.querySelector('.message-bubble');
     if (!bubble) return;
     var isUser = el.classList.contains('user');
-    var tl = gsap.timeline({ defaults: { duration: 0.38, ease: 'power3.out' } });
-    // Bubble body entrance
-    tl.from(bubble, {
+    gsap.from(bubble, {
       opacity: 0,
-      y: isUser ? 6 : 10,
-      x: isUser ? 4 : -4,
+      y: isUser ? 8 : 12,
       scale: 0.97,
-      duration: 0.38
+      duration: 0.35,
+      ease: 'back.out(1.2)'
     });
-    // Stagger inner content elements
-    var inners = bubble.querySelectorAll('.message-content, .thinking-section, .story-part, .dir-choice-chip, .char-status-card');
-    if (inners.length) {
-      tl.from(inners, {
-        opacity: 0,
-        y: 6,
-        scale: 0.98,
-        stagger: 0.05,
-        duration: 0.28,
-        ease: 'power2.out'
-      }, '-=0.12');
-    }
-  }
-
-  function animeWelcomeSteps() {
-    // GSAP stagger entrance for welcome steps, replacing CSS delays.
-    if (typeof gsap === 'undefined') return;
-    var steps = document.querySelectorAll('.welcome-step');
-    if (!steps.length) return;
-    gsap.from(steps, {
-      opacity: 0,
-      y: 8,
-      duration: 0.4,
-      stagger: 0.1,
-      ease: 'power3.out'
-    });
-  }
-
-  function animeWelcomeGlow() {
-    // CSS-driven ambient pulse, no GSAP overhead
   }
 
   function updateLastBubble(msg) {
@@ -3292,6 +3187,7 @@ function getSceneBodyDetails(block) {
       state.ui.autoFollowStreaming = false;
       state.ui.userScrolling = true;
       state.ui.lastUserScrollAt = Date.now();
+      // Enter detached mode: stop DOM updates during streaming
       if (state.isStreaming) {
         state.ui.detachedDuringStreaming = true;
       }
@@ -3299,11 +3195,14 @@ function getSceneBodyDetails(block) {
     } else {
       state.ui.autoFollowStreaming = true;
       state.ui.userScrolling = false;
-      // Resume auto-follow — next render will naturally scroll to bottom
+      // Exit detached mode: sync accumulated content to DOM
       if (state.ui.detachedDuringStreaming) {
         state.ui.detachedDuringStreaming = false;
-        // Smooth scroll to current bottom so it doesn't jump
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        if (state.ui.detachedContentDirty) {
+          state.ui.detachedContentDirty = false;
+          renderMessages();
+          el.scrollTop = el.scrollHeight;
+        }
       }
       updateScrollToBottomButton(false);
     }
@@ -3315,39 +3214,18 @@ function getSceneBodyDetails(block) {
     // --- Force-clean path: hide button, clear all state ---
     if (!show) {
       state.ui.detachedContentDirty = false;
-      state.ui._scrollBtnVisible = false;
       if (btn) {
-        if (typeof gsap !== 'undefined') {
-          gsap.killTweensOf(btn);
-          gsap.to(btn, {
-            opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
-            onComplete: function() {
-              btn.classList.remove('show');
-              btn.textContent = '';
-              btn.setAttribute('aria-hidden', 'true');
-            }
-          });
-        } else {
-          btn.classList.remove('show');
-          btn.textContent = '';
-          btn.setAttribute('aria-hidden', 'true');
-        }
+        btn.classList.remove('show');
+        btn.textContent = '';
+        btn.setAttribute('aria-hidden', 'true');
       }
       return;
     }
 
     // --- Show path: only if streaming or detached dirty ---
-    var shouldShow = state.isStreaming && state.ui.detachedDuringStreaming;
+    var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
     if (!shouldShow) {
-      state.ui._scrollBtnVisible = false;
-      if (btn) {
-        if (typeof gsap !== 'undefined') {
-          gsap.killTweensOf(btn);
-          gsap.to(btn, { opacity: 0, scale: 0.8, y: 8, duration: 0.2, ease: 'power2.in',
-            onComplete: function() { btn.classList.remove('show'); btn.textContent = ''; }
-          });
-        } else { btn.classList.remove('show'); btn.textContent = ''; }
-      }
+      if (btn) { btn.classList.remove('show'); btn.textContent = ''; }
       return;
     }
 
@@ -3359,9 +3237,21 @@ function getSceneBodyDetails(block) {
         state.ui.detachedDuringStreaming = false;
         state.ui.autoFollowStreaming = true;
         state.ui.userScrolling = false;
+        state.ui.programmaticScroll = true;
+
+        if (state.ui.detachedContentDirty) {
+          state.ui.detachedContentDirty = false;
+          var conv = getCurrentConv();
+          if (conv && conv.messages.length) {
+            fullRenderMessages(conv.messages);
+          }
+        }
 
         var sc = getScrollContainer();
-        if (sc) sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
+        if (sc) sc.scrollTop = sc.scrollHeight;
+        requestAnimationFrame(function() {
+          state.ui.programmaticScroll = false;
+        });
         updateScrollToBottomButton(false);
       });
       document.body.appendChild(btn);
@@ -3369,17 +3259,7 @@ function getSceneBodyDetails(block) {
 
     btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
     btn.removeAttribute('aria-hidden');
-
-    // Only animate entrance if button wasn't already visible
-    var wasVisible = btn.classList.contains('show');
     btn.classList.add('show');
-    if (!wasVisible && typeof gsap !== 'undefined') {
-      gsap.killTweensOf(btn);
-      gsap.fromTo(btn,
-        { opacity: 0, scale: 0.6, y: 10 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.38, ease: 'back.out(1.4)' }
-      );
-    }
   }
 
   // =========================================================================
@@ -3441,14 +3321,6 @@ function getSceneBodyDetails(block) {
     dom.inputActionElaborate.value = state.actionPrompts.elaborate || '';
 
     populateModelSelect();
-  }
-
-  function applyFontFamily(font) {
-    var f = font || state.fontFamily || 'system';
-    state.fontFamily = f;
-    document.documentElement.setAttribute('data-font', f === 'system' ? '' : f);
-    if (f === 'system') document.documentElement.removeAttribute('data-font');
-    saveToStorage();
   }
 
   function syncSettingsFromUI() {
@@ -3789,40 +3661,7 @@ function getSceneBodyDetails(block) {
       (function(card) {
         card.addEventListener('click', function(e) {
           if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea')) return;
-          var inner = card.querySelector('.npc-card-inner');
-          var isFlipping = card.classList.contains('flipped');
-          if (typeof gsap !== 'undefined' && inner) {
-            if (!isFlipping) {
-              // Flip front → back: 3D rotateY animation
-              gsap.to(inner, {
-                rotateY: 90,
-                duration: 0.18,
-                ease: 'power2.in',
-                onComplete: function() {
-                  card.classList.add('flipped');
-                  gsap.fromTo(inner, { rotateY: -90 }, { rotateY: 0, duration: 0.22, ease: 'power2.out' });
-                  // Stagger inner form fields
-                  var fields = card.querySelectorAll('.npc-back .npc-edit-field, .npc-back input, .npc-back textarea, .npc-back button');
-                  if (fields.length) {
-                    gsap.from(fields, { opacity: 0, y: 6, stagger: 0.04, duration: 0.25, ease: 'power2.out' });
-                  }
-                }
-              });
-            } else {
-              // Flip back → front: reverse animation
-              gsap.to(inner, {
-                rotateY: -90,
-                duration: 0.18,
-                ease: 'power2.in',
-                onComplete: function() {
-                  card.classList.remove('flipped');
-                  gsap.fromTo(inner, { rotateY: 90 }, { rotateY: 0, duration: 0.22, ease: 'power2.out' });
-                }
-              });
-            }
-          } else {
-            card.classList.toggle('flipped');
-          }
+          card.classList.toggle('flipped');
         });
       })(cards[ci]);
     }
@@ -4178,6 +4017,7 @@ function updateScenePanelUI() {
         hideConfirm();
       });
       if (genBtn) genBtn.addEventListener('click', function() {
+        if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.click();
         hideConfirm();
       });
     }, 50);
@@ -4775,8 +4615,8 @@ function handleMessageAction(action, msgIndex) {
       return;
     }
 
-    // C: repairSceneBlock (15s timeout)
-    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 45000);
+    // C: repairSceneBlock (25s timeout)
+    var repTO1 = withTimeoutAbort(state.abortController && state.abortController.signal, 25000);
     try {
       var repairResult = await repairSceneBlock(conv, fullContent, repTO1.signal);
       // repairSceneBlock already validates ≥4 parseable directions internally
@@ -4854,9 +4694,10 @@ function handleMessageAction(action, msgIndex) {
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
       if (_renderPending || renderTimer) return;
-      // Always update bubble — user can read while content streams in
       if (state.ui.detachedDuringStreaming) {
+        state.ui.detachedContentDirty = true;
         updateScrollToBottomButton(true);
+        return;
       }
       _renderPending = true;
       var elapsed = performance.now() - lastRenderAt;
@@ -4981,8 +4822,7 @@ function handleMessageAction(action, msgIndex) {
 
     // Context window budget: prevent API rejection when input tokens grow large
     var estimatedInputTokens = Math.ceil(countApproxChars(conv) / 3);
-    var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
-    var contextWindow = caps.contextWindow || 128000;
+    var contextWindow = 128000; // conservative default (DeepSeek V3/V4, GPT-4o class)
     var workingReserve = Math.ceil(contextWindow * 0.1); // 10% for model to breathe
     var maxSafeOutput = contextWindow - estimatedInputTokens - workingReserve;
     if (maxSafeOutput < adaptive) {
@@ -5101,11 +4941,15 @@ function handleMessageAction(action, msgIndex) {
 
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      // ===== Scene finalizing: run aux/repair silently, don't interrupt reading flow =====
+      // ===== Scene finalizing: show light status while aux/repair runs =====
       assistantMsg._sceneFinalizing = true;
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
+          state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
+        } else {
+          updateLastBubble(assistantMsg);
+          scrollToBottomIfNeeded({ smooth: false });
         }
       }
 
@@ -5143,9 +4987,8 @@ function handleMessageAction(action, msgIndex) {
         if (conv.storyMode) conv.storyMode.sceneState = conv.sceneState;
       }
 
-      // Attempt 1: non-streaming, temperature 0.2, 12s timeout
-      console.log('[OmniChat] Aux attempt 1 — model:', auxModel, 'provider:', auxProvider, 'maxTokens:', auxMaxTokens, 'storyLen:', storyContent.length);
-      var auxTO1 = withTimeoutAbort(requestController.signal, 45000);
+      // Attempt 1: non-streaming, temperature 0.2, 20s timeout
+      var auxTO1 = withTimeoutAbort(requestController.signal, 20000);
       try {
         var auxResp1 = await callChatModel(conv, auxModel, auxMsgs, {
           provider: auxProvider, apiKey: auxApiKey, maxTokens: auxMaxTokens, stream: false,
@@ -5154,32 +4997,27 @@ function handleMessageAction(action, msgIndex) {
           responseFormat: 'json_object',
         });
         var auxContent1 = auxResp1.content || '';
-        console.log('[OmniChat] Aux attempt 1 response length:', auxContent1.length, 'chars');
         if (auxContent1) {
           var parsed1 = tryParseAuxResponse(auxContent1);
           if (parsed1 && validateAuxSceneState(parsed1)) {
-            console.log('[OmniChat] Aux attempt 1 SUCCESS — dirs:', parseDirectionOptions(parsed1.directions).length, 'chars:', parsed1.characterStatuses.length);
             applyAuxParsed(parsed1);
           } else if (parsed1) {
-            var d1 = parseDirectionOptions(parsed1.directions).length;
-            var c1 = parsed1.characterStatuses ? parsed1.characterStatuses.length : 0;
-            console.warn('[OmniChat] Aux attempt 1 validation failed — dirs:', d1, 'chars:', c1, '(need >=4 dirs AND >=1 char)');
+            console.warn('[OmniChat] Aux attempt 1 validation failed (insufficient dirs/chars), retrying...');
           } else {
-            console.warn('[OmniChat] Aux attempt 1 parse failed — raw preview:', auxContent1.substring(0, 300));
+            console.warn('[OmniChat] Aux attempt 1 parse failed, retrying...');
           }
         }
       } catch (auxErr1) {
         if (auxErr1.name === 'AbortError' && !auxTO1.timedOut) throw auxErr1;
-        console.warn('[OmniChat] Aux attempt 1 error:', auxErr1.message || auxErr1, auxTO1.timedOut ? '(timeout)' : '');
+        console.warn('[OmniChat] Aux attempt 1 failed:', auxErr1.message || auxErr1);
       } finally {
         auxTO1.cleanup();
       }
 
-      // Attempt 2: stricter prompt, temperature 0.1
+      // Attempt 2: stricter prompt, temperature 0.1, 20s timeout
       if (!auxOk) {
-        console.log('[OmniChat] Aux attempt 2 — strict mode, model:', auxModel);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var auxTO2 = withTimeoutAbort(requestController.signal, 45000);
+        var auxTO2 = withTimeoutAbort(requestController.signal, 20000);
         try {
           var auxMsgs2 = buildAuxMessagesStrict(conv, storyContent);
           var auxResp2 = await callChatModel(conv, auxModel, auxMsgs2, {
@@ -5189,23 +5027,19 @@ function handleMessageAction(action, msgIndex) {
             responseFormat: 'json_object',
           });
           var auxContent2 = auxResp2.content || '';
-          console.log('[OmniChat] Aux attempt 2 response length:', auxContent2.length, 'chars');
           if (auxContent2) {
             var parsed2 = tryParseAuxResponse(auxContent2);
             if (parsed2 && validateAuxSceneState(parsed2)) {
-              console.log('[OmniChat] Aux attempt 2 SUCCESS');
               applyAuxParsed(parsed2);
             } else if (parsed2) {
-              var d2 = parseDirectionOptions(parsed2.directions).length;
-              var c2 = parsed2.characterStatuses ? parsed2.characterStatuses.length : 0;
-              console.warn('[OmniChat] Aux attempt 2 validation failed — dirs:', d2, 'chars:', c2);
+              console.warn('[OmniChat] Aux attempt 2 validation failed (insufficient dirs/chars)');
             } else {
-              console.warn('[OmniChat] Aux attempt 2 parse failed — raw preview:', auxContent2.substring(0, 300));
+              console.warn('[OmniChat] Aux attempt 2 parse failed');
             }
           }
         } catch (auxErr2) {
           if (auxErr2.name === 'AbortError' && !auxTO2.timedOut) throw auxErr2;
-          console.warn('[OmniChat] Aux attempt 2 error:', auxErr2.message || auxErr2, auxTO2.timedOut ? '(timeout)' : '');
+          console.warn('[OmniChat] Aux attempt 2 failed:', auxErr2.message || auxErr2);
         } finally {
           auxTO2.cleanup();
         }
@@ -5215,7 +5049,7 @@ function handleMessageAction(action, msgIndex) {
       if (!auxOk) {
         showToast('辅助模型提取失败，正在尝试修复...', 'warning', 3000);
         if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        var repTO = withTimeoutAbort(requestController.signal, 45000);
+        var repTO = withTimeoutAbort(requestController.signal, 25000);
         try {
           var repairResult = await repairSceneBlock(conv, fullContent, repTO.signal);
           if (repairResult) {
@@ -5260,24 +5094,14 @@ function handleMessageAction(action, msgIndex) {
       }
 
       updateScenePanelUI();
-      // Show action buttons / direction chips
+      // Re-render to show action buttons
       if (state.currentConversationId === turnConvId) {
         if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          // User scrolled away — content is already rendered, just show button
+          state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
         } else {
-          updateLastBubble(assistantMsg);
+          renderMessages();
           scrollToBottomIfNeeded({ smooth: false });
-          // GSAP stagger for freshly appeared direction chips
-          if (typeof gsap !== 'undefined') {
-            var bubble = document.querySelector('.message:last-child .message-bubble');
-            if (bubble) {
-              var chips = bubble.querySelectorAll('.dir-choice-chip:not(.disabled):not(.locked)');
-              if (chips.length) {
-                gsap.from(chips, { opacity: 0, y: 6, scale: 0.96, stagger: 0.05, duration: 0.28, ease: 'back.out(1.1)' });
-              }
-            }
-          }
         }
       }
 
@@ -5287,24 +5111,6 @@ function handleMessageAction(action, msgIndex) {
         if (e.name === 'AbortError') {
           placeholderMsg.content += '\n\n[已停止]';
           placeholderMsg._showActions = false;
-          // Run fallback direction generation so user still gets buttons
-          var prevState = createSceneState(conv.sceneState);
-          ensureStoryDirections(placeholderMsg, conv, fullContent, prevState).then(function() {
-            delete placeholderMsg._sceneFinalizing;
-            delete placeholderMsg._pendingDirections;
-            placeholderMsg._streaming = false;
-            placeholderMsg._showActions = !!(placeholderMsg.sceneSnapshot && placeholderMsg.sceneSnapshot.directions && parseDirectionOptions(placeholderMsg.sceneSnapshot.directions).length >= 4);
-            if (state.currentConversationId === turnConvId) {
-              renderMessages();
-              scrollToBottomIfNeeded({ smooth: false });
-            }
-          }).catch(function() {
-            delete placeholderMsg._sceneFinalizing;
-            delete placeholderMsg._pendingDirections;
-            placeholderMsg._streaming = false;
-            if (state.currentConversationId === turnConvId) renderMessages();
-          });
-          // Still render immediately with [已停止] while fallback runs
           if (state.currentConversationId === turnConvId) {
             renderMessages();
             showToast(ERR_MSGS.userAborted, 'info');
@@ -5361,7 +5167,6 @@ function handleMessageAction(action, msgIndex) {
       }
       if (placeholderMsg) {
         delete placeholderMsg._sceneFinalizing;
-        delete placeholderMsg._pendingDirections;
         placeholderMsg._streaming = false;
       }
       // Only render/scroll/toast if still on this conversation
@@ -5421,11 +5226,6 @@ function handleMessageAction(action, msgIndex) {
       systemPrompt = (systemPrompt || '') + '\n' + writingRules.join('\n');
     }
 
-    // Inject memory notes into system prompt
-    if (conv.memoryNotes && conv.memoryNotes.trim()) {
-      systemPrompt = (systemPrompt ? systemPrompt + '\n\n' : '') + '[用户补充的记忆/设定]\n' + conv.memoryNotes.trim();
-    }
-
     if (systemPrompt) {
       var sysMsg = { role: 'system', content: systemPrompt };
       if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
@@ -5434,24 +5234,6 @@ function handleMessageAction(action, msgIndex) {
 
     // Conversation history
     messages.push.apply(messages, buildConversationRequestMessages(conv, supportsCaching));
-
-    // Token-budget trim: keep conversations within provider context window
-    var caps = PROVIDER_CAPS[conv.provider] || PROVIDER_CAPS.openai;
-    var contextWindow = caps.contextWindow || 128000;
-    var estimatedTokens = 0;
-    for (var mi = 0; mi < messages.length; mi++) {
-      estimatedTokens += Math.ceil((messages[mi].content || '').length / 3);
-    }
-    var safeBudget = Math.floor(contextWindow * 0.75);
-    while (estimatedTokens > safeBudget) {
-      var cut = -1;
-      for (var mi = 0; mi < messages.length; mi++) {
-        if (messages[mi].role !== 'system') { cut = mi; break; }
-      }
-      if (cut < 0) break;
-      estimatedTokens -= Math.ceil((messages[cut].content || '').length / 3);
-      messages.splice(cut, 1);
-    }
 
     // Reply character count constraint for world story (single pass)
     // Append to last user message for stronger adherence (vs. system message)
@@ -5850,10 +5632,6 @@ function handleMessageAction(action, msgIndex) {
     }
 
     if (fullSystemPrompt) {
-      // Inject memory notes
-      if (conv.memoryNotes && conv.memoryNotes.trim()) {
-        fullSystemPrompt += '\n\n[用户补充的记忆/设定]\n' + conv.memoryNotes.trim();
-      }
       const sysMsg = { role: 'system', content: fullSystemPrompt };
       if (supportsCaching) sysMsg.cache_control = { type: 'ephemeral' };
       messages.push(sysMsg);
@@ -6308,16 +6086,20 @@ function handleMessageAction(action, msgIndex) {
       if (!isCurrentTurn()) return;
       if (renderScheduled) return;
 
-      // Always update bubble — user can read while content streams in
+      // Detached mode: user scrolled away — accumulate content in memory only
       if (state.ui.detachedDuringStreaming) {
+        state.ui.detachedContentDirty = true;
         updateScrollToBottomButton(true);
+        return;
       }
 
       renderScheduled = true;
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
+          // Re-check current turn inside the async callback
           if (!isCurrentTurn()) { renderScheduled = false; return; }
+          // Light touch: only update last bubble during streaming
           updateLastBubble(assistantMsg);
           if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
@@ -6417,11 +6199,18 @@ function handleMessageAction(action, msgIndex) {
 
   function updateSendUI() {
     if (state.isStreaming) {
-      dom.btnSend.style.display = 'none';
-      dom.btnStop.style.display = 'flex';
+      dom.btnSend.classList.add('hidden-streaming');
+      dom.btnStop.classList.remove('hidden-streaming');
+      dom.inputMessage.disabled = true;
+      dom.btnSend.classList.remove('has-text');
     } else {
-      dom.btnSend.style.display = 'flex';
-      dom.btnStop.style.display = 'none';
+      dom.btnSend.classList.remove('hidden-streaming');
+      dom.btnStop.classList.add('hidden-streaming');
+      dom.inputMessage.disabled = false;
+      // Restore has-text if input has content
+      if (dom.inputMessage.value.trim().length > 0) {
+        dom.btnSend.classList.add('has-text');
+      }
     }
   }
 
@@ -6740,12 +6529,6 @@ function handleMessageAction(action, msgIndex) {
         debouncedSave();
       }
     });
-    if (dom.selectFontFamily) {
-      dom.selectFontFamily.value = state.fontFamily || 'system';
-      dom.selectFontFamily.addEventListener('change', function() {
-        applyFontFamily(dom.selectFontFamily.value);
-      });
-    }
     dom.selectToolCallLimit.addEventListener('change', () => {
       updateToolWarning();
       const conv = getCurrentConv();
@@ -6774,34 +6557,9 @@ function handleMessageAction(action, msgIndex) {
     dom.btnPickBgImage.addEventListener('click', () => dom.inputBgFile.click());
     dom.btnRemoveBgImage.addEventListener('click', () => removeBgImage());
 
-    // Scene panel — with GSAP spring on expand
-    dom.scenePanelToggle.addEventListener('click', function() {
-      var panel = dom.scenePanel;
-      var isCollapsing = !panel.classList.contains('collapsed');
-      panel.classList.toggle('collapsed');
-
-      // GSAP spring animation on expand
-      if (!isCollapsing && typeof gsap !== 'undefined') {
-        var body = panel.querySelector('.scene-panel-body');
-        if (body) {
-          gsap.fromTo(body,
-            { opacity: 0, y: -6, scale: 0.98 },
-            { opacity: 1, y: 0, scale: 1, duration: 0.32, ease: 'power3.out' }
-          );
-        }
-        // Stagger inner cards/chips
-        var cards = panel.querySelectorAll('.scene-status-card, .npc-card, .char-card, .dir-choice-chip, .scene-chip');
-        if (cards.length) {
-          gsap.from(cards, {
-            opacity: 0,
-            y: 8,
-            scale: 0.97,
-            stagger: 0.05,
-            duration: 0.28,
-            ease: 'back.out(1.1)'
-          });
-        }
-      }
+    // Scene panel
+    dom.scenePanelToggle.addEventListener('click', () => {
+      dom.scenePanel.classList.toggle('collapsed');
     });
     if (dom.sceneMental) dom.sceneMental.addEventListener('input', () => {
       const conv = getCurrentConv();
@@ -6930,6 +6688,68 @@ function handleMessageAction(action, msgIndex) {
       var card = buildCharacterCard(conv);
       if (!card) { showToast('角色卡为空，请先填写', 'warning'); return; }
       copyTextToClipboard(card, '角色卡已复制到剪贴板');
+    });
+
+    // Generate opening prompt button (hidden from UI, guarded)
+    if (dom.btnGenOpeningPrompt) dom.btnGenOpeningPrompt.addEventListener('click', function() { if(!checkAge18Plus()) return;
+      var conv = getCurrentConv();
+      if (!conv) return;
+      var sm = conv.storyMode;
+      var w = (sm && sm.world) ? sm.world : (conv.sceneWorld || {});
+      var ch = (sm && sm.character) ? sm.character : (conv.sceneCharacter || {});
+      var ss = (sm && sm.sceneState) ? sm.sceneState : (conv.sceneState || {});
+      var parts = [];
+      parts.push('请根据以下设定续写故事。');
+      if (w.openingName) parts.push('开局：' + w.openingName);
+      if (w.setting) parts.push('世界设定：' + w.setting);
+      if (ch.name) {
+        var charDesc = '主角：' + ch.name;
+        if (ch.age) charDesc += '，' + ch.age + '岁';
+        if (ch.role) charDesc += '，' + ch.role;
+        if (ch.species && ch.species !== '人类') charDesc += '，' + ch.species;
+        parts.push(charDesc);
+      }
+      if (ch.appearance) parts.push('外貌：' + ch.appearance);
+      if (ch.traits) parts.push('性格：' + ch.traits);
+      if (ch.stats) parts.push('状态属性：' + ch.stats);
+      if (ch.currentGoal) parts.push('当前目标：' + ch.currentGoal);
+      if (w.mood) parts.push('基调：' + w.mood);
+      if (ss.mental) parts.push('精神状态：' + ss.mental);
+      if (ss.physical) parts.push('身体细节：' + ss.physical);
+      if (ss.plot) parts.push('当前剧情：' + ss.plot);
+      // Phase 3: status bar
+      var st = (sm && sm.status) ? sm.status : conv.sceneStatus;
+      if (st) {
+        var stParts = [];
+        if (st.health) stParts.push('体力/生命：' + st.health);
+        if (st.stamina) stParts.push('精力：' + st.stamina);
+        if (st.composure) stParts.push('冷静/精神：' + st.composure);
+        if (st.focus) stParts.push('专注：' + st.focus);
+        if (st.currentObjective) stParts.push('当前目标：' + st.currentObjective);
+        if (st.constraints) stParts.push('限制/提醒：' + st.constraints);
+        if (stParts.length) parts.push('主角状态：\n' + stParts.join('\n'));
+      }
+      // Phase 3: NPCs
+      var npcs = (sm && sm.npcs) ? sm.npcs : conv.sceneNpcs;
+      if (npcs && npcs.length) {
+        var npcLines = [];
+        for (var ni = 0; ni < npcs.length; ni++) {
+          var n = npcs[ni];
+          if (!n.name) continue;
+          var line = n.name;
+          if (n.role) line += '（' + n.role + '）';
+          if (n.status) line += ' — ' + n.status;
+          if (n.notes) line += ' [' + n.notes + ']';
+          npcLines.push(line);
+        }
+        if (npcLines.length) parts.push('NPC：\n' + npcLines.join('\n'));
+      }
+      parts.push('请用生动细致的文笔，基于以上设定开始续写。注意保持人物一致性，推进剧情发展。');
+      dom.inputMessage.value = parts.join('\n');
+      dom.inputMessage.style.height = 'auto';
+      dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
+      dom.inputMessage.focus();
+      showToast('开场提示词已生成到输入框，可修改后发送', 'info');
     });
 
     // Status bar card toggle
@@ -7067,17 +6887,8 @@ function handleMessageAction(action, msgIndex) {
       saveToStorage();
     });
 
-    // Send / Stop — with GSAP press spring feedback
-    dom.btnSend.addEventListener('click', function() { sendMessage(); });
-    dom.btnSend.addEventListener('pointerdown', function() {
-      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 0.92, duration: 0.1, ease: 'power2.in' });
-    });
-    dom.btnSend.addEventListener('pointerup', function() {
-      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 1, duration: 0.35, ease: 'elastic.out(1, 0.4)' });
-    });
-    dom.btnSend.addEventListener('pointerleave', function() {
-      if (typeof gsap !== 'undefined') gsap.to(dom.btnSend, { scale: 1, duration: 0.25, ease: 'power2.out' });
-    });
+    // Send / Stop
+    dom.btnSend.addEventListener('click', () => sendMessage());
     dom.btnStop.addEventListener('click', () => stopCurrentRequest());
     dom.inputMessage.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -7091,15 +6902,25 @@ function handleMessageAction(action, msgIndex) {
       dom.inputMessage.style.height = 'auto';
       dom.inputMessage.style.height = Math.min(dom.inputMessage.scrollHeight, 120) + 'px';
       updateBottomBarHeight();
+      // Toggle send button breathe glow when input has text
+      var hasText = dom.inputMessage.value.trim().length > 0;
+      dom.btnSend.classList.toggle('has-text', hasText && !state.isStreaming);
     });
 
     // Smart scroll tracking — auto-follow unless user manually scrolls away
+    function updateTopBarScrollState() {
+      var el = getScrollContainer();
+      if (!el || !dom.topBar) return;
+      dom.topBar.classList.toggle('scrolled', el.scrollTop > 20);
+    }
+
     var scrollTick = false;
     var onScrollEvent = function() {
       if (!scrollTick) {
         scrollTick = true;
         requestAnimationFrame(function() {
           onUserScrollIntent();
+          updateTopBarScrollState();
           scrollTick = false;
         });
       }
@@ -7187,31 +7008,6 @@ function handleMessageAction(action, msgIndex) {
     $('#btnQuickCopy').addEventListener('click', () => copyLastAssistantReply());
     $('#btnQuickPrecise').addEventListener('click', () => togglePreciseMode());
     $('#btnQuickExport').addEventListener('click', () => exportConversationMarkdown());
-    if (dom.btnQuickMemory) dom.btnQuickMemory.addEventListener('click', function() {
-      var panel = dom.memoryPanel;
-      var isOpen = panel.classList.contains('open');
-      if (isOpen) {
-        panel.classList.remove('open');
-      } else {
-        var conv = getCurrentConv();
-        if (conv && dom.memoryInput) dom.memoryInput.value = conv.memoryNotes || '';
-        panel.classList.add('open');
-        setTimeout(function() { if (dom.memoryInput) dom.memoryInput.focus(); }, 150);
-      }
-    });
-    if (dom.btnMemorySave) dom.btnMemorySave.addEventListener('click', function() {
-      var conv = getCurrentConv();
-      if (!conv) return;
-      var text = (dom.memoryInput.value || '').trim();
-      conv.memoryNotes = text;
-      dom.memoryPanel.classList.remove('open');
-      saveToStorage();
-      if (text) showToast('记忆已更新 — AI 将在下一轮看到', 'info');
-      else showToast('记忆已清空', 'info');
-    });
-    if (dom.btnMemoryClear) dom.btnMemoryClear.addEventListener('click', function() {
-      if (dom.memoryInput) dom.memoryInput.value = '';
-    });
 
     // NPC image upload
     if (dom.sceneNpcGrid) {
@@ -7267,6 +7063,7 @@ function handleMessageAction(action, msgIndex) {
       this.value='';
     });
 if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSceneHints());
+    if (dom.btnFinishSetup) dom.btnFinishSetup.addEventListener('click', () => showSetupConfirm());
     if (dom.btnStartWorld) dom.btnStartWorld.addEventListener('click', () => startWorldMode());
 
     // Export / Import / Clear all
@@ -7329,7 +7126,6 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
   function init() {
     cacheDom();
     loadFromStorage();
-    applyFontFamily();
     setupViewportInsets();
 
     // ResizeObserver: keep --bottom-bar-h in sync with actual bottom bar height
@@ -7347,13 +7143,6 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
       window.matchMedia('(display-mode: minimal-ui)').matches;
     if (isStandalone) {
       document.documentElement.classList.add('is-standalone');
-    }
-
-    // Register service worker explicitly for controlled lifecycle in PWA mode.
-    // Safari standalone may not auto-register from manifest, leading to stale
-    // cached assets and unpredictable SW timing on cold start.
-    if (isStandalone && navigator.serviceWorker && !navigator.serviceWorker.controller) {
-      navigator.serviceWorker.register('/omnichat/sw.js', { scope: '/omnichat/' });
     }
 
     // Ensure at least one conversation exists
@@ -7402,12 +7191,9 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
 
     // Splash screen - dismiss after animation
     const splashDismissed = sessionStorage.getItem('omnichat_splash');
-    const onSplashDone = function() {
+    const onSplashDone = () => {
       document.documentElement.classList.remove('is-splashing');
       updateBottomBarHeight();
-      // Animate welcome steps with GSAP stagger
-      animeWelcomeSteps();
-      animeWelcomeGlow();
     };
     if (splashDismissed) {
       dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
