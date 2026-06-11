@@ -14,6 +14,7 @@
         currentConversationId: state.currentConversationId,
         apiKeys: state.apiKeys,
         models: state.models,
+        activeTheme: state.activeTheme || '',
         chatBackground: state.chatBackground,
         worldStarterEnabled: state.worldStarterEnabled,
         actionPrompts: state.actionPrompts,
@@ -58,6 +59,7 @@
       }
       state.models = data.models || { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] };
       state.chatBackground = data.chatBackground || { type: 'none', value: '', opacity: 35 };
+      state.activeTheme = data.activeTheme || '';
       state.worldStarterEnabled = data.worldStarterEnabled || false;
       state.actionPrompts = data.actionPrompts || { regenerate: '', continue: '', summarize: '', elaborate: '' };
       return true;

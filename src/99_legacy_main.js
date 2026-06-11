@@ -1847,6 +1847,7 @@
   function applyTheme(themeKey) {
     const t = CHARACTER_THEMES[themeKey];
     if (!t) return;
+    state.activeTheme = themeKey;
     const html = document.documentElement;
     html.dataset.theme = themeKey;
     const s = html.style;
@@ -1863,6 +1864,7 @@
     s.setProperty('--theme-user-bubble', t.userBubble);
     s.setProperty('--splash-accent', t.accent);
     s.setProperty('--splash-accent2', t.accentBright);
+    s.setProperty('--splash-tint', t.splashTint);
     if (t.wallpaper) {
       s.setProperty('--splash-wallpaper', 'url(' + t.wallpaper + ')');
       setChatBackground('url', t.wallpaper, t.accent, t.accentBright);
@@ -1871,10 +1873,10 @@
       setChatBackground('gradient', t.gradient, t.accent, t.accentBright);
     }
     saveToStorage();
-    updateBgPresetUI();
   }
 
   function clearTheme() {
+    state.activeTheme = '';
     const html = document.documentElement;
     delete html.dataset.theme;
     const s = html.style;
@@ -1885,7 +1887,7 @@
     s.removeProperty('--theme-top-bar-glass'); s.removeProperty('--theme-top-bar-glass-strong');
     s.removeProperty('--theme-user-bubble');
     s.removeProperty('--splash-accent'); s.removeProperty('--splash-accent2');
-    s.removeProperty('--splash-wallpaper');
+    s.removeProperty('--splash-tint'); s.removeProperty('--splash-wallpaper');
     setChatBackground('none', '');
   }
 
@@ -5000,8 +5002,6 @@ function handleMessageAction(action, msgIndex) {
       const themeKey = btn.dataset.theme;
       if (themeKey === 'none' || !themeKey) {
         clearTheme();
-      } else if (themeKey.startsWith('gh-')) {
-        applyTheme(themeKey);
       } else {
         applyTheme(themeKey);
       }
@@ -5754,6 +5754,10 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
     // Apply chat background
     applyChatBackground();
     updateBgPresetUI();
+    // Restore theme if one was active
+    if (state.activeTheme) {
+      applyTheme(state.activeTheme);
+    }
 
     // Auto-archive stale barely-used conversations
     setTimeout(() => autoArchiveCheck(), 3000);

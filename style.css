@@ -119,8 +119,6 @@ html[data-theme] {
   --scene-accent: var(--theme-accent);
   --scene-accent-bright: var(--theme-accent-bright);
   --scene-accent-dim: var(--theme-accent-soft);
-  transition: --accent 600ms var(--glide), --accent-bright 600ms var(--glide),
-              --hairline 600ms var(--glide), --surface-glass 600ms var(--glide);
 }
 
 /* Themed splash: character wallpaper background */
@@ -425,12 +423,12 @@ html.is-splashing .bottom-bar {
   opacity: 0;
   transition: opacity 800ms var(--glide), background 800ms var(--glide);
 }
-/* Show tint only when --splash-accent is set */
+/* Show tint from theme splashTint */
 html .splash-bg::after {
-  opacity: 0.06;
+  background: var(--splash-tint, transparent);
+  opacity: 1;
 }
-/* No tint when variable is unset */
-html:not([style*="--splash-accent"]) .splash-bg::after {
+html:not([style*="--splash-tint"]) .splash-bg::after {
   opacity: 0;
 }
 
