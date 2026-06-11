@@ -13,7 +13,7 @@ const ORDER = [
   '00_header.js',               // file banner + IIFE open
   '01_constants.js',            // STORAGE_KEY, PROVIDERS, DEFAULTS, ERR_MSGS
   '02_utils.js',                // generateId, nowISO, escapeHtml, debounce
-  '03_storage.js',              // saveToStorage, loadFromStorage, debouncedSave
+  '03_storage.js',              // saveToStorage, loadFromStorage, debouncedSave, saveSecretsAndPrefs, loadSecretsAndPrefs
   '04_migration.js',            // Migration: createStoryMode, repairStoryModeFlags, normalizeConversation, etc.
   '05_providers.js',            // Provider Adapter: getProviderConfig, buildRequestHeaders, parseStreamDelta, etc.
   '06_story_parser.js',         // Story Parser: getSceneLine, parseDirectionOptions, parseSceneChoiceInput, etc.
@@ -41,9 +41,13 @@ for (const file of ORDER) {
 const REQUIRED = [
   'STORAGE_SCHEMA_VERSION',
   'PROVIDERS',
+  'SECRETS_STORAGE_KEY',
+  'PREFS_STORAGE_KEY',
   'saveToStorage',
   'loadFromStorage',
   'debouncedSave',
+  'saveSecretsAndPrefs',
+  'loadSecretsAndPrefs',
   'createStoryMode',
   'repairSceneBlock',
   'repairStoryModeFlags',

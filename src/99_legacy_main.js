@@ -1866,10 +1866,7 @@
     'hot': { name:'雷之律者', game:'崩坏3', wallpaper:'bg/hot.gif', gradient:'', ...themeColors('#a060e0') },
     'hov': { name:'空之律者', game:'崩坏3', wallpaper:'bg/hov.jpg', gradient:'', ...themeColors('#d8b8e8') },
     'sushang': { name:'李素裳', game:'崩坏3', wallpaper:'bg/sushang.jpg', gradient:'', ...themeColors('#80b8d8') },
-    // GitHub presets
-    'gh-raiden': { name:'雷电将军·官方', game:'原神', wallpaper:'bg/gh-raiden.jpg', gradient:'', ...themeColors('#b870f0') },
-    'gh-jade': { name:'群玉阁·官方', game:'原神', wallpaper:'bg/gh-jade.webp', gradient:'', ...themeColors('#c8a860') },
-    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'bg/gh-hsr.jpg', gradient:'', ...themeColors('#8890d8') },
+
 
   };
 

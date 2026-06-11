@@ -3,6 +3,10 @@
   // =========================================================================
 
   const STORAGE_KEY = 'omnichat_data';
+  // Stable independent keys so API keys & user prefs survive build-version
+  // changes, PWA updates, cache clearing, and main-data migration failures.
+  const SECRETS_STORAGE_KEY = 'omnichat_secrets_v1';
+  const PREFS_STORAGE_KEY = 'omnichat_prefs_v1';
   // =========================================================================
   // MIGRATION POLICY (read before changing any data structure)
   //
