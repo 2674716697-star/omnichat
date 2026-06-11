@@ -1817,31 +1817,35 @@
   }
 
   const CHARACTER_THEMES = {
-    'sakura-original': { name:'桜', game:'原创', wallpaper:'', gradient:'linear-gradient(150deg,#fadadd 0%,#ebb5b8 25%,#d8a8c8 55%,#b8c8e8 80%,#90a8d8 100%)', ...themeColors('#e8b0c0') },
+    'sakura-original': { name:'桜', game:'原创', wallpaper:'https://raw.githubusercontent.com/FrenzyExists/wallpapers/main/Cherry%20Blossoms/376365.jpg', gradient:'linear-gradient(150deg,#fadadd 0%,#ebb5b8 25%,#d8a8c8 55%,#b8c8e8 80%,#90a8d8 100%)', ...themeColors('#e8b0c0') },
     'yozora': { name:'夜空', game:'原创', wallpaper:'', gradient:'linear-gradient(160deg,#0a0e1e 0%,#111d3e 30%,#1a2a5e 55%,#2d1a50 80%,#0f0f20 100%)', ...themeColors('#8098c8') },
+    // 原神
     'raiden': { name:'雷电将军', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/character/%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%BF%83%E6%B5%B7.jpg', gradient:'', ...themeColors('#b870f0') },
-    'eula': { name:'优菈', game:'原神', wallpaper:'', gradient:'linear-gradient(150deg,#d8e8f8 0%,#a0c8e8 25%,#6888c0 50%,#284070 80%,#142038 100%)', ...themeColors('#88c0e8') },
-    'firefly': { name:'流萤', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(155deg,#a0e0c8 0%,#50a080 25%,#1a5040 55%,#0d2820 80%,#081512 100%)', ...themeColors('#70d0a8') },
-    'acheron': { name:'黄泉', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#1a1028 0%,#2d1848 30%,#3a2080 50%,#1a1035 75%,#0d0a18 100%)', ...themeColors('#c87080') },
-    'jingliu': { name:'镜流', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#e0e8f8 0%,#c0d0f0 25%,#90a8d8 50%,#385088 80%,#182840 100%)', ...themeColors('#a0c8f0') },
-    'yaoguang': { name:'爻光', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#f0e8c8 0%,#e0c878 25%,#c09848 50%,#504028 80%,#282018 100%)', ...themeColors('#e0b860') },
-    'xilian': { name:'昔涟', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#c8e0f0 0%,#90c0d8 25%,#5890b8 50%,#284868 80%,#142838 100%)', ...themeColors('#80c0e0') },
-    'dahlia': { name:'大丽花', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#3a1018 0%,#5a1828 25%,#802040 50%,#2a1020 75%,#150d18 100%)', ...themeColors('#e85070') },
-    'kafka': { name:'卡芙卡', game:'星穹铁道', wallpaper:'', gradient:'linear-gradient(150deg,#2a1025 0%,#4a1838 25%,#702050 50%,#2a1535 75%,#120d1a 100%)', ...themeColors('#e068a0') },
+    'eula': { name:'优菈', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/activity/1.5%E4%BC%98%E8%8F%88KV.jpg', gradient:'', ...themeColors('#88c0e8') },
+    // 星穹铁道
+    'firefly': { name:'流萤', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1315122.png', gradient:'', ...themeColors('#70d0a8') },
+    'acheron': { name:'黄泉', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1313143.jpg', gradient:'', ...themeColors('#c87080') },
+    'jingliu': { name:'镜流', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1315123.png', gradient:'', ...themeColors('#a0c8f0') },
+    'yaoguang': { name:'爻光', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/7tazx8g1ez8b1.jpg', gradient:'', ...themeColors('#e0b860') },
+    'xilian': { name:'昔涟', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/qb5eog7tu0391.png', gradient:'', ...themeColors('#80c0e0') },
+    'dahlia': { name:'大丽花', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/d78bpzjioe8b1.png', gradient:'', ...themeColors('#e85070') },
+    'kafka': { name:'卡芙卡', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/td5mw6dw3h6b1.png', gradient:'', ...themeColors('#e068a0') },
+    // 绝区零
     'yixuan': { name:'仪玄', game:'绝区零', wallpaper:'', gradient:'linear-gradient(150deg,#0a1820 0%,#102838 25%,#184860 55%,#0d2835 80%,#081520 100%)', ...themeColors('#40b8c8') },
     'miyabi': { name:'星见雅', game:'绝区零', wallpaper:'', gradient:'linear-gradient(150deg,#0f1028 0%,#181840 25%,#202060 50%,#181838 75%,#0d0d20 100%)', ...themeColors('#8890d8') },
     'yeshunguang': { name:'叶舜光', game:'绝区零', wallpaper:'', gradient:'linear-gradient(150deg,#201810 0%,#382818 25%,#504828 50%,#1a1510 75%,#0d0a08 100%)', ...themeColors('#c8a850') },
-    'elysia': { name:'爱莉希雅', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#f8e0e8 0%,#e8b8c8 25%,#d890a8 50%,#684058 80%,#2a1828 100%)', ...themeColors('#f0a0b8') },
-    'rita': { name:'丽塔', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#2a1520 0%,#4a1a30 25%,#6a2040 50%,#2a1628 75%,#150d18 100%)', ...themeColors('#e84868') },
-    'fuhua': { name:'符华', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#f0d8c0 0%,#e0a868 25%,#c87040 50%,#503028 80%,#281820 100%)', ...themeColors('#f0a060') },
-    'sakura-b3': { name:'八重樱', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#f8d8e0 0%,#e8b0c0 25%,#d888a0 50%,#684058 80%,#2a1828 100%)', ...themeColors('#f0a8b8') },
-    'hot': { name:'雷之律者', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#1a0d30 0%,#2d1470 30%,#4a2090 55%,#1a1035 80%,#0a0818 100%)', ...themeColors('#a060e0') },
-    'hov': { name:'空之律者', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#e8d8f8 0%,#d0b8e8 25%,#a878c8 50%,#483058 80%,#1a1528 100%)', ...themeColors('#d8b8e8') },
-    'sushang': { name:'李素裳', game:'崩坏3', wallpaper:'', gradient:'linear-gradient(150deg,#c8e0f0 0%,#90c0d8 25%,#5898b8 50%,#284868 80%,#142838 100%)', ...themeColors('#80b8d8') },
-    // GitHub presets (no CSS gradient, image-only)
+    // 崩坏3
+    'elysia': { name:'爱莉希雅', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021080419091567049.png', gradient:'', ...themeColors('#f0a0b8') },
+    'rita': { name:'丽塔', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2020041019014847737.png', gradient:'', ...themeColors('#e84868') },
+    'fuhua': { name:'符华', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021032415584151925.png', gradient:'', ...themeColors('#f0a060') },
+    'sakura-b3': { name:'八重樱', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2020052518223387449.png', gradient:'', ...themeColors('#f0a8b8') },
+    'hot': { name:'雷之律者', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021092017230696219.png', gradient:'', ...themeColors('#a060e0') },
+    'hov': { name:'空之律者', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021020310183682092.png', gradient:'', ...themeColors('#d8b8e8') },
+    'sushang': { name:'李素裳', game:'崩坏3', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021101519555911370.png', gradient:'', ...themeColors('#80b8d8') },
+    // GitHub presets
     'gh-raiden': { name:'雷电将军·官方', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/character/%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%BF%83%E6%B5%B7.jpg', gradient:'', ...themeColors('#b870f0') },
     'gh-jade': { name:'群玉阁', game:'原神', wallpaper:'https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/scenery/%E7%BE%A4%E7%8E%89%E9%98%81.png', gradient:'', ...themeColors('#c8a860') },
-    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1313143.jpg', gradient:'', ...themeColors('#8890d8') },
+    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/FxDc7gLWcAMdzj2.jpg', gradient:'', ...themeColors('#8890d8') },
   };
 
   function applyTheme(themeKey) {
