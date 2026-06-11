@@ -1985,7 +1985,7 @@
   }
 
   function setupBgPresetLabels() {
-    // Run once: wrap each bg-preset button with a label container
+    // Run once: wrap each bg-preset button with a label container + swap to thumbnails
     if (document.getElementById('bg-presets-labeled')) return;
     var presets = dom.bgPresets.querySelectorAll('.bg-preset');
     presets.forEach(function(btn) {
@@ -1997,6 +1997,11 @@
       label.className = 'bg-preset-label';
       label.textContent = btn.getAttribute('aria-label') || '';
       wrap.appendChild(label);
+      // Swap full-res background to thumbnail for fast loading
+      var bg = btn.style.backgroundImage;
+      if (bg && bg.indexOf('url(bg/') === 0) {
+        btn.style.backgroundImage = bg.replace('url(bg/', 'url(bg/thumb/');
+      }
     });
     dom.bgPresets.id = 'bg-presets-labeled';
   }

@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq9gxi8u">
+  <meta name="build-version" content="mq9hy6sq">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -3836,6 +3836,10 @@ var label = document.createElement('span');
 label.className = 'bg-preset-label';
 label.textContent = btn.getAttribute('aria-label') || '';
 wrap.appendChild(label);
+var bg = btn.style.backgroundImage;
+if (bg && bg.indexOf('url(bg/') === 0) {
+btn.style.backgroundImage = bg.replace('url(bg/', 'url(bg/thumb/');
+}
 });
 dom.bgPresets.id = 'bg-presets-labeled';
 }
