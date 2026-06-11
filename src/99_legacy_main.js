@@ -1868,8 +1868,8 @@
     'sushang': { name:'李素裳', game:'崩坏3', wallpaper:'bg/sushang.jpg', gradient:'', ...themeColors('#80b8d8') },
     // GitHub presets
     'gh-raiden': { name:'雷电将军·官方', game:'原神', wallpaper:'bg/gh-raiden.jpg', gradient:'', ...themeColors('#b870f0') },
-    'gh-jade': { name:'群玉阁', game:'原神', wallpaper:'bg/gh-jade.webp', gradient:'', ...themeColors('#c8a860') },
-    'gh-hsr': { name:'星穹铁道·官方', game:'星穹铁道', wallpaper:'bg/gh-hsr.jpg', gradient:'', ...themeColors('#8890d8') },
+
+
   };
 
   function applyTheme(themeKey) {
@@ -5999,18 +5999,27 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       applyTheme(state.activeTheme);
     }
 
-    // Pre-fetch all bg images in background after page loads
-    setTimeout(() => {
-      const preloaded = new Set();
-      Object.values(CHARACTER_THEMES).forEach(t => {
-        if (t.wallpaper && !preloaded.has(t.wallpaper)) {
-          preloaded.add(t.wallpaper);
+    // Warm up current active theme wallpaper only — never prefetch all wallpapers.
+    // Defer to idle callback or setTimeout to avoid blocking interaction.
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => {
+        const t2 = CHARACTER_THEMES[state.activeTheme];
+        if (t2 && t2.wallpaper) {
           const link = document.createElement('link');
-          link.rel = 'prefetch'; link.href = t.wallpaper; link.as = 'image';
+          link.rel = 'prefetch'; link.href = t2.wallpaper; link.as = 'image';
           document.head.appendChild(link);
         }
-      });
-    }, 2000);
+      }, { timeout: 3000 });
+    } else {
+      setTimeout(() => {
+        const t2 = CHARACTER_THEMES[state.activeTheme];
+        if (t2 && t2.wallpaper) {
+          const link = document.createElement('link');
+          link.rel = 'prefetch'; link.href = t2.wallpaper; link.as = 'image';
+          document.head.appendChild(link);
+        }
+      }, 3000);
+    }
 
     // Auto-archive stale barely-used conversations
     setTimeout(() => autoArchiveCheck(), 3000);
