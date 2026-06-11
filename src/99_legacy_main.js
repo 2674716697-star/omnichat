@@ -1805,24 +1805,39 @@
       overlay.style.backgroundSize = '';
       overlay.style.backgroundPosition = '';
       document.documentElement.classList.remove('has-custom-bg');
+      document.documentElement.style.removeProperty('--splash-accent');
+      document.documentElement.style.removeProperty('--splash-accent2');
     } else if (bg.type === 'gradient') {
       overlay.style.backgroundImage = bg.value;
       overlay.style.display = '';
       overlay.style.backgroundSize = '';
       overlay.style.backgroundPosition = '';
       document.documentElement.classList.remove('has-custom-bg');
+      applyBgSplashTheme(bg);
     } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
       overlay.style.backgroundImage = 'url(' + bg.value + ')';
       overlay.style.backgroundSize = 'cover';
       overlay.style.backgroundPosition = 'center';
       overlay.style.display = '';
       document.documentElement.classList.add('has-custom-bg');
+      applyBgSplashTheme(bg);
     }
   }
 
-  function setChatBackground(type, value) {
+  function applyBgSplashTheme(bg) {
+    var accent = bg.accent || '';
+    var accent2 = bg.accent2 || '';
+    if (accent) document.documentElement.style.setProperty('--splash-accent', accent);
+    else document.documentElement.style.removeProperty('--splash-accent');
+    if (accent2) document.documentElement.style.setProperty('--splash-accent2', accent2);
+    else document.documentElement.style.removeProperty('--splash-accent2');
+  }
+
+  function setChatBackground(type, value, accent, accent2) {
     state.chatBackground.type = type;
     state.chatBackground.value = value || '';
+    state.chatBackground.accent = accent || '';
+    state.chatBackground.accent2 = accent2 || '';
     applyChatBackground();
     saveToStorage();
     updateBgPresetUI();
@@ -4897,7 +4912,9 @@ function handleMessageAction(action, msgIndex) {
         if (url) setChatBackground('url', url);
       } else if (bg.startsWith('gradient-')) {
         const style = getComputedStyle(btn);
-        setChatBackground('gradient', style.backgroundImage || style.background);
+        const accent = style.getPropertyValue('--accent').trim();
+        const glow = style.getPropertyValue('--glow').trim();
+        setChatBackground('gradient', style.backgroundImage || style.background, accent, glow);
       }
     });
     // GitHub URL apply button
