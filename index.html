@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq9dqsbb">
+  <meta name="build-version" content="mq9eplnb">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -237,75 +237,6 @@
         <div class="setting-group">
           <label class="setting-label">自定义模型名（可选）</label>
           <input type="text" class="input" id="inputCustomModel" placeholder="留空使用上方选择的模型">
-        </div>
-
-        <!-- Chat Background -->
-        <div class="setting-group">
-          <label class="setting-label">聊天背景</label>
-          <div class="bg-presets" id="bgPresets">
-            <!-- None -->
-            <button class="bg-preset bg-preset-none active" data-theme="none" aria-label="无背景"></button>
-            <!-- 原神: 雷电将军 -->
-            <button class="bg-preset" data-theme="raiden" data-border="raiden" style="--accent:#b870f0;--glow:rgba(184,112,240,0.35);background:linear-gradient(150deg,#1a1030 0%,#2d1560 30%,#1e1070 55%,#0d0a2a 85%,#0a0820 100%)" aria-label="雷电将军"></button>
-            <!-- 原神: 优菈 -->
-            <button class="bg-preset" data-theme="eula" data-border="eula" style="--accent:#88c0e8;--glow:rgba(136,192,232,0.3);background-image:url(bg/eula.gif);background-size:cover" aria-label="优菈"></button>
-            <!-- 星穹铁道: 流萤 -->
-            <button class="bg-preset" data-theme="firefly" data-border="firefly" style="--accent:#70d0a8;--glow:rgba(112,208,168,0.35);background-image:url(bg/firefly.jpg);background-size:cover" aria-label="流萤"></button>
-            <!-- 星穹铁道: 黄泉 -->
-            <button class="bg-preset" data-theme="acheron" data-border="acheron" style="--accent:#c87080;--glow:rgba(200,112,128,0.35);background-image:url(bg/acheron.gif);background-size:cover" aria-label="黄泉"></button>
-            <!-- 星穹铁道: 镜流 -->
-            <button class="bg-preset" data-theme="jingliu" data-border="jingliu" style="--accent:#a0c8f0;--glow:rgba(160,200,240,0.3);background:linear-gradient(150deg,#e0e8f8 0%,#c0d0f0 25%,#90a8d8 50%,#385088 80%,#182840 100%),url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1315123.png);background-size:cover" aria-label="镜流"></button>
-            <!-- 星穹铁道: 爻光 -->
-            <button class="bg-preset" data-theme="yaoguang" data-border="yaoguang" style="--accent:#e0b860;--glow:rgba(224,184,96,0.35);background:linear-gradient(150deg,#f0e8c8 0%,#e0c878 25%,#c09848 50%,#504028 80%,#282018 100%),url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/7tazx8g1ez8b1.jpg);background-size:cover" aria-label="爻光"></button>
-            <!-- 星穹铁道: 昔涟 -->
-            <button class="bg-preset" data-theme="xilian" data-border="xilian" style="--accent:#80c0e0;--glow:rgba(128,192,224,0.3);background:linear-gradient(150deg,#c8e0f0 0%,#90c0d8 25%,#5890b8 50%,#284868 80%,#142838 100%),url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/qb5eog7tu0391.png);background-size:cover" aria-label="昔涟"></button>
-            <!-- 星穹铁道: 大丽花 -->
-            <button class="bg-preset" data-theme="dahlia" data-border="dahlia" style="--accent:#e85070;--glow:rgba(232,80,112,0.4);background:linear-gradient(150deg,#3a1018 0%,#5a1828 25%,#802040 50%,#2a1020 75%,#150d18 100%),url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/d78bpzjioe8b1.png);background-size:cover" aria-label="大丽花"></button>
-            <!-- 星穹铁道: 卡芙卡 -->
-            <button class="bg-preset" data-theme="kafka" data-border="kafka" style="--accent:#e068a0;--glow:rgba(224,104,160,0.35);background:linear-gradient(150deg,#2a1025 0%,#4a1838 25%,#702050 50%,#2a1535 75%,#120d1a 100%),url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/td5mw6dw3h6b1.png);background-size:cover" aria-label="卡芙卡"></button>
-            <!-- 绝区零: 仪玄 -->
-            <button class="bg-preset" data-theme="yixuan" data-border="yixuan" style="--accent:#40b8c8;--glow:rgba(64,184,200,0.3);background:linear-gradient(150deg,#0a1820 0%,#102838 25%,#184860 55%,#0d2835 80%,#081520 100%)" aria-label="仪玄"></button>
-            <!-- 绝区零: 星见雅 -->
-            <button class="bg-preset" data-theme="miyabi" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background:linear-gradient(150deg,#0f1028 0%,#181840 25%,#202060 50%,#181838 75%,#0d0d20 100%)" aria-label="星见雅"></button>
-            <!-- 绝区零: 叶舜光 -->
-            <button class="bg-preset" data-theme="yeshunguang" data-border="yeshunguang" style="--accent:#c8a850;--glow:rgba(200,168,80,0.3);background:linear-gradient(150deg,#201810 0%,#382818 25%,#504828 50%,#1a1510 75%,#0d0a08 100%)" aria-label="叶舜光"></button>
-            <!-- 崩坏3: 爱莉希雅 -->
-            <button class="bg-preset" data-theme="elysia" data-border="elysia" style="--accent:#f0a0b8;--glow:rgba(240,160,184,0.3);background:linear-gradient(150deg,#f8e0e8 0%,#e8b8c8 25%,#d890a8 50%,#684058 80%,#2a1828 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021080419091567049.png);background-size:cover" aria-label="爱莉希雅"></button>
-            <!-- 崩坏3: 丽塔 -->
-            <button class="bg-preset" data-theme="rita" data-border="rita" style="--accent:#e84868;--glow:rgba(232,72,104,0.4);background:linear-gradient(150deg,#2a1520 0%,#4a1a30 25%,#6a2040 50%,#2a1628 75%,#150d18 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2020041019014847737.png);background-size:cover" aria-label="丽塔"></button>
-            <!-- 崩坏3: 符华 -->
-            <button class="bg-preset" data-theme="fuhua" data-border="fuhua" style="--accent:#f0a060;--glow:rgba(240,160,96,0.35);background:linear-gradient(150deg,#f0d8c0 0%,#e0a868 25%,#c87040 50%,#503028 80%,#281820 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021032415584151925.png);background-size:cover" aria-label="符华"></button>
-            <!-- 崩坏3: 八重樱 -->
-            <button class="bg-preset" data-theme="sakura-b3" data-border="sakura-b3" style="--accent:#f0a8b8;--glow:rgba(240,168,184,0.3);background:linear-gradient(150deg,#f8d8e0 0%,#e8b0c0 25%,#d888a0 50%,#684058 80%,#2a1828 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2020052518223387449.png);background-size:cover" aria-label="八重樱"></button>
-            <!-- 崩坏3: 雷之律者 -->
-            <button class="bg-preset" data-theme="hot" data-border="hot" style="--accent:#a060e0;--glow:rgba(160,96,224,0.4);background:linear-gradient(150deg,#1a0d30 0%,#2d1470 30%,#4a2090 55%,#1a1035 80%,#0a0818 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021092017230696219.png);background-size:cover" aria-label="雷之律者"></button>
-            <!-- 崩坏3: 空之律者 -->
-            <button class="bg-preset" data-theme="hov" data-border="hov" style="--accent:#d8b8e8;--glow:rgba(216,184,232,0.3);background:linear-gradient(150deg,#e8d8f8 0%,#d0b8e8 25%,#a878c8 50%,#483058 80%,#1a1528 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021020310183682092.png);background-size:cover" aria-label="空之律者"></button>
-            <!-- 崩坏3: 李素裳 -->
-            <button class="bg-preset" data-theme="sushang" data-border="sushang" style="--accent:#80b8d8;--glow:rgba(128,184,216,0.3);background:linear-gradient(150deg,#c8e0f0 0%,#90c0d8 25%,#5898b8 50%,#284868 80%,#142838 100%),url(https://raw.githubusercontent.com/DreamOfIce/Honkai3Wallpaper/master/offcial/2021101519555911370.png);background-size:cover" aria-label="李素裳"></button>
-            <!-- GitHub -->
-            <button class="bg-preset bg-preset-gh" data-theme="gh-raiden" data-border="raiden" style="--accent:#b870f0;--glow:rgba(184,112,240,0.35);background-image:url(https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/character/%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%BF%83%E6%B5%B7.jpg);background-size:cover" aria-label="雷电将军 (官方)"></button>
-            <button class="bg-preset bg-preset-gh" data-theme="gh-jade" data-border="yaoguang" style="--accent:#c8a860;--glow:rgba(200,168,96,0.3);background-image:url(https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/scenery/%E7%BE%A4%E7%8E%89%E9%98%81.png);background-size:cover" aria-label="群玉阁 (官方)"></button>
-            <button class="bg-preset bg-preset-gh" data-theme="gh-hsr" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background-image:url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1313143.jpg);background-size:cover" aria-label="星穹铁道 (官方)"></button>
-          </div>
-          <!-- GitHub URL Input -->
-          <div class="bg-url-row">
-            <input type="text" class="bg-url-input" id="inputBgUrl" placeholder="粘贴 GitHub raw 图片 URL…">
-            <button class="btn btn-secondary btn-sm" id="btnApplyBgUrl">应用</button>
-          </div>
-          <div class="setting-hint" style="margin-top:3px;font-size:10px;color:var(--text-muted)">可在 <a href="https://github.com/topics/anime-wallpaper" target="_blank" rel="noopener" style="color:var(--accent)">GitHub</a> 找素材，粘贴 raw URL 即可使用</div>
-          <div class="setting-hint" style="margin-top:8px;display:flex;align-items:center;gap:8px">
-            <button class="btn btn-secondary btn-sm" id="btnPickBgImage" style="flex-shrink:0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              从相册选择
-            </button>
-            <button class="btn btn-secondary btn-sm" id="btnRemoveBgImage" style="flex-shrink:0;display:none">移除图片</button>
-            <input type="file" id="inputBgFile" accept="image/*" style="display:none">
-          </div>
-          <div class="setting-group setting-row" style="margin-top:6px">
-            <label class="setting-label" style="font-size:11px">背景透明度</label>
-            <input type="range" class="range" id="inputBgOpacity" min="10" max="70" value="35" style="width:120px">
-          </div>
         </div>
 
         <!-- System Prompt -->
@@ -534,6 +465,82 @@
           </div>
         </div>
 
+      </div>
+    </aside>
+
+    <!-- Theme Drawer -->
+    <div class="drawer-overlay" id="themeOverlay"></div>
+    <aside class="drawer drawer-right" id="themeDrawer">
+      <div class="drawer-header">
+        <h2>主题</h2>
+        <button class="btn-icon" id="btnCloseTheme" aria-label="关闭主题">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="settings-content" id="themeContent">
+        <div class="bg-presets" id="bgPresets">
+          <!-- None -->
+          <button class="bg-preset bg-preset-none active" data-theme="none" aria-label="无背景"></button>
+          <!-- 原神: 雷电将军 -->
+          <button class="bg-preset" data-theme="raiden" data-border="raiden" style="--accent:#b870f0;--glow:rgba(184,112,240,0.35);background:linear-gradient(150deg,#1a1030 0%,#2d1560 30%,#1e1070 55%,#0d0a2a 85%,#0a0820 100%)" aria-label="雷电将军"></button>
+          <!-- 原神: 优菈 -->
+          <button class="bg-preset" data-theme="eula" data-border="eula" style="--accent:#88c0e8;--glow:rgba(136,192,232,0.3);background-image:url(bg/eula.gif);background-size:cover" aria-label="优菈"></button>
+          <!-- 星穹铁道: 流萤 -->
+          <button class="bg-preset" data-theme="firefly" data-border="firefly" style="--accent:#70d0a8;--glow:rgba(112,208,168,0.35);background-image:url(bg/firefly.jpg);background-size:cover" aria-label="流萤"></button>
+          <!-- 星穹铁道: 黄泉 -->
+          <button class="bg-preset" data-theme="acheron" data-border="acheron" style="--accent:#c87080;--glow:rgba(200,112,128,0.35);background-image:url(bg/acheron.gif);background-size:cover" aria-label="黄泉"></button>
+          <!-- 星穹铁道: 镜流 -->
+          <button class="bg-preset" data-theme="jingliu" data-border="jingliu" style="--accent:#a0c8f0;--glow:rgba(160,200,240,0.3);background-image:url(bg/jingliu.jpg);background-size:cover" aria-label="镜流"></button>
+          <!-- 星穹铁道: 爻光 -->
+          <button class="bg-preset" data-theme="yaoguang" data-border="yaoguang" style="--accent:#e0b860;--glow:rgba(224,184,96,0.35);background-image:url(bg/yaoguang.jpg);background-size:cover" aria-label="爻光"></button>
+          <!-- 星穹铁道: 昔涟 -->
+          <button class="bg-preset" data-theme="xilian" data-border="xilian" style="--accent:#80c0e0;--glow:rgba(128,192,224,0.3);background-image:url(bg/xilian.jpg);background-size:cover" aria-label="昔涟"></button>
+          <!-- 星穹铁道: 大丽花 -->
+          <button class="bg-preset" data-theme="dahlia" data-border="dahlia" style="--accent:#e85070;--glow:rgba(232,80,112,0.4);background-image:url(bg/dahlia.jpg);background-size:cover" aria-label="大丽花"></button>
+          <!-- 星穹铁道: 卡芙卡 -->
+          <button class="bg-preset" data-theme="kafka" data-border="kafka" style="--accent:#e068a0;--glow:rgba(224,104,160,0.35);background-image:url(bg/kafka.jpg);background-size:cover" aria-label="卡芙卡"></button>
+          <!-- 绝区零: 仪玄 -->
+          <button class="bg-preset" data-theme="yixuan" data-border="yixuan" style="--accent:#40b8c8;--glow:rgba(64,184,200,0.3);background-image:url(bg/yixuan.jpg);background-size:cover" aria-label="仪玄"></button>
+          <!-- 绝区零: 星见雅 -->
+          <button class="bg-preset" data-theme="miyabi" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background-image:url(bg/miyabi.jpg);background-size:cover" aria-label="星见雅"></button>
+          <!-- 绝区零: 叶舜光 -->
+          <button class="bg-preset" data-theme="yeshunguang" data-border="yeshunguang" style="--accent:#c8a850;--glow:rgba(200,168,80,0.3);background-image:url(bg/yeshunguang.gif);background-size:cover" aria-label="叶舜光"></button>
+          <!-- 崩坏3: 爱莉希雅 -->
+          <button class="bg-preset" data-theme="elysia" data-border="elysia" style="--accent:#f0a0b8;--glow:rgba(240,160,184,0.3);background-image:url(bg/elysia.jpg);background-size:cover" aria-label="爱莉希雅"></button>
+          <!-- 崩坏3: 丽塔 -->
+          <button class="bg-preset" data-theme="rita" data-border="rita" style="--accent:#e84868;--glow:rgba(232,72,104,0.4);background-image:url(bg/rita.jpg);background-size:cover" aria-label="丽塔"></button>
+          <!-- 崩坏3: 符华 -->
+          <button class="bg-preset" data-theme="fuhua" data-border="fuhua" style="--accent:#f0a060;--glow:rgba(240,160,96,0.35);background-image:url(bg/fuhua.jpg);background-size:cover" aria-label="符华"></button>
+          <!-- 崩坏3: 八重樱 -->
+          <button class="bg-preset" data-theme="sakura-b3" data-border="sakura-b3" style="--accent:#f0a8b8;--glow:rgba(240,168,184,0.3);background-image:url(bg/sakura-b3.jpg);background-size:cover" aria-label="八重樱"></button>
+          <!-- 崩坏3: 雷之律者 -->
+          <button class="bg-preset" data-theme="hot" data-border="hot" style="--accent:#a060e0;--glow:rgba(160,96,224,0.4);background-image:url(bg/hot.gif);background-size:cover" aria-label="雷之律者"></button>
+          <!-- 崩坏3: 空之律者 -->
+          <button class="bg-preset" data-theme="hov" data-border="hov" style="--accent:#d8b8e8;--glow:rgba(216,184,232,0.3);background-image:url(bg/hov.jpg);background-size:cover" aria-label="空之律者"></button>
+          <!-- 崩坏3: 李素裳 -->
+          <button class="bg-preset" data-theme="sushang" data-border="sushang" style="--accent:#80b8d8;--glow:rgba(128,184,216,0.3);background-image:url(bg/sushang.jpg);background-size:cover" aria-label="李素裳"></button>
+          <!-- GitHub -->
+          <button class="bg-preset bg-preset-gh" data-theme="gh-raiden" data-border="raiden" style="--accent:#b870f0;--glow:rgba(184,112,240,0.35);background-image:url(https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/character/%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%BF%83%E6%B5%B7.jpg);background-size:cover" aria-label="雷电将军 (官方)"></button>
+          <button class="bg-preset bg-preset-gh" data-theme="gh-jade" data-border="yaoguang" style="--accent:#c8a860;--glow:rgba(200,168,96,0.3);background-image:url(https://raw.githubusercontent.com/DreamOfIce/GenshinWallpaper/master/scenery/%E7%BE%A4%E7%8E%89%E9%98%81.png);background-size:cover" aria-label="群玉阁 (官方)"></button>
+          <button class="bg-preset bg-preset-gh" data-theme="gh-hsr" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background-image:url(https://raw.githubusercontent.com/Zeal-L/Honkai-Star-Rail-Wallpaper/main/Offcial/1313143.jpg);background-size:cover" aria-label="星穹铁道 (官方)"></button>
+        </div>
+        <div class="bg-url-row">
+          <input type="text" class="bg-url-input" id="inputBgUrl" placeholder="粘贴 GitHub raw 图片 URL…">
+          <button class="btn btn-secondary btn-sm" id="btnApplyBgUrl">应用</button>
+        </div>
+        <div class="setting-hint" style="margin-top:3px;font-size:10px;color:var(--text-muted)">可在 <a href="https://github.com/topics/anime-wallpaper" target="_blank" rel="noopener" style="color:var(--accent)">GitHub</a> 找素材，粘贴 raw URL 即可使用</div>
+        <div class="setting-hint" style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <button class="btn btn-secondary btn-sm" id="btnPickBgImage" style="flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            从相册选择
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btnRemoveBgImage" style="flex-shrink:0;display:none">移除图片</button>
+          <input type="file" id="inputBgFile" accept="image/*" style="display:none">
+        </div>
+        <div class="setting-group setting-row" style="margin-top:6px">
+          <label class="setting-label" style="font-size:11px">背景透明度</label>
+          <input type="range" class="range" id="inputBgOpacity" min="10" max="70" value="35" style="width:120px">
+        </div>
       </div>
     </aside>
 

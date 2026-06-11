@@ -43,6 +43,9 @@
     dom.btnToggleHistory = $('#btnToggleHistory');
     dom.btnToggleSettings = $('#btnToggleSettings');
     dom.btnToggleBg = $('#btnToggleBg');
+    dom.themeDrawer = $('#themeDrawer');
+    dom.themeOverlay = $('#themeOverlay');
+    dom.btnCloseTheme = $('#btnCloseTheme');
     dom.topBarInfo = $('#topBarInfo');
     dom.convTitle = $('#convTitle');
     dom.badgeProvider = $('#badgeProvider');
@@ -614,6 +617,10 @@
       state.ui.isHistoryOpen = true;
       renderConvList();
       setTimeout(() => dom.searchInput.focus(), 300);
+    } else if (side === 'theme') {
+      dom.themeDrawer.classList.add('open');
+      dom.themeOverlay.classList.add('open');
+      state.ui.isThemeOpen = true;
     } else {
       dom.settingsDrawer.classList.add('open');
       dom.settingsOverlay.classList.add('open');
@@ -627,6 +634,10 @@
       dom.historyDrawer.classList.remove('open');
       dom.historyOverlay.classList.remove('open');
       state.ui.isHistoryOpen = false;
+    } else if (side === 'theme') {
+      dom.themeDrawer.classList.remove('open');
+      dom.themeOverlay.classList.remove('open');
+      state.ui.isThemeOpen = false;
     } else {
       dom.settingsDrawer.classList.remove('open');
       dom.settingsOverlay.classList.remove('open');
@@ -4728,13 +4739,9 @@ function handleMessageAction(action, msgIndex) {
 
     // Settings drawer
     dom.btnToggleSettings.addEventListener('click', () => openDrawer('settings'));
-    dom.btnToggleBg.addEventListener('click', () => {
-      openDrawer('settings');
-      setTimeout(() => {
-        const bgSection = dom.bgPresets;
-        if (bgSection) bgSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 400);
-    });
+    dom.btnToggleBg.addEventListener('click', () => openDrawer('theme'));
+    dom.btnCloseTheme.addEventListener('click', () => closeDrawer('theme'));
+    dom.themeOverlay.addEventListener('click', () => closeDrawer('theme'));
     dom.btnCloseSettings.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay.addEventListener('click', () => closeDrawer('settings'));
 

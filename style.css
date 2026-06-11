@@ -1162,22 +1162,26 @@ html:not(.is-splashing) .top-bar {
   flex-shrink: 0;
 }
 
-/* --- Settings overlay open: dim background layers, keep drawer on top --- */
-#settingsOverlay.open ~ .bottom-bar {
+/* --- Drawer overlay open: dim background layers, keep drawer on top --- */
+#settingsOverlay.open ~ .bottom-bar,
+#themeOverlay.open ~ .bottom-bar {
   opacity: 0.35;
   pointer-events: none;
   transition: opacity 300ms ease;
 }
-#settingsOverlay.open ~ .main-content {
+#settingsOverlay.open ~ .main-content,
+#themeOverlay.open ~ .main-content {
   filter: brightness(0.68);
   transition: filter 300ms ease;
 }
-#settingsOverlay.open ~ .top-bar {
+#settingsOverlay.open ~ .top-bar,
+#themeOverlay.open ~ .top-bar {
   opacity: 0.45;
   pointer-events: none;
   transition: opacity 300ms ease;
 }
-#settingsOverlay.open ~ #scrollToBottomBtn {
+#settingsOverlay.open ~ #scrollToBottomBtn,
+#themeOverlay.open ~ #scrollToBottomBtn {
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 200ms ease;
