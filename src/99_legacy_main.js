@@ -97,6 +97,7 @@
     dom.inputUIOpacity = $('#inputUIOpacity');
     dom.inputBubbleOpacity = $('#inputBubbleOpacity');
     dom.btnAdjustBg = $('#btnAdjustBg');
+    dom.btnResetBg = $('#btnResetBg');
     dom.bgAdjustOverlay = $('#bgAdjustOverlay');
     dom.bgAdjustImage = $('#bgAdjustImage');
     dom.bgAdjustViewport = $('#bgAdjustViewport');
@@ -2010,9 +2011,9 @@
   function updateBgPresetUI() {
     const bg = state.chatBackground;
     dom.inputBgOpacity.value = bg.opacity || 35;
-    dom.inputBgScale.value = bg.scale || 100;
-    dom.inputBgPosX.value = bg.posX || 50;
-    dom.inputBgPosY.value = bg.posY || 50;
+    if (dom.inputBgScale) dom.inputBgScale.value = bg.scale || 100;
+    if (dom.inputBgPosX) dom.inputBgPosX.value = bg.posX || 50;
+    if (dom.inputBgPosY) dom.inputBgPosY.value = bg.posY || 50;
     dom.inputBgBrightness.value = state.activeTheme ? bgOverride('brightness', 100) : (bg.brightness || 100);
     dom.inputUIOpacity.value = bg.inputOpacity || 100;
     dom.inputBubbleOpacity.value = bg.bubbleOpacity || 100;
@@ -5425,6 +5426,22 @@ function handleMessageAction(action, msgIndex) {
       adjState.x = 0; adjState.y = 0;
       dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
       dom.bgAdjustOverlay.classList.add('open');
+    });
+    dom.btnResetBg && dom.btnResetBg?.addEventListener('click', () => {
+      const t = CHARACTER_THEMES[state.activeTheme];
+      const src = t ? t.wallpaper : (state.chatBackground.value || '');
+      if (!src) { showToast('没有可调整的背景图片', 'warning'); return; }
+      if (state.activeTheme) {
+        setBgOverride('scale', 100);
+        setBgOverride('posX', 50);
+        setBgOverride('posY', 50);
+      } else {
+        state.chatBackground.scale = 100;
+        state.chatBackground.posX = 50;
+        state.chatBackground.posY = 50;
+      }
+      applyBgControls(); saveToStorage();
+      showToast('背景位置已还原', 'success');
     });
     dom.btnBgAdjustClose?.addEventListener('click', () => dom.bgAdjustOverlay.classList.remove('open'));
     dom.btnBgAdjustSave?.addEventListener('click', () => {

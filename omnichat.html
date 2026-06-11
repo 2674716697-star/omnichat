@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq9jth13">
+  <meta name="build-version" content="mq9k7e6o">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -554,6 +554,10 @@
         <button class="btn btn-secondary" id="btnAdjustBg" style="width:100%;margin-top:8px;justify-content:center">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           调整背景位置
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btnResetBg" style="width:100%;margin-top:4px;justify-content:center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          还原原来位置
         </button>
         <div class="setting-hint" style="margin-top:3px;font-size:10px;color:var(--text-muted)">缩放原图并定位可见区域</div>
         <div class="setting-group setting-row" style="margin-top:8px">
@@ -2293,6 +2297,7 @@ dom.inputBgBrightness = $('#inputBgBrightness');
 dom.inputUIOpacity = $('#inputUIOpacity');
 dom.inputBubbleOpacity = $('#inputBubbleOpacity');
 dom.btnAdjustBg = $('#btnAdjustBg');
+dom.btnResetBg = $('#btnResetBg');
 dom.bgAdjustOverlay = $('#bgAdjustOverlay');
 dom.bgAdjustImage = $('#bgAdjustImage');
 dom.bgAdjustViewport = $('#bgAdjustViewport');
@@ -3874,9 +3879,9 @@ dom.bgPresets.id = 'bg-presets-labeled';
 function updateBgPresetUI() {
 const bg = state.chatBackground;
 dom.inputBgOpacity.value = bg.opacity || 35;
-dom.inputBgScale.value = bg.scale || 100;
-dom.inputBgPosX.value = bg.posX || 50;
-dom.inputBgPosY.value = bg.posY || 50;
+if (dom.inputBgScale) dom.inputBgScale.value = bg.scale || 100;
+if (dom.inputBgPosX) dom.inputBgPosX.value = bg.posX || 50;
+if (dom.inputBgPosY) dom.inputBgPosY.value = bg.posY || 50;
 dom.inputBgBrightness.value = state.activeTheme ? bgOverride('brightness', 100) : (bg.brightness || 100);
 dom.inputUIOpacity.value = bg.inputOpacity || 100;
 dom.inputBubbleOpacity.value = bg.bubbleOpacity || 100;
@@ -6785,6 +6790,22 @@ adjState.scale = bgOverride('scale', 100) / 100;
 adjState.x = 0; adjState.y = 0;
 dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
 dom.bgAdjustOverlay.classList.add('open');
+});
+dom.btnResetBg && dom.btnResetBg?.addEventListener('click', () => {
+const t = CHARACTER_THEMES[state.activeTheme];
+const src = t ? t.wallpaper : (state.chatBackground.value || '');
+if (!src) { showToast('没有可调整的背景图片', 'warning'); return; }
+if (state.activeTheme) {
+setBgOverride('scale', 100);
+setBgOverride('posX', 50);
+setBgOverride('posY', 50);
+} else {
+state.chatBackground.scale = 100;
+state.chatBackground.posX = 50;
+state.chatBackground.posY = 50;
+}
+applyBgControls(); saveToStorage();
+showToast('背景位置已还原', 'success');
 });
 dom.btnBgAdjustClose?.addEventListener('click', () => dom.bgAdjustOverlay.classList.remove('open'));
 dom.btnBgAdjustSave?.addEventListener('click', () => {
