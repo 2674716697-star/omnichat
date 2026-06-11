@@ -1829,6 +1829,8 @@ function getSceneBodyDetails(block) {
     dom.btnQuickMemory = $('#btnQuickMemory');
     dom.memoryPanel = $('#memoryPanel');
     dom.memoryInput = $('#memoryInput');
+    dom.btnMemorySave = $('#btnMemorySave');
+    dom.btnMemoryClear = $('#btnMemoryClear');
     dom.npcImageInput = $('#npcImageInput');
     // Status bar card
     dom.sceneStatusCard = $('#sceneStatusCard');
