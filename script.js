@@ -1688,6 +1688,7 @@ function getSceneBodyDetails(block) {
     ui: {
       isHistoryOpen: false,
       isSettingsOpen: false,
+      isThemeOpen: false,
       autoFollowStreaming: true,
       userScrolling: false,
       lastUserScrollAt: 0,
@@ -3648,6 +3649,23 @@ function getSceneBodyDetails(block) {
     applyChatBackground();
     saveToStorage();
     updateBgPresetUI();
+  }
+
+  function setupBgPresetLabels() {
+    // Run once: wrap each bg-preset button with a label container
+    if (document.getElementById('bg-presets-labeled')) return;
+    var presets = dom.bgPresets.querySelectorAll('.bg-preset');
+    presets.forEach(function(btn) {
+      var wrap = document.createElement('div');
+      wrap.className = 'bg-preset-wrap';
+      btn.parentNode.insertBefore(wrap, btn);
+      wrap.appendChild(btn);
+      var label = document.createElement('span');
+      label.className = 'bg-preset-label';
+      label.textContent = btn.getAttribute('aria-label') || '';
+      wrap.appendChild(label);
+    });
+    dom.bgPresets.id = 'bg-presets-labeled';
   }
 
   function updateBgPresetUI() {
@@ -7067,7 +7085,7 @@ function handleMessageAction(action, msgIndex) {
     }
     let bgGestureStart = null;
     dom.chatBgOverlay.addEventListener('wheel', (e) => {
-      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (!state.ui.isThemeOpen) return;
       e.preventDefault();
       const cur = bgOverride('scale', 100);
       const scale = cur + (e.deltaY < 0 ? 8 : -8);
@@ -7075,7 +7093,7 @@ function handleMessageAction(action, msgIndex) {
       applyBgControls(); saveToStorage();
     }, { passive: false });
     dom.chatBgOverlay.addEventListener('mousedown', (e) => {
-      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (!state.ui.isThemeOpen) return;
       bgGestureStart = { x: e.clientX, y: e.clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
       e.preventDefault();
     });
@@ -7093,7 +7111,7 @@ function handleMessageAction(action, msgIndex) {
     // Touch: pinch zoom + drag pan
     let touchStartDist = 0, touchStartScale = 100;
     dom.chatBgOverlay.addEventListener('touchstart', (e) => {
-      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (!state.ui.isThemeOpen) return;
       if (e.touches.length === 1) {
         bgGestureStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, posX: bgOverride('posX', 50), posY: bgOverride('posY', 50) };
       } else if (e.touches.length === 2) {
@@ -7105,7 +7123,7 @@ function handleMessageAction(action, msgIndex) {
       }
     }, { passive: false });
     dom.chatBgOverlay.addEventListener('touchmove', (e) => {
-      if (!state.ui.isThemeOpen || !state.activeTheme) return;
+      if (!state.ui.isThemeOpen) return;
       if (e.touches.length === 1 && bgGestureStart) {
         const dx = (e.touches[0].clientX - bgGestureStart.x) / window.innerWidth * 100;
         const dy = (e.touches[0].clientY - bgGestureStart.y) / window.innerHeight * 100;
@@ -7548,6 +7566,8 @@ if (dom.btnGenHints) dom.btnGenHints.addEventListener('click', () => generateSce
     // Apply chat background
     applyChatBackground();
     updateBgPresetUI();
+    // Add character name labels below preset buttons
+    setupBgPresetLabels();
     // Restore theme if one was active
     if (state.activeTheme) {
       applyTheme(state.activeTheme);
