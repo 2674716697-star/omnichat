@@ -1564,10 +1564,25 @@ html:not(.is-splashing) .top-bar {
   pointer-events: none;
   opacity: var(--bg-opacity, 0.35);
   background-size: cover;
-  background-position: center;
+  background-position: var(--bg-pos-x, 50%) var(--bg-pos-y, 50%);
   background-repeat: no-repeat;
+  transform: scale(var(--bg-scale, 1));
+  filter: brightness(var(--bg-brightness, 1));
   transition: opacity 400ms var(--spring), background-image 600ms var(--spring);
 }
+
+/* UI transparency controls */
+html {
+  --bg-scale: 1;
+  --bg-pos-x: 50%;
+  --bg-pos-y: 50%;
+  --bg-brightness: 1;
+  --input-opacity: 1;
+  --bubble-opacity: 1;
+}
+.bottom-bar { opacity: var(--input-opacity); transition: opacity 300ms var(--spring); }
+.input-message { opacity: var(--input-opacity); }
+.message-bubble { opacity: var(--bubble-opacity); transition: opacity 300ms var(--spring); }
 
 /* Glass bars on top of background */
 /* Background preset swatches */

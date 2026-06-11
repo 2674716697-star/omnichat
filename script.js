@@ -1758,6 +1758,12 @@ function getSceneBodyDetails(block) {
     dom.chatBgOverlay = $('#chatBgOverlay');
     dom.bgPresets = $('#bgPresets');
     dom.inputBgOpacity = $('#inputBgOpacity');
+    dom.inputBgScale = $('#inputBgScale');
+    dom.inputBgPosX = $('#inputBgPosX');
+    dom.inputBgPosY = $('#inputBgPosY');
+    dom.inputBgBrightness = $('#inputBgBrightness');
+    dom.inputUIOpacity = $('#inputUIOpacity');
+    dom.inputBubbleOpacity = $('#inputBubbleOpacity');
     dom.btnPickBgImage = $('#btnPickBgImage');
     dom.btnRemoveBgImage = $('#btnRemoveBgImage');
     dom.inputBgFile = $('#inputBgFile');
@@ -3594,6 +3600,7 @@ function getSceneBodyDetails(block) {
       overlay.style.backgroundPosition = '';
       document.documentElement.classList.remove('has-custom-bg');
       applyBgSplashTheme(bg);
+      applyBgControls();
     } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
       overlay.style.backgroundImage = 'url(' + bg.value + ')';
       overlay.style.backgroundSize = 'cover';
@@ -3601,6 +3608,7 @@ function getSceneBodyDetails(block) {
       overlay.style.display = '';
       document.documentElement.classList.add('has-custom-bg');
       applyBgSplashTheme(bg);
+      applyBgControls();
     }
   }
 
@@ -3611,6 +3619,17 @@ function getSceneBodyDetails(block) {
     else document.documentElement.style.removeProperty('--splash-accent');
     if (accent2) document.documentElement.style.setProperty('--splash-accent2', accent2);
     else document.documentElement.style.removeProperty('--splash-accent2');
+  }
+
+  function applyBgControls() {
+    var bg = state.chatBackground;
+    var s = document.documentElement.style;
+    s.setProperty('--bg-scale', (bg.scale || 100) / 100);
+    s.setProperty('--bg-pos-x', (bg.posX || 50) + '%');
+    s.setProperty('--bg-pos-y', (bg.posY || 50) + '%');
+    s.setProperty('--bg-brightness', (bg.brightness || 100) / 100);
+    s.setProperty('--input-opacity', (bg.inputOpacity || 100) / 100);
+    s.setProperty('--bubble-opacity', (bg.bubbleOpacity || 100) / 100);
   }
 
   function setChatBackground(type, value, accent, accent2) {
@@ -3625,7 +3644,13 @@ function getSceneBodyDetails(block) {
 
   function updateBgPresetUI() {
     const bg = state.chatBackground;
-    dom.inputBgOpacity.value = bg.opacity;
+    dom.inputBgOpacity.value = bg.opacity || 35;
+    dom.inputBgScale.value = bg.scale || 100;
+    dom.inputBgPosX.value = bg.posX || 50;
+    dom.inputBgPosY.value = bg.posY || 50;
+    dom.inputBgBrightness.value = bg.brightness || 100;
+    dom.inputUIOpacity.value = bg.inputOpacity || 100;
+    dom.inputBubbleOpacity.value = bg.bubbleOpacity || 100;
     // Update active preset button
     const activeTheme = document.documentElement.dataset.theme || '';
     const presets = dom.bgPresets.querySelectorAll('.bg-preset');
@@ -7022,6 +7047,30 @@ function handleMessageAction(action, msgIndex) {
       state.chatBackground.opacity = val;
       applyChatBackground();
       saveToStorage();
+    });
+    dom.inputBgScale.addEventListener('input', () => {
+      state.chatBackground.scale = parseInt(dom.inputBgScale.value, 10);
+      applyBgControls(); saveToStorage();
+    });
+    dom.inputBgPosX.addEventListener('input', () => {
+      state.chatBackground.posX = parseInt(dom.inputBgPosX.value, 10);
+      applyBgControls(); saveToStorage();
+    });
+    dom.inputBgPosY.addEventListener('input', () => {
+      state.chatBackground.posY = parseInt(dom.inputBgPosY.value, 10);
+      applyBgControls(); saveToStorage();
+    });
+    dom.inputBgBrightness.addEventListener('input', () => {
+      state.chatBackground.brightness = parseInt(dom.inputBgBrightness.value, 10);
+      applyBgControls(); saveToStorage();
+    });
+    dom.inputUIOpacity.addEventListener('input', () => {
+      state.chatBackground.inputOpacity = parseInt(dom.inputUIOpacity.value, 10);
+      applyBgControls(); saveToStorage();
+    });
+    dom.inputBubbleOpacity.addEventListener('input', () => {
+      state.chatBackground.bubbleOpacity = parseInt(dom.inputBubbleOpacity.value, 10);
+      applyBgControls(); saveToStorage();
     });
 
     // Send / Stop
