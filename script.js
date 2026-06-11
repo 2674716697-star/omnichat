@@ -1675,6 +1675,7 @@ function getSceneBodyDetails(block) {
     apiKeys: {},
     models: { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] },
     chatBackground: { type: 'none', value: '', opacity: 35 },
+    activeTheme: '',
     actionPrompts: { regenerate: '', continue: '', summarize: '', elaborate: '' },
     worldStarterEnabled: false,
     schemaVersion: 0,
@@ -3552,7 +3553,6 @@ function getSceneBodyDetails(block) {
       s.removeProperty('--splash-wallpaper');
       setChatBackground('gradient', t.gradient, t.accent, t.accentBright);
     }
-    saveToStorage();
   }
 
   function clearTheme() {
@@ -6462,7 +6462,7 @@ function handleMessageAction(action, msgIndex) {
       const provider = dom.selectProvider.value;
       state.apiKeys[provider] = dom.inputApiKey.value.trim();
       updateWelcomeUI();
-      debouncedSave();
+      saveToStorage();
     });
     dom.selectModel.addEventListener('change', () => {
       const conv = getCurrentConv();
