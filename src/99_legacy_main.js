@@ -96,6 +96,12 @@
     dom.inputBgBrightness = $('#inputBgBrightness');
     dom.inputUIOpacity = $('#inputUIOpacity');
     dom.inputBubbleOpacity = $('#inputBubbleOpacity');
+    dom.btnAdjustBg = $('#btnAdjustBg');
+    dom.bgAdjustOverlay = $('#bgAdjustOverlay');
+    dom.bgAdjustImage = $('#bgAdjustImage');
+    dom.bgAdjustViewport = $('#bgAdjustViewport');
+    dom.btnBgAdjustSave = $('#btnBgAdjustSave');
+    dom.btnBgAdjustClose = $('#btnBgAdjustClose');
     dom.btnPickBgImage = $('#btnPickBgImage');
     dom.btnRemoveBgImage = $('#btnRemoveBgImage');
     dom.inputBgFile = $('#inputBgFile');
@@ -1997,11 +2003,6 @@
       label.className = 'bg-preset-label';
       label.textContent = btn.getAttribute('aria-label') || '';
       wrap.appendChild(label);
-      // Swap full-res background to thumbnail for fast loading
-      var bg = btn.style.backgroundImage;
-      if (bg && bg.indexOf('url(bg/') === 0) {
-        btn.style.backgroundImage = bg.replace('url(bg/', 'url(bg/thumb/');
-      }
     });
     dom.bgPresets.id = 'bg-presets-labeled';
   }
@@ -5412,6 +5413,76 @@ function handleMessageAction(action, msgIndex) {
       applyChatBackground();
       saveToStorage();
     });
+    // --- Background adjustment overlay ---
+    let adjState = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
+    dom.btnAdjustBg.addEventListener('click', () => {
+      const t = CHARACTER_THEMES[state.activeTheme];
+      const src = t ? t.wallpaper : (state.chatBackground.value || '');
+      if (!src) { showToast('请先选择主题', 'warning'); return; }
+      dom.bgAdjustImage.src = src;
+      // Restore saved overrides or start fresh
+      adjState.scale = bgOverride('scale', 100) / 100;
+      adjState.x = 0; adjState.y = 0;
+      dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
+      dom.bgAdjustOverlay.classList.add('open');
+    });
+    dom.btnBgAdjustClose.addEventListener('click', () => dom.bgAdjustOverlay.classList.remove('open'));
+    dom.btnBgAdjustSave.addEventListener('click', () => {
+      setBgOverride('scale', Math.round(adjState.scale * 100));
+      // Calculate position offset as percentage of image size vs viewport
+      var vpw = dom.bgAdjustViewport.clientWidth;
+      var vph = dom.bgAdjustViewport.clientHeight;
+      var iw = dom.bgAdjustImage.naturalWidth * adjState.scale;
+      var ih = dom.bgAdjustImage.naturalHeight * adjState.scale;
+      setBgOverride('posX', Math.round(Math.max(0, Math.min(100, ((vpw/2 - adjState.x) / iw * 100 + 50)))));
+      setBgOverride('posY', Math.round(Math.max(0, Math.min(100, ((vph/2 - adjState.y) / ih * 100 + 50)))));
+      applyBgControls(); saveToStorage();
+      dom.bgAdjustOverlay.classList.remove('open');
+    });
+    // Mouse wheel zoom
+    dom.bgAdjustViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      var ds = e.deltaY < 0 ? 1.08 : 0.92;
+      adjState.scale = Math.max(0.2, Math.min(5, adjState.scale * ds));
+      dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
+    }, { passive: false });
+    // Mouse drag
+    dom.bgAdjustImage.addEventListener('mousedown', (e) => {
+      adjState.dragging = true; adjState.startX = e.clientX; adjState.startY = e.clientY;
+      adjState.imgX = adjState.x; adjState.imgY = adjState.y;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!adjState.dragging) return;
+      adjState.x = adjState.imgX + (e.clientX - adjState.startX);
+      adjState.y = adjState.imgY + (e.clientY - adjState.startY);
+      dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
+    });
+    window.addEventListener('mouseup', () => { adjState.dragging = false; });
+    // Touch gestures
+    let tStartDist = 0, tStartScale = 1;
+    dom.bgAdjustImage.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        adjState.dragging = true; adjState.startX = e.touches[0].clientX; adjState.startY = e.touches[0].clientY;
+        adjState.imgX = adjState.x; adjState.imgY = adjState.y;
+      } else if (e.touches.length === 2) {
+        adjState.dragging = false;
+        tStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        tStartScale = adjState.scale;
+      }
+    }, { passive: false });
+    dom.bgAdjustImage.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && adjState.dragging) {
+        adjState.x = adjState.imgX + (e.touches[0].clientX - adjState.startX);
+        adjState.y = adjState.imgY + (e.touches[0].clientY - adjState.startY);
+      } else if (e.touches.length === 2) {
+        var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        adjState.scale = Math.max(0.2, Math.min(5, tStartScale * d / tStartDist));
+      }
+      dom.bgAdjustImage.style.transform = 'translate(' + adjState.x + 'px,' + adjState.y + 'px) scale(' + adjState.scale + ')';
+    }, { passive: false });
+    dom.bgAdjustImage.addEventListener('touchend', () => { adjState.dragging = false; tStartDist = 0; });
+
     // Gesture-based background scale + position (per-theme overrides)
     function bgOverride(key, def) {
       return state.themeOverrides[state.activeTheme] && state.themeOverrides[state.activeTheme][key] != null

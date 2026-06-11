@@ -1771,6 +1771,32 @@ html {
   .bg-preset[data-border]::after { transition: none; }
 }
 
+/* Background adjustment fullscreen overlay */
+.bg-adjust-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.92);
+  display: none; flex-direction: column;
+}
+.bg-adjust-overlay.open { display: flex; }
+.bg-adjust-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; padding-top: calc(10px + var(--safe-top));
+  background: rgba(0,0,0,0.6);
+  z-index: 1; flex-shrink: 0;
+}
+.bg-adjust-hint { font-size: 11px; color: var(--text-muted); flex: 1; }
+.bg-adjust-viewport {
+  flex: 1; overflow: hidden; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+#bgAdjustImage {
+  position: absolute;
+  max-width: none; max-height: none;
+  transform-origin: 0 0;
+  cursor: grab; user-select: none; -webkit-user-drag: none;
+}
+#bgAdjustImage:active { cursor: grabbing; }
+
 /* GitHub URL input row */
 .bg-url-row {
   display: flex;
