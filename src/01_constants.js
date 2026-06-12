@@ -25,7 +25,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 3;
+  const STORAGE_SCHEMA_VERSION = 4;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {

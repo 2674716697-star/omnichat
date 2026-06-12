@@ -222,11 +222,16 @@ function createSceneWorld(seed) {
       if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
       if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
     }
+    // --- Schema v3→v4: story memory ---
+    // Always run (not just oldVersion < 4) so incomplete/corrupted fields self-heal. Idempotent.
+    conv.storyMemory = normalizeStoryMemory(conv.storyMemory);
     // Ensure aux fields exist defensively (belt-and-suspenders)
     if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
     if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
     if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
     if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
+    // Ensure storyMemory exists for all conversations (belt-and-suspenders)
+    if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
     if (conv.replyCharLimit != null) {
@@ -293,4 +298,69 @@ function createSceneWorld(seed) {
     if (!conv) return false;
     var sm = conv.storyMode;
     return !!(sm && sm.started) || !!conv.worldMode;
+  }
+
+  // =========================================================================
+  // STORY MEMORY — auto chapter tracking for long conversations
+  // =========================================================================
+
+  function clipStr(text, max) {
+    var s = String(text || '').replace(/\s+/g, ' ').trim();
+    if (s.length <= max) return s;
+    return s.slice(0, max - 1).trimEnd() + '…';
+  }
+
+  function clipStringArray(arr, maxItems, maxPerItem) {
+    if (!arr || !Array.isArray(arr)) return [];
+    var out = [];
+    for (var i = 0; i < arr.length && out.length < maxItems; i++) {
+      out.push(clipStr(arr[i], maxPerItem));
+    }
+    return out;
+  }
+
+  function createStoryMemory(seed) {
+    seed = seed || {};
+    return {
+      chapters: normalizeStoryChapters(seed.chapters),
+      pinnedFacts: clipStringArray(seed.pinnedFacts, 12, 120),
+      unresolvedThreads: clipStringArray(seed.unresolvedThreads, 12, 160),
+      lastUpdatedAt: seed.lastUpdatedAt || '',
+      lastMessageCount: seed.lastMessageCount || 0,
+    };
+  }
+
+  function createStoryChapter(seed) {
+    seed = seed || {};
+    return {
+      id: seed.id || generateId(),
+      turnStart: seed.turnStart || 0,
+      turnEnd: seed.turnEnd || 0,
+      title: clipStr(seed.title || '', 40),
+      summary: clipStr(seed.summary || '', 600),
+      keyEvents: clipStringArray(seed.keyEvents, 8, 160),
+      characterChanges: clipStringArray(seed.characterChanges, 8, 120),
+      relationshipChanges: clipStringArray(seed.relationshipChanges, 8, 120),
+      unresolvedThreads: clipStringArray(seed.unresolvedThreads, 8, 160),
+      createdAt: seed.createdAt || '',
+    };
+  }
+
+  function normalizeStoryChapters(list) {
+    if (!list || !Array.isArray(list)) return [];
+    var out = [];
+    for (var i = 0; i < list.length && out.length < 12; i++) {
+      out.push(createStoryChapter(list[i]));
+    }
+    return out;
+  }
+
+  function normalizeStoryMemory(sm) {
+    if (!sm) return createStoryMemory();
+    sm.chapters = normalizeStoryChapters(sm.chapters);
+    sm.pinnedFacts = clipStringArray(sm.pinnedFacts, 12, 120);
+    sm.unresolvedThreads = clipStringArray(sm.unresolvedThreads, 12, 160);
+    if (typeof sm.lastUpdatedAt !== 'string') sm.lastUpdatedAt = '';
+    if (typeof sm.lastMessageCount !== 'number') sm.lastMessageCount = 0;
+    return sm;
   }

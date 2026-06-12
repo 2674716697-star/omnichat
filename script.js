@@ -32,7 +32,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 3;
+  const STORAGE_SCHEMA_VERSION = 4;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {
@@ -643,11 +643,16 @@ function createSceneWorld(seed) {
       if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
       if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
     }
+    // --- Schema v3→v4: story memory ---
+    // Always run (not just oldVersion < 4) so incomplete/corrupted fields self-heal. Idempotent.
+    conv.storyMemory = normalizeStoryMemory(conv.storyMemory);
     // Ensure aux fields exist defensively (belt-and-suspenders)
     if (!conv.storyAuxProvider) conv.storyAuxProvider = DEFAULTS.storyAuxProvider;
     if (!conv.storyAuxModel) conv.storyAuxModel = DEFAULTS.storyAuxModel;
     if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMaxTokens;
     if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
+    // Ensure storyMemory exists for all conversations (belt-and-suspenders)
+    if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
     if (conv.replyCharLimit != null) {
@@ -714,6 +719,71 @@ function createSceneWorld(seed) {
     if (!conv) return false;
     var sm = conv.storyMode;
     return !!(sm && sm.started) || !!conv.worldMode;
+  }
+
+  // =========================================================================
+  // STORY MEMORY — auto chapter tracking for long conversations
+  // =========================================================================
+
+  function clipStr(text, max) {
+    var s = String(text || '').replace(/\s+/g, ' ').trim();
+    if (s.length <= max) return s;
+    return s.slice(0, max - 1).trimEnd() + '…';
+  }
+
+  function clipStringArray(arr, maxItems, maxPerItem) {
+    if (!arr || !Array.isArray(arr)) return [];
+    var out = [];
+    for (var i = 0; i < arr.length && out.length < maxItems; i++) {
+      out.push(clipStr(arr[i], maxPerItem));
+    }
+    return out;
+  }
+
+  function createStoryMemory(seed) {
+    seed = seed || {};
+    return {
+      chapters: normalizeStoryChapters(seed.chapters),
+      pinnedFacts: clipStringArray(seed.pinnedFacts, 12, 120),
+      unresolvedThreads: clipStringArray(seed.unresolvedThreads, 12, 160),
+      lastUpdatedAt: seed.lastUpdatedAt || '',
+      lastMessageCount: seed.lastMessageCount || 0,
+    };
+  }
+
+  function createStoryChapter(seed) {
+    seed = seed || {};
+    return {
+      id: seed.id || generateId(),
+      turnStart: seed.turnStart || 0,
+      turnEnd: seed.turnEnd || 0,
+      title: clipStr(seed.title || '', 40),
+      summary: clipStr(seed.summary || '', 600),
+      keyEvents: clipStringArray(seed.keyEvents, 8, 160),
+      characterChanges: clipStringArray(seed.characterChanges, 8, 120),
+      relationshipChanges: clipStringArray(seed.relationshipChanges, 8, 120),
+      unresolvedThreads: clipStringArray(seed.unresolvedThreads, 8, 160),
+      createdAt: seed.createdAt || '',
+    };
+  }
+
+  function normalizeStoryChapters(list) {
+    if (!list || !Array.isArray(list)) return [];
+    var out = [];
+    for (var i = 0; i < list.length && out.length < 12; i++) {
+      out.push(createStoryChapter(list[i]));
+    }
+    return out;
+  }
+
+  function normalizeStoryMemory(sm) {
+    if (!sm) return createStoryMemory();
+    sm.chapters = normalizeStoryChapters(sm.chapters);
+    sm.pinnedFacts = clipStringArray(sm.pinnedFacts, 12, 120);
+    sm.unresolvedThreads = clipStringArray(sm.unresolvedThreads, 12, 160);
+    if (typeof sm.lastUpdatedAt !== 'string') sm.lastUpdatedAt = '';
+    if (typeof sm.lastMessageCount !== 'number') sm.lastMessageCount = 0;
+    return sm;
   }
   // =========================================================================
   // PROVIDER ADAPTER LAYER
@@ -2316,6 +2386,7 @@ function getSceneBodyDetails(block) {
       storyAuxModel: DEFAULTS.storyAuxModel,
       storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
       storyAuxApiKey: DEFAULTS.storyAuxApiKey,
+      storyMemory: createStoryMemory(),
       schemaVersion: STORAGE_SCHEMA_VERSION,
       messages: [],
     };
@@ -2393,9 +2464,18 @@ function getSceneBodyDetails(block) {
       const olderDigest = createOlderContextDigest(rawMessages.slice(0, recentStart));
       requestMessages = rawMessages.slice(recentStart);
       if (olderDigest) {
+        var digestContent = '[较早对话压缩摘要]\n' + olderDigest;
+        // Attach story memory to the digest so it survives compression
+        if (isStoryStarted(conv)) {
+          var smText = buildStoryMemorySystemText(conv);
+          if (smText) {
+            digestContent += '\n\n[长期章节记忆 — 请在压缩时优先保留]\n' + smText;
+          }
+        }
+        digestContent += '\n\n请把这段摘要当作背景，不要逐字复述；优先保持最近原文消息、写作场景记忆和用户最新要求。';
         requestMessages.unshift({
           role: 'system',
-          content: '[较早对话压缩摘要]\n' + olderDigest + '\n\n请把这段摘要当作背景，不要逐字复述；优先保持最近原文消息、写作场景记忆和用户最新要求。',
+          content: digestContent,
         });
       }
     }
@@ -2842,6 +2922,16 @@ function getSceneBodyDetails(block) {
   // RENDER: MESSAGES
   // =========================================================================
 
+  function getRenderableMessageEntries(messages) {
+    const entries = [];
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role !== 'system') {
+        entries.push({ msg: messages[i], index: i });
+      }
+    }
+    return entries;
+  }
+
   function renderMessages() {
     const conv = getCurrentConv();
     if (!conv) {
@@ -2853,7 +2943,8 @@ function getSceneBodyDetails(block) {
     }
 
     const messages = conv.messages;
-    if (messages.length === 0) {
+    const renderable = getRenderableMessageEntries(messages);
+    if (renderable.length === 0) {
       document.documentElement.classList.add('welcome-visible');
       dom.welcomeScreen.classList.remove('hidden');
       dom.messagesContainer.innerHTML = '';
@@ -2869,25 +2960,27 @@ function getSceneBodyDetails(block) {
     const existingCount = existingItems.length;
 
     // If counts differ dramatically, full render
-    if (Math.abs(existingCount - messages.length) > 1) {
+    if (Math.abs(existingCount - renderable.length) > 1) {
       fullRenderMessages(messages);
       return;
     }
 
     // If last message is/was streaming, update it (handles both adding and removing cursor)
-    const lastMsg = messages[messages.length - 1];
+    const lastEntry = renderable[renderable.length - 1];
+    const lastMsg = lastEntry.msg;
     const lastExisting = existingItems[existingItems.length - 1] || null;
     const hasCursor = lastExisting && lastExisting.querySelector('.streaming-cursor');
-    if (lastMsg && (lastMsg._streaming || hasCursor) && existingCount === messages.length) {
+    if (lastMsg && (lastMsg._streaming || hasCursor) && existingCount === renderable.length) {
       updateLastBubble(lastMsg);
       return;
     }
 
     // Add new messages not yet rendered
-    if (messages.length > existingCount) {
+    if (renderable.length > existingCount) {
       dom.welcomeScreen.classList.add('hidden');
-      for (let i = existingCount; i < messages.length; i++) {
-        const el = createMessageElement(messages[i], i);
+      for (let i = existingCount; i < renderable.length; i++) {
+        const entry = renderable[i];
+        const el = createMessageElement(entry.msg, entry.index);
         dom.messagesContainer.appendChild(el);
         animateBubbleIn(el);
       }
@@ -2899,8 +2992,10 @@ function getSceneBodyDetails(block) {
     // Remove only message elements, keep welcome screen and spacer
     dom.messagesContainer.querySelectorAll('.message').forEach((el) => el.remove());
     dom.welcomeScreen.classList.add('hidden');
-    for (let i = 0; i < messages.length; i++) {
-      const el = createMessageElement(messages[i], i);
+    const renderable = getRenderableMessageEntries(messages);
+    for (let i = 0; i < renderable.length; i++) {
+      const entry = renderable[i];
+      const el = createMessageElement(entry.msg, entry.index);
       dom.messagesContainer.appendChild(el);
       animateBubbleIn(el);
     }
@@ -3329,8 +3424,8 @@ function getSceneBodyDetails(block) {
     // Handled by the scroll/wheel/touch listeners below
   }
 
-  // User scroll detection: pause auto-follow when user scrolls away,
-  // resume when they scroll back near bottom.
+  // User scroll detection: pause auto-follow when user scrolls away.
+  // Auto-follow is ONLY restored via explicit button click or new message send.
   function onUserScrollIntent() {
     if (state.ui.programmaticScroll) return;
     var el = getScrollContainer();
@@ -3347,62 +3442,60 @@ function getSceneBodyDetails(block) {
       }
       updateScrollToBottomButton(true);
     } else {
-      state.ui.autoFollowStreaming = true;
-      state.ui.userScrolling = false;
-      // Exit detached mode: sync accumulated content to DOM
-      if (state.ui.detachedDuringStreaming) {
-        state.ui.detachedDuringStreaming = false;
-        if (state.ui.detachedContentDirty) {
-          state.ui.detachedContentDirty = false;
-          renderMessages();
-          el.scrollTop = el.scrollHeight;
-        }
-      }
+      // Do NOT auto-restore autoFollowStreaming when user scrolls near bottom.
+      // Recovery is only via explicit click on the scroll-to-bottom button
+      // or when the user sends a new message.
       updateScrollToBottomButton(false);
     }
   }
 
-  function updateScrollToBottomButton(show) {
+  function updateScrollToBottomButton(showIntent) {
     var btn = document.getElementById('scrollToBottomBtn');
+    var el = getScrollContainer();
 
-    // --- Force-clean path: hide button, clear all state ---
-    if (!show) {
-      state.ui.detachedContentDirty = false;
+    // Button is visible when:
+    // 1. Explicit showIntent (e.g. user scrolled away, streaming has dirty content)
+    // 2. User scrolled away from bottom and hasn't explicitly recovered
+    // 3. There's detached content pending from streaming
+    var shouldShow = showIntent ||
+      (!state.ui.autoFollowStreaming && !isNearBottom(el, 80)) ||
+      state.ui.detachedContentDirty;
+
+    if (!shouldShow) {
       if (btn) {
         btn.classList.remove('show');
-        btn.textContent = '';
         btn.setAttribute('aria-hidden', 'true');
       }
-      return;
-    }
-
-    // --- Show path: only if streaming or detached dirty ---
-    var shouldShow = state.isStreaming || state.ui.detachedContentDirty;
-    if (!shouldShow) {
-      if (btn) { btn.classList.remove('show'); btn.textContent = ''; }
       return;
     }
 
     if (!btn) {
       btn = document.createElement('button');
       btn.id = 'scrollToBottomBtn';
+      btn.setAttribute('aria-label', '到达最新正文');
+      btn.setAttribute('title', '到达最新正文');
       btn.setAttribute('aria-hidden', 'true');
       btn.addEventListener('click', function() {
         state.ui.detachedDuringStreaming = false;
+        state.ui.detachedContentDirty = false;
         state.ui.autoFollowStreaming = true;
         state.ui.userScrolling = false;
         state.ui.programmaticScroll = true;
 
-        if (state.ui.detachedContentDirty) {
-          state.ui.detachedContentDirty = false;
-          var conv = getCurrentConv();
-          if (conv && conv.messages.length) {
-            fullRenderMessages(conv.messages);
-          }
+        var conv = getCurrentConv();
+        if (conv && conv.messages.length) {
+          fullRenderMessages(conv.messages);
         }
 
         var sc = getScrollContainer();
-        if (sc) sc.scrollTop = sc.scrollHeight;
+        var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (sc) {
+          if (prefersReduced) {
+            sc.scrollTop = sc.scrollHeight;
+          } else {
+            sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
+          }
+        }
         requestAnimationFrame(function() {
           state.ui.programmaticScroll = false;
         });
@@ -3411,9 +3504,8 @@ function getSceneBodyDetails(block) {
       document.body.appendChild(btn);
     }
 
-    btn.textContent = state.isStreaming ? 'AI 正在生成' : '查看最新回复';
-    btn.removeAttribute('aria-hidden');
     btn.classList.add('show');
+    btn.removeAttribute('aria-hidden');
   }
 
   // =========================================================================
@@ -4855,6 +4947,317 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
+  // STORY MEMORY — background chapter memory updates
+  // =========================================================================
+
+  // Initialize per-conversation locks for story memory updates
+  if (!state._storyMemoryLocks) state._storyMemoryLocks = {};
+
+  function buildStoryMemoryAuxPrompt(conv, storyContent) {
+    // Build a compact summary of existing storyMemory for the aux model
+    var existingSummary = '';
+    if (conv.storyMemory) {
+      var sm = conv.storyMemory;
+      if (sm.chapters && sm.chapters.length > 0) {
+        var lastCh = sm.chapters[sm.chapters.length - 1];
+        existingSummary += '已有章节数：' + sm.chapters.length;
+        if (lastCh.title) existingSummary += '，上一章：' + lastCh.title;
+        if (lastCh.summary) existingSummary += '，摘要：' + lastCh.summary.slice(0, 200);
+        existingSummary += '\n';
+      }
+      if (sm.pinnedFacts && sm.pinnedFacts.length > 0) {
+        existingSummary += '已有长期事实：\n' + sm.pinnedFacts.map(function(f) { return '- ' + f; }).join('\n') + '\n';
+      }
+      if (sm.unresolvedThreads && sm.unresolvedThreads.length > 0) {
+        existingSummary += '已有未解决线索：\n' + sm.unresolvedThreads.map(function(t) { return '- ' + t; }).join('\n') + '\n';
+      }
+    }
+
+    // Current scene state
+    var ss = conv.sceneState || {};
+    var sceneInfo = [
+      '当前角色：' + (ss.currentRole || '未记录'),
+      '当前目标：' + (ss.currentGoal || '未记录'),
+      '精神：' + (ss.mental || '') + (ss.mentalScore ? ' (' + ss.mentalScore + '/10)' : ''),
+      '剧情：' + (ss.plot || ''),
+      '走向：' + (ss.directions || ''),
+    ].join('\n');
+
+    // Recent messages (last few user/assistant exchanges, truncated)
+    var recentMsgs = '';
+    if (conv.messages && conv.messages.length > 0) {
+      var msgSlice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
+      for (var mi = 0; mi < msgSlice.length; mi++) {
+        var m = msgSlice[mi];
+        if (m.role === 'user' || m.role === 'assistant') {
+          var label = m.role === 'user' ? '用户' : 'AI';
+          recentMsgs += label + '：' + clipStr(m.content || '', 300) + '\n';
+        }
+      }
+    }
+
+    var prompt = [
+      '你是一个剧情章节记忆管理器。根据已有记忆、当前场景状态、最近对话和刚生成的AI正文，输出更新后的章节记忆 JSON。',
+      '',
+      '输出格式为严格的 JSON（不要包含```json或任何markdown标记）：',
+      '{',
+      '  "chapter": {',
+      '    "title": "本章标题（≤40字，概括本章主题）",',
+      '    "summary": "本章摘要（≤600字，概括主要情节进展）",',
+      '    "keyEvents": ["关键事件1", "关键事件2"],',
+      '    "characterChanges": ["角色A的心态/状态变化"],',
+      '    "relationshipChanges": ["角色A和B的关系变化"],',
+      '    "unresolvedThreads": ["本章新产生/延续的未解决线索"]',
+      '  },',
+      '  "pinnedFacts": ["长期事实1", "长期事实2"],',
+      '  "unresolvedThreads": ["当前所有未解决线索（合并去重）"]',
+      '}',
+      '',
+      '要求：',
+      '- 只总结稳定、长期有效的记忆，不要逐字复述正文。',
+      '- 不要改写角色卡或世界观设定。',
+      '- chapter.summary 要有实质情节进展，不能只有「继续冒险」「对话推进」。',
+      '- keyEvents 每条 16-120 字，具体可回忆的事件。',
+      '- characterChanges/relationshipChanges 只记录有意义的变化，没有就留空数组。',
+      '- pinnedFacts 记录跨章节的重要事实（如「角色X的真实身份是Y」），不要记临时状态。',
+      '- unresolvedThreads 记录尚未解决的主线/支线线索，已解决的不保留。',
+      '- 如果本轮没有形成新章节（剧情进展不足），chapter 可以设 title/summary 为空字符串。',
+      '',
+      '已有记忆：',
+      existingSummary || '（无已有记忆）',
+      '',
+      '当前场景状态：',
+      sceneInfo,
+      '',
+      '最近对话：',
+      recentMsgs,
+      '',
+      '刚生成的AI正文（最后2000字）：',
+      (storyContent || '').slice(-2000),
+      '',
+      '请严格按照上述 JSON 格式输出。',
+    ].join('\n');
+
+    return [
+      { role: 'user', content: prompt },
+    ];
+  }
+
+  function tryParseStoryMemoryResponse(text) {
+    if (!text || typeof text !== 'string') return null;
+    var jsonMatch = text.match(/\{[\s\S]*\}/);
+    var jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
+    try {
+      var data = JSON.parse(jsonStr);
+      // Require at least a chapter or some facts/threads
+      var hasChapter = data.chapter && (data.chapter.title || data.chapter.summary || (data.chapter.keyEvents && data.chapter.keyEvents.length > 0));
+      var hasFacts = data.pinnedFacts && data.pinnedFacts.length > 0;
+      var hasThreads = data.unresolvedThreads && data.unresolvedThreads.length > 0;
+      if (!hasChapter && !hasFacts && !hasThreads) return null;
+      return data;
+    } catch (_) { return null; }
+  }
+
+  function applyStoryMemoryUpdate(conv, result) {
+    if (!conv || !result) return;
+    if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
+    var sm = conv.storyMemory;
+
+    // Append new chapter if it has meaningful content
+    var ch = result.chapter;
+    if (ch && (ch.title || ch.summary || (ch.keyEvents && ch.keyEvents.length > 0))) {
+      var msgCount = conv.messages ? conv.messages.length : 0;
+      var newChapter = createStoryChapter({
+        id: generateId(),
+        turnStart: (sm.lastMessageCount || 0),
+        turnEnd: msgCount,
+        title: ch.title || '',
+        summary: ch.summary || '',
+        keyEvents: ch.keyEvents || [],
+        characterChanges: ch.characterChanges || [],
+        relationshipChanges: ch.relationshipChanges || [],
+        unresolvedThreads: ch.unresolvedThreads || [],
+        createdAt: nowISO(),
+      });
+      sm.chapters.push(newChapter);
+      // Keep last 12 chapters
+      if (sm.chapters.length > 12) {
+        sm.chapters = sm.chapters.slice(sm.chapters.length - 12);
+      }
+    }
+
+    // Merge pinnedFacts — dedup by content similarity (simple prefix match)
+    if (result.pinnedFacts && Array.isArray(result.pinnedFacts)) {
+      var existingFacts = sm.pinnedFacts || [];
+      for (var fi = 0; fi < result.pinnedFacts.length; fi++) {
+        var fact = clipStr(result.pinnedFacts[fi], 120);
+        if (!fact) continue;
+        var isDuplicate = false;
+        for (var ei = 0; ei < existingFacts.length; ei++) {
+          if (existingFacts[ei].slice(0, 20) === fact.slice(0, 20)) { isDuplicate = true; break; }
+        }
+        if (!isDuplicate) {
+          existingFacts.push(fact);
+        }
+      }
+      // Keep max 12
+      if (existingFacts.length > 12) existingFacts = existingFacts.slice(existingFacts.length - 12);
+      sm.pinnedFacts = existingFacts;
+    }
+
+    // Replace unresolvedThreads with new merged list
+    if (result.unresolvedThreads && Array.isArray(result.unresolvedThreads)) {
+      var merged = clipStringArray(result.unresolvedThreads, 12, 160);
+      // Also keep any old threads not in the new list (simple prefix dedup)
+      var oldThreads = sm.unresolvedThreads || [];
+      for (var oi = 0; oi < oldThreads.length && merged.length < 12; oi++) {
+        var ot = oldThreads[oi];
+        var otDup = false;
+        for (var ni = 0; ni < merged.length; ni++) {
+          if (merged[ni].slice(0, 20) === ot.slice(0, 20)) { otDup = true; break; }
+        }
+        if (!otDup) merged.push(clipStr(ot, 160));
+      }
+      sm.unresolvedThreads = merged.slice(0, 12);
+    }
+
+    sm.lastUpdatedAt = nowISO();
+    sm.lastMessageCount = conv.messages ? conv.messages.length : 0;
+    sm = normalizeStoryMemory(sm);
+    conv.storyMemory = sm;
+  }
+
+  function scheduleStoryMemoryUpdate(convId, fullContent) {
+    if (!convId || !fullContent) return;
+    var conv = null;
+    for (var ci = 0; ci < state.conversations.length; ci++) {
+      if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+    }
+    if (!conv) return;
+    if (!isStoryStarted(conv)) return;
+
+    // Frequency check: at least 10 messages since last update
+    var msgCount = conv.messages ? conv.messages.length : 0;
+    var lastCount = (conv.storyMemory && conv.storyMemory.lastMessageCount) || 0;
+    var shouldUpdate = (msgCount - lastCount >= 10);
+    // Also trigger if autoCompress is approaching
+    if (conv.autoCompress && msgCount > REQUEST_RECENT_MSG_LIMIT + 5) shouldUpdate = true;
+    if (!shouldUpdate) return;
+
+    // Concurrency guard: one update at a time per conversation
+    if (state._storyMemoryLocks[convId]) return;
+    state._storyMemoryLocks[convId] = true;
+
+    // Snapshot what we need before the async work
+    var snapshotConvId = conv.id;
+    var storyContent = fullContent;
+
+    // Retry config: if user starts a new generation while we're waiting,
+    // defer to avoid CPU/network contention with the main reply stream
+    var maxRetries = 3;
+    var retryDelayMs = 2000;
+    var retries = 0;
+
+    function attemptSchedule() {
+      if (state.isStreaming) {
+        retries++;
+        if (retries > maxRetries) {
+          // Give up: release lock so the next reply can try again
+          state._storyMemoryLocks[snapshotConvId] = false;
+          return;
+        }
+        setTimeout(attemptSchedule, retryDelayMs);
+        return;
+      }
+
+      // Schedule on browser idle if available, falling back to setTimeout.
+      // This keeps the aux request from competing with UI paints.
+      var scheduleFn = (typeof requestIdleCallback !== 'undefined')
+        ? requestIdleCallback
+        : function(fn) { setTimeout(fn, 0); };
+
+      scheduleFn(function() {
+        if (state.isStreaming) {
+          retries++;
+          if (retries > maxRetries) {
+            state._storyMemoryLocks[snapshotConvId] = false;
+            return;
+          }
+          setTimeout(attemptSchedule, retryDelayMs);
+          return;
+        }
+        _runStoryMemoryUpdate(snapshotConvId, storyContent).finally(function() {
+          state._storyMemoryLocks[snapshotConvId] = false;
+        });
+      });
+    }
+
+    // Initial delay 1200-2000ms — give UI rendering, scrolling, and transition
+    // effects time to settle before we even check whether to schedule.
+    var initialDelay = 1200 + Math.floor(Math.random() * 800);
+    setTimeout(attemptSchedule, initialDelay);
+  }
+
+  async function _runStoryMemoryUpdate(convId, fullContent) {
+    var conv = null;
+    for (var ci = 0; ci < state.conversations.length; ci++) {
+      if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+    }
+    if (!conv) return;
+
+    var timeoutId;
+    try {
+      var auxResolved = resolveStoryAuxProviderAndModel(conv);
+      var auxProvider = auxResolved.provider;
+      var auxModel = auxResolved.model;
+      var auxApiKey = auxResolved.apiKey;
+      // story memory uses a separate aux request and does not consume the main generation budget
+      var auxMaxTokens = Math.min(conv.storyAuxMaxTokens || DEFAULTS.storyAuxMaxTokens, 3000);
+      var auxMsgs = buildStoryMemoryAuxPrompt(conv, fullContent);
+
+      var controller = new AbortController();
+      timeoutId = setTimeout(function() { controller.abort(); }, 20000);
+
+      var auxResp = await callChatModel(conv, auxModel, auxMsgs, {
+        provider: auxProvider,
+        apiKey: auxApiKey,
+        maxTokens: auxMaxTokens,
+        stream: false,
+        temperature: 0.2,
+        signal: controller.signal,
+        responseFormat: 'json_object',
+      });
+
+      var auxContent = auxResp.content || '';
+      if (!auxContent) return;
+
+      var parsed = tryParseStoryMemoryResponse(auxContent);
+      if (!parsed) {
+        console.warn('[OmniChat] Story memory update parse failed');
+        return;
+      }
+
+      // Re-fetch conv in case it changed (user switched conversations)
+      var currentConv = null;
+      for (var ci2 = 0; ci2 < state.conversations.length; ci2++) {
+        if (state.conversations[ci2].id === convId) { currentConv = state.conversations[ci2]; break; }
+      }
+      if (!currentConv) return;
+
+      applyStoryMemoryUpdate(currentConv, parsed);
+      debouncedSave();
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.warn('[OmniChat] Story memory update timed out');
+      } else {
+        console.warn('[OmniChat] Story memory update failed:', e.message || e);
+      }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  // =========================================================================
   // withTimeout — race a promise against a timeout, cleanup on settle
   // =========================================================================
 
@@ -5388,6 +5791,11 @@ function handleMessageAction(action, msgIndex) {
       if (requestController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       await ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState);
 
+      // ===== Schedule background story memory update (non-blocking) =====
+      if (isStoryStarted(conv)) {
+        scheduleStoryMemoryUpdate(turnConvId, fullContent);
+      }
+
       // ===== Update action buttons — directions now guaranteed =====
       delete assistantMsg._sceneFinalizing;
       var finalDirs = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
@@ -5493,6 +5901,64 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // =========================================================================
+  // buildStoryMemorySystemText — format storyMemory as short system text (~4000 chars max)
+  // =========================================================================
+
+  function buildStoryMemorySystemText(conv) {
+    if (!conv || !conv.storyMemory) return '';
+    var sm = conv.storyMemory;
+    var hasChapters = sm.chapters && sm.chapters.length > 0;
+    var hasFacts = sm.pinnedFacts && sm.pinnedFacts.length > 0;
+    var hasThreads = sm.unresolvedThreads && sm.unresolvedThreads.length > 0;
+    if (!hasChapters && !hasFacts && !hasThreads) return '';
+
+    var lines = [];
+    lines.push('[章节记忆]');
+
+    // Chapters (most recent first for context relevance)
+    if (hasChapters) {
+      var chapters = sm.chapters;
+      var startIdx = Math.max(0, chapters.length - 6); // last 6 chapters
+      for (var ci = startIdx; ci < chapters.length; ci++) {
+        var ch = chapters[ci];
+        var chNum = ci + 1;
+        var chLine = '- 第' + chNum + '章';
+        if (ch.title) chLine += ' ' + ch.title;
+        if (ch.summary) chLine += '：' + ch.summary;
+        lines.push(clipStr(chLine, 300));
+        if (ch.keyEvents && ch.keyEvents.length > 0) {
+          lines.push('  关键事件：' + ch.keyEvents.slice(0, 3).join('；'));
+        }
+      }
+    }
+
+    // Pinned facts
+    if (hasFacts) {
+      lines.push('');
+      lines.push('[长期事实]');
+      for (var fi = 0; fi < sm.pinnedFacts.length; fi++) {
+        lines.push('- ' + sm.pinnedFacts[fi]);
+      }
+    }
+
+    // Unresolved threads
+    if (hasThreads) {
+      lines.push('');
+      lines.push('[未解决线索]');
+      for (var ti = 0; ti < sm.unresolvedThreads.length; ti++) {
+        lines.push('- ' + sm.unresolvedThreads[ti]);
+      }
+    }
+
+    var text = lines.join('\n');
+    // Hard cap to avoid bloating system prompt
+    if (text.length > 4000) {
+      text = text.slice(0, 3997) + '...';
+    }
+    return text;
+  }
+
+  // =========================================================================
   // _buildStoryMessages — construct request messages for story turns
   // Single-pass generation: no Part1/Part2 split.
   // =========================================================================
@@ -5524,6 +5990,12 @@ function handleMessageAction(action, msgIndex) {
         '上次方向：' + (ss.directions ? ss.directions.replace(/\n/g, ' / ') : '未记录'),
       ].join('\n');
       systemPrompt = (systemPrompt || '') + '\n\n' + sceneStateRef;
+
+      // Inject chapter memory if available
+      var storyMemText = buildStoryMemorySystemText(conv);
+      if (storyMemText) {
+        systemPrompt = (systemPrompt || '') + '\n\n' + storyMemText;
+      }
 
       // Writing rules (NO @@SCENE)
       var writingRules = [
@@ -6389,6 +6861,7 @@ function handleMessageAction(action, msgIndex) {
         requestAnimationFrame(function() {
           renderMessages();
           scrollToBottomIfNeeded({ smooth: false });
+          updateScrollToBottomButton(false);
           resolve();
         });
       });
@@ -6418,6 +6891,8 @@ function handleMessageAction(action, msgIndex) {
             if (sc && isNearBottom(sc, 120)) {
               scheduleFollowScroll(120);
             }
+          } else {
+            updateScrollToBottomButton(false);
           }
           lastRenderAt = performance.now();
           renderScheduled = false;
