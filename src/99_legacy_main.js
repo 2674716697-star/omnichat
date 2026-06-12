@@ -3966,7 +3966,7 @@ function handleMessageAction(action, msgIndex) {
     var buffer = '';
 
     var lastRenderAt = 0;
-    var minRenderGap = 65; // within 50-80ms, ~15fps throttle
+    var minRenderGap = 45; // ~22fps throttle, safe for mobile with read-before-write
 
     var _renderPending = false;
     var scheduleRender = function () {
@@ -5395,7 +5395,7 @@ function handleMessageAction(action, msgIndex) {
 
     let renderScheduled = false;
     let lastRenderAt = 0;
-    const minRenderGap = 60;
+    const minRenderGap = 45; // ~22fps throttle, safe with read-before-write
 
     // Flush final state: awaitable, cancels pending scheduleRender to avoid race
     const flushFinalRender = () => {

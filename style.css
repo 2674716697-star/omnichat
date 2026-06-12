@@ -298,9 +298,9 @@ html.is-splashing .bottom-bar {
 }
 
 @keyframes ringEnter {
-  0% { opacity: 0; transform: translateY(8px) scale(0.82); filter: blur(8px); }
-  54% { opacity: 1; transform: translateY(0) scale(1.035); filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  0% { opacity: 0; transform: translateY(8px) scale(0.78); }
+  54% { opacity: 1; transform: translateY(0) scale(1.035); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes ringSettle {
@@ -3408,6 +3408,7 @@ html {
 /* --- Message Content (separated from thinking) --- */
 .message-content {
   min-height: 1px;
+  will-change: opacity;
 }
 
 .message-content:first-child {
@@ -4965,6 +4966,7 @@ html.is-standalone body {
     0 1px 3px rgba(0, 0, 0, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition: opacity 250ms var(--spring), transform 200ms var(--spring), background 200ms var(--spring), color 200ms var(--spring), box-shadow 200ms var(--spring);
+  will-change: opacity, transform;
   opacity: 0;
   pointer-events: none;
   padding: 0;
