@@ -1287,7 +1287,9 @@
   function animateBubbleIn(el) {
     // GSAP spring entrance for new message bubbles.
     // Degrades gracefully if GSAP isn't loaded.
+    // Respect user's reduced-motion preference (CSS @keyframes msgIn is also suppressed).
     if (typeof gsap === 'undefined' || !el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var bubble = el.querySelector('.message-bubble');
     if (!bubble) return;
     var isUser = el.classList.contains('user');
@@ -1296,7 +1298,9 @@
       y: isUser ? 8 : 12,
       scale: 0.97,
       duration: 0.35,
-      ease: 'back.out(1.2)'
+      ease: 'back.out(1.2)',
+      overwrite: 'auto',
+      clearProps: 'transform,opacity'
     });
   }
 

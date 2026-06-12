@@ -399,8 +399,10 @@
       }
     } catch (e) {
       // Main data corrupted — secrets and prefs were already restored above.
-      console.warn('[OmniChat] 主数据加载失败:', e);
-      showToast('主数据加载失败，已恢复密钥和设置。', 'warning', 2000);
+      // Remove the corrupted key so we don't keep hitting this on every reload;
+      // Step 4 below will write a fresh save if secrets exist.
+      console.warn('[OmniChat] 主数据加载失败，已清除损坏数据并恢复密钥和设置。', e);
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       mainOk = false;
     }
 
@@ -3161,7 +3163,9 @@ function getSceneBodyDetails(block) {
   function animateBubbleIn(el) {
     // GSAP spring entrance for new message bubbles.
     // Degrades gracefully if GSAP isn't loaded.
+    // Respect user's reduced-motion preference (CSS @keyframes msgIn is also suppressed).
     if (typeof gsap === 'undefined' || !el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var bubble = el.querySelector('.message-bubble');
     if (!bubble) return;
     var isUser = el.classList.contains('user');
@@ -3170,7 +3174,9 @@ function getSceneBodyDetails(block) {
       y: isUser ? 8 : 12,
       scale: 0.97,
       duration: 0.35,
-      ease: 'back.out(1.2)'
+      ease: 'back.out(1.2)',
+      overwrite: 'auto',
+      clearProps: 'transform,opacity'
     });
   }
 

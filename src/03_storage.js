@@ -161,8 +161,10 @@
       }
     } catch (e) {
       // Main data corrupted — secrets and prefs were already restored above.
-      console.warn('[OmniChat] 主数据加载失败:', e);
-      showToast('主数据加载失败，已恢复密钥和设置。', 'warning', 2000);
+      // Remove the corrupted key so we don't keep hitting this on every reload;
+      // Step 4 below will write a fresh save if secrets exist.
+      console.warn('[OmniChat] 主数据加载失败，已清除损坏数据并恢复密钥和设置。', e);
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       mainOk = false;
     }
 
