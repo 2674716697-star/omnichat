@@ -5,6 +5,7 @@
 
 /* --- CSS Variables --- */
 :root {
+  --app-height: 100vh;
   --app-height: 100dvh;
   /* === Base palette - neutral deep dark === */
   --bg-base: #0f0f0f;
@@ -175,6 +176,7 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  height: 100vh;
   height: 100dvh;
   height: var(--app-height);
   overflow: hidden;
@@ -537,6 +539,7 @@ html:not([style*="--splash-tint"]) .splash-bg::after {
 .app-container {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
   height: var(--app-height);
   max-width: 800px;
