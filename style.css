@@ -89,7 +89,7 @@
   --bottom-content-gap: 32px;
   --spring: cubic-bezier(0.25, 0.1, 0.25, 1);
   --spring-smooth: cubic-bezier(0.42, 0, 0.58, 1);
-  --bounce-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --bounce-spring: cubic-bezier(0.25, 1.08, 0.5, 1); /* subtle spring — felt, not seen. 1.08 overshoot, product-register safe */
   --glide: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-fast: 160ms var(--spring);
   --transition-normal: 240ms var(--spring);
@@ -255,19 +255,21 @@ html.is-splashing .bottom-bar {
   display: none !important;
 }
 
-/* Background warm glow — champagne/ivory radial behind the Mira mark */
+/* Background warm glow — champagne/ivory radial behind the Mira mark.
+   Single entrance pulse (not infinite) — splash dismisses in ~2.2s. */
 .splash-bg {
   position: absolute;
   inset: 0;
   background:
     radial-gradient(ellipse 30% 22% at 50% 44%, rgba(240, 210, 210, 0.10) 0%, rgba(240, 210, 210, 0.035) 46%, transparent 72%),
     radial-gradient(ellipse 62% 50% at 50% 46%, rgba(200, 155, 156, 0.045) 0%, rgba(238, 234, 234, 0.02) 42%, transparent 76%);
-  animation: splashBgPulse 2.4s ease-in-out 0.12s infinite;
+  animation: splashBgPulse 1.8s ease-in-out 0.12s both;
 }
 
 @keyframes splashBgPulse {
-  0%, 100% { opacity: 0.46; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.025); }
+  0% { opacity: 0; transform: scale(0.98); }
+  40% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0.7; transform: scale(1); }
 }
 
 .splash-content {
@@ -295,6 +297,7 @@ html.is-splashing .bottom-bar {
   z-index: 2;
   transform-origin: 50% 55%;
   animation: ringEnter 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both, ringSettle 1.9s ease-in-out 0.88s infinite;
+  will-change: transform;
 }
 
 @keyframes ringEnter {
@@ -362,6 +365,7 @@ html.is-splashing .bottom-bar {
   stroke-dasharray: 188;
   stroke-dashoffset: 188;
   animation: ringEchoDraw 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+  will-change: stroke-dashoffset, opacity;
 }
 
 @keyframes ringEchoDraw {
@@ -374,6 +378,7 @@ html.is-splashing .bottom-bar {
   stroke-dasharray: 188;
   stroke-dashoffset: 188;
   animation: ringTraceDraw 0.96s cubic-bezier(0.16, 1, 0.3, 1) 0.18s forwards;
+  will-change: stroke-dashoffset;
 }
 
 @keyframes ringTraceDraw {
@@ -386,6 +391,7 @@ html.is-splashing .bottom-bar {
   stroke-dasharray: 18 42 188;
   stroke-dashoffset: 34;
   animation: sweepTravel 0.72s cubic-bezier(0.33, 0, 0.2, 1) 0.72s forwards;
+  will-change: stroke-dashoffset, opacity;
 }
 
 @keyframes sweepTravel {
@@ -407,6 +413,7 @@ html.is-splashing .bottom-bar {
   opacity: 0;
   filter: drop-shadow(0 0 5px rgba(254, 244, 244, 0.65));
   animation: glintTravel 0.76s cubic-bezier(0.33, 0, 0.2, 1) 0.7s forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes glintTravel {
@@ -2672,15 +2679,12 @@ html.welcome-visible .welcome-security {
   flex-direction: column;
   max-width: 90%;
   margin-bottom: 16px;
-  animation: msgIn 200ms ease;
   contain: layout style;
   will-change: transform, opacity;
 }
 
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* Message entrance handled by GSAP animateBubbleIn (expo.out, 280ms).
+   Fallback: messages appear instantly when GSAP unavailable. */
 
 .message.user {
   align-items: flex-end;
@@ -2863,8 +2867,8 @@ html.welcome-visible .welcome-security {
   background: var(--accent-bright);
   margin-left: 2px;
   vertical-align: text-bottom;
-  border-radius: 1px;
-  animation: cursorBlink 0.8s steps(1) infinite;
+  border-radius: 1.5px;
+  animation: cursorBreathe 1.2s ease-in-out infinite;
   will-change: opacity;
 }
 
@@ -2895,10 +2899,11 @@ html.welcome-visible .welcome-security {
   50% { opacity: 0.85; }
 }
 
-@keyframes cursorBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+@keyframes cursorBreathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
+/* Legacy alias — cursorBlink replaced by cursorBreathe for smoother pulse */
 
 /* --- Bottom Bar (floating dock) --- */
 .bottom-bar {
@@ -3103,7 +3108,7 @@ html:not(.is-splashing) .bottom-bar {
 
 .btn-send:active {
   background: rgba(160, 130, 130, 0.80);
-  transform: scale(0.94);
+  transform: scale(0.88); /* deeper press — tactile send confirmation */
 }
 
 .btn-stop {
@@ -3121,7 +3126,7 @@ html:not(.is-splashing) .bottom-bar {
 
 .btn-stop:active {
   background: rgba(225, 225, 225, 0.90);
-  transform: scale(0.94);
+  transform: scale(0.88); /* match send button press depth */
 }
 
 .btn-send:focus-visible,
@@ -3184,11 +3189,12 @@ html:not(.is-splashing) .bottom-bar {
   box-shadow: var(--shadow-md);
   text-align: center;
   transition: opacity 250ms var(--spring), transform 250ms var(--spring);
+  will-change: transform, opacity;
 }
 
 .toast-exit {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-8px) scale(0.96); /* retreat upward + slight shrink */
 }
 
 @keyframes toastIn {
@@ -4979,6 +4985,11 @@ html.is-standalone body {
 #scrollToBottomBtn.show {
   opacity: 0.65;
   pointer-events: auto;
+  transform: translateX(-50%) translateY(0); /* slide up into view */
+}
+/* Default hidden state: shifted down for slide-up entrance */
+#scrollToBottomBtn:not(.show) {
+  transform: translateX(-50%) translateY(8px);
 }
 #scrollToBottomBtn:hover {
   opacity: 0.9;
@@ -4992,7 +5003,7 @@ html.is-standalone body {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 #scrollToBottomBtn:active {
-  transform: translateX(-50%) scale(0.88);
+  transform: translateX(-50%) translateY(2px) scale(0.88);
   background: rgba(40, 40, 40, 0.65);
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:

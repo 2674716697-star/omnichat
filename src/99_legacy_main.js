@@ -1298,9 +1298,9 @@
   }
 
   function animateBubbleIn(el) {
-    // GSAP spring entrance for new message bubbles.
+    // GSAP entrance for new message bubbles — single source of truth.
     // Degrades gracefully if GSAP isn't loaded.
-    // Respect user's reduced-motion preference (CSS @keyframes msgIn is also suppressed).
+    // Respects user's reduced-motion preference.
     if (typeof gsap === 'undefined' || !el) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var bubble = el.querySelector('.message-bubble');
@@ -1310,8 +1310,8 @@
       opacity: 0,
       y: isUser ? 8 : 12,
       scale: 0.97,
-      duration: 0.35,
-      ease: 'back.out(1.2)',
+      duration: 0.28,
+      ease: 'expo.out',
       overwrite: 'auto',
       clearProps: 'transform,opacity'
     });
@@ -3966,7 +3966,7 @@ function handleMessageAction(action, msgIndex) {
     var buffer = '';
 
     var lastRenderAt = 0;
-    var minRenderGap = 45; // ~22fps throttle, safe for mobile with read-before-write
+    var minRenderGap = 28; // ~35fps throttle, balanced for mobile — smooth on high-refresh, safe on low-end
 
     var _renderPending = false;
     var scheduleRender = function () {
@@ -5395,7 +5395,7 @@ function handleMessageAction(action, msgIndex) {
 
     let renderScheduled = false;
     let lastRenderAt = 0;
-    const minRenderGap = 45; // ~22fps throttle, safe with read-before-write
+    const minRenderGap = 28; // ~35fps throttle, balanced for mobile — smooth on high-refresh, safe on low-end
 
     // Flush final state: awaitable, cancels pending scheduleRender to avoid race
     const flushFinalRender = () => {
