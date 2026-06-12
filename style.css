@@ -589,7 +589,7 @@ html:not(.is-splashing) .app-container {
   height: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 16px);
   background: linear-gradient(to top, rgba(15, 15, 15, 0.26) 0%, rgba(15, 15, 15, 0.04) 52%, transparent 100%);
   pointer-events: none;
-  z-index: 4;
+  z-index: 0;
 }
 
 /* --- Top Bar --- */
