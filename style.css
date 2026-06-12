@@ -2177,15 +2177,12 @@ html.welcome-visible .welcome-security {
 
 .scene-panel-body {
   padding: 0 14px 12px;
-  transition: clip-path 300ms var(--spring), opacity 200ms var(--spring);
   max-height: none;
   opacity: 1;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
-  clip-path: inset(0);
-  will-change: clip-path, opacity;
 }
 
 @keyframes sceneIn {
@@ -2233,13 +2230,7 @@ html.welcome-visible .welcome-security {
   transform: rotate(-90deg);
 }
 
-.scene-panel.collapsed .scene-panel-body {
-  clip-path: inset(0 0 100% 0);
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  overflow: hidden;
-}
+/* .scene-panel.collapsed .scene-panel-body — collapsed via max-height !important below (line ~5347) */
 
 /* Shared action area - always visible at panel bottom, above composer */
 .scene-panel-actions {
@@ -5105,9 +5096,12 @@ html.has-custom-bg .user .message-bubble {
 
 /* Bottom toolbar: compact, single row scrollable chips */
 .quick-actions {
-  flex-wrap: nowrap;
   overflow-x: auto;
   gap: 5px;
+}
+@media (min-width: 641px) {
+  .quick-actions { flex-wrap: nowrap; }
+}
   padding-bottom: 2px;
   margin-bottom: 5px;
 }

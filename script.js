@@ -5842,36 +5842,29 @@ function handleMessageAction(action, msgIndex) {
     var buffer = '';
 
     var lastRenderAt = 0;
-    var renderTimer = null;
     var minRenderGap = 65; // within 50-80ms, ~15fps throttle
 
     var _renderPending = false;
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
-      if (_renderPending || renderTimer) return;
+      if (_renderPending) return;
       _renderPending = true;
-      var elapsed = performance.now() - lastRenderAt;
-      var doRender = function () {
-        renderTimer = null;
+      requestAnimationFrame(function () {
         _renderPending = false;
         if (!isCurrentTurn()) return;
+        var now = performance.now();
+        if (now - lastRenderAt < minRenderGap) {
+          // Too soon — skip, next chunk will retry
+          return;
+        }
         updateLastBubble(assistantMsg);
-        // When detached: keep rendering the last bubble so streaming text
-        // is still visible, but don't auto-scroll (user is reading above).
         if (!state.ui.detachedDuringStreaming) {
           scrollToBottomIfNeeded({ smooth: false });
         } else {
           updateScrollToBottomButton(true);
         }
         lastRenderAt = performance.now();
-      };
-      if (elapsed >= minRenderGap) {
-        requestAnimationFrame(doRender);
-      } else {
-        renderTimer = setTimeout(function () {
-          requestAnimationFrame(doRender);
-        }, minRenderGap - elapsed);
-      }
+      });
     };
 
     // Shared helper: process one SSE data line, returns true on [DONE]
@@ -5924,7 +5917,6 @@ function handleMessageAction(action, msgIndex) {
         }
       }
     } finally {
-      if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
       _renderPending = false;
       reader.releaseLock();
     }
@@ -7301,30 +7293,30 @@ function handleMessageAction(action, msgIndex) {
       if (renderScheduled) return;
 
       renderScheduled = true;
-      const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          // Re-check current turn inside the async callback
-          if (!isCurrentTurn()) { renderScheduled = false; return; }
-          // Light touch: only update last bubble during streaming.
-          // Always render even when detached — user is reading above,
-          // the last bubble is not in their viewport, so no disruption.
-          updateLastBubble(assistantMsg);
-          if (state.ui.detachedDuringStreaming) {
-            // Don't auto-scroll; show button so user can jump back when ready
-            updateScrollToBottomButton(true);
-          } else if (state.ui.autoFollowStreaming) {
-            var sc = getScrollContainer();
-            if (sc && isNearBottom(sc, 120)) {
-              scheduleFollowScroll(120);
-            }
-          } else {
-            updateScrollToBottomButton(false);
-          }
-          lastRenderAt = performance.now();
+      // Read phase: cache scroll state BEFORE any DOM writes
+      var sc = getScrollContainer();
+      var wasNearBottom = sc && isNearBottom(sc, 120);
+      requestAnimationFrame(() => {
+        // Re-check current turn inside the async callback
+        if (!isCurrentTurn()) { renderScheduled = false; return; }
+        var now = performance.now();
+        if (now - lastRenderAt < minRenderGap) {
+          // Too soon — skip this frame, next SSE chunk will retry
           renderScheduled = false;
-        });
-      }, delay);
+          return;
+        }
+        // Write phase: update bubble, then decide scroll based on cached read
+        updateLastBubble(assistantMsg);
+        if (state.ui.detachedDuringStreaming) {
+          updateScrollToBottomButton(true);
+        } else if (state.ui.autoFollowStreaming) {
+          if (wasNearBottom) { scheduleFollowScroll(120); }
+        } else {
+          updateScrollToBottomButton(false);
+        }
+        lastRenderAt = performance.now();
+        renderScheduled = false;
+      });
     };
 
     // Shared helper: process one SSE data line, returns true on [DONE]
