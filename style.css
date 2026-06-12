@@ -3124,6 +3124,12 @@ html:not(.is-splashing) .bottom-bar {
   pointer-events: auto;
   box-shadow: var(--shadow-md);
   text-align: center;
+  transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.toast-exit {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 @keyframes toastIn {

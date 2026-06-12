@@ -2093,13 +2093,19 @@ function getSceneBodyDetails(block) {
   // =========================================================================
 
   function showToast(msg, type = 'info', duration = 3000) {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    // Remove existing toasts — only the latest message should be visible
+    while (dom.toastContainer.firstChild) {
+      dom.toastContainer.firstChild.remove();
+    }
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + type;
     toast.textContent = msg;
     dom.toastContainer.appendChild(toast);
-    setTimeout(() => {
+    // Force reflow so enter animation fires after append
+    toast.offsetHeight;
+    setTimeout(function() {
       toast.classList.add('toast-exit');
-      toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+      toast.addEventListener('transitionend', function() { toast.remove(); }, { once: true });
     }, duration);
   }
 
@@ -3517,9 +3523,12 @@ function getSceneBodyDetails(block) {
       }
       updateScrollToBottomButton(true);
     } else {
-      // Do NOT auto-restore autoFollowStreaming when user scrolls near bottom.
-      // Recovery is only via explicit click on the scroll-to-bottom button
-      // or when the user sends a new message.
+      // User scrolled back near bottom — clear detached state so streaming
+      // resumes normal rendering with auto-follow.
+      if (state.isStreaming && state.ui.detachedDuringStreaming) {
+        state.ui.detachedDuringStreaming = false;
+        state.ui.autoFollowStreaming = true;
+      }
       updateScrollToBottomButton(false);
     }
   }
