@@ -5120,11 +5120,12 @@ html.has-custom-bg .user .message-bubble {
 }
 /* Bottom toolbar: secondary buttons hidden behind "更多" — animated via GSAP */
 .btn-quick-secondary {
-  display: inline-flex;
+  display: none; /* collapsed: removed from flex flow so "记忆" stays beside "更多" */
   opacity: 0;
   pointer-events: none;
 }
 .quick-actions.expanded .btn-quick-secondary {
+  display: inline-flex; /* expanded: back in flow for GSAP stagger */
   opacity: 1;
   pointer-events: auto;
 }
