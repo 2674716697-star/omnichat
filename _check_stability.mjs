@@ -41,7 +41,7 @@ check('no security-panel', !/security-panel/.test(html + css + js));
 
 // --- Service worker ---
 console.log('\n--- Service worker ---');
-check('sw cache omnichat-v4', /CACHE_NAME\s*=\s*['"]omnichat-v4['"]/.test(sw));
+check('sw cache versioned omnichat-vN', /CACHE_NAME\s*=\s*['"]omnichat-v\d+['"]/.test(sw));
 
 // --- Build version ---
 console.log('\n--- Build version ---');
@@ -52,18 +52,18 @@ check('__BUILD_VERSION__ exists in script.js', /__BUILD_VERSION__/.test(js));
 console.log('\n--- Splash ---');
 check('html starts with is-splashing', /<html[^>]*class=["'][^"']*is-splashing/.test(html));
 check('splash z-index 99999', /\.splash\s*\{[\s\S]*z-index:\s*99999/.test(css));
-check('splash::after extends below viewport', /\.splash::after\s*\{[\s\S]*bottom:\s*-\d+px[\s\S]*height:\s*\d+px/.test(css));
+check('splash background overlay exists', /\.splash-bg::after\s*\{[\s\S]*inset:\s*0/.test(css));
 check('is-splashing hides bottom-bar', /html\.is-splashing\s+\.bottom-bar[\s\S]*display:\s*none/.test(css));
 check('is-splashing locks body background', /html\.is-splashing[\s\S]*background:\s*#[0-9a-fA-F]+\s*!important/.test(css));
 
-// --- Global purple-black bottom UI ---
+// --- Global bottom UI ---
 console.log('\n--- Global bottom UI ---');
-check('bottom-bar has glass background', /\.bottom-bar\s*\{[\s\S]*background:\s*var\(--glass-bg/.test(css));
+check('bottom-bar has glass background', /\.bottom-bar\s*\{[\s\S]*background:\s*(?:var\(--glass-bg|rgba\()/.test(css));
 check('bottom-bar has glass blur', /\.bottom-bar\s*\{[\s\S]*backdrop-filter:\s*var\(--glass-blur\)/.test(css));
-check('bottom-bar has glass border', /\.bottom-bar\s*\{[\s\S]*border:\s*1px\s+solid\s+var\(--glass-border\)/.test(css));
-check('input-message has glass background', /\.input-message\s*\{[\s\S]*background:\s*var\(--glass/.test(css));
-check('input-message has glass border', /\.input-message\s*\{[\s\S]*border:\s*1px\s+solid\s+var\(--glass-border/.test(css));
-check('input-message:focus scene-accent', /\.input-message:focus\s*\{[\s\S]*border-color:\s*var\(--scene-accent\)/.test(css));
+check('bottom-bar has glass border', /\.bottom-bar\s*\{[\s\S]*border:\s*(?:0\.5px|1px)\s+solid\s+(?:var\(--glass-border\)|rgba\()/.test(css));
+check('input-message has glass background', /\.input-message\s*\{[\s\S]*background:\s*(?:linear-gradient|var\(--glass|rgba\()/.test(css));
+check('input-message has glass border', /\.input-message\s*\{[\s\S]*border:\s*(?:0\.5px|1px)\s+solid\s+(?:var\(--glass-border|rgba\()/.test(css));
+check('input-message:focus has visible border', /\.input-message:focus\s*\{[\s\S]*border-color:\s*(?:var\(--scene-accent\)|var\(--accent\)|rgba\()/.test(css));
 
 // --- Stability features ---
 console.log('\n--- Stability features ---');

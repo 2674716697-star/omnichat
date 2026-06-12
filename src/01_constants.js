@@ -25,7 +25,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 4;
+  const STORAGE_SCHEMA_VERSION = 6;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {
@@ -110,6 +110,8 @@
     storyAuxModel: '',
     storyAuxMaxTokens: 5000,
     storyAuxApiKey: '',
+    memoryMode: 'local',
+    memoryRemoteEndpoint: '',
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''

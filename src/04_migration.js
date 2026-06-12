@@ -207,6 +207,13 @@ function createSceneWorld(seed) {
     return msg;
   }
 
+  function normalizeMemoryMode(value) {
+    if (value === 'mock-remote') return 'mock-remote';
+    if (value === 'remote') return 'remote';
+    // All other values (including undefined, null, 'local', unknown strings) default to 'local'
+    return 'local';
+  }
+
   // Normalize a conversation to current schema — idempotent
   function normalizeConversation(conv) {
     if (!conv) return conv;
@@ -232,6 +239,14 @@ function createSceneWorld(seed) {
     if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
     // Ensure storyMemory exists for all conversations (belt-and-suspenders)
     if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
+    // --- Schema v4→v5: memoryMode ---
+    // Always run (not just oldVersion < 5) so invalid values self-heal. Idempotent.
+    conv.memoryMode = normalizeMemoryMode(conv.memoryMode);
+    // --- Schema v5→v6: memoryRemoteEndpoint ---
+    // Always run so missing/corrupted fields self-heal. Idempotent.
+    if (typeof conv.memoryRemoteEndpoint !== 'string') {
+      conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+    }
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
     if (conv.replyCharLimit != null) {

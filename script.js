@@ -32,7 +32,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 4;
+  const STORAGE_SCHEMA_VERSION = 6;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {
@@ -117,6 +117,8 @@
     storyAuxModel: '',
     storyAuxMaxTokens: 5000,
     storyAuxApiKey: '',
+    memoryMode: 'local',
+    memoryRemoteEndpoint: '',
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''
@@ -628,6 +630,13 @@ function createSceneWorld(seed) {
     return msg;
   }
 
+  function normalizeMemoryMode(value) {
+    if (value === 'mock-remote') return 'mock-remote';
+    if (value === 'remote') return 'remote';
+    // All other values (including undefined, null, 'local', unknown strings) default to 'local'
+    return 'local';
+  }
+
   // Normalize a conversation to current schema — idempotent
   function normalizeConversation(conv) {
     if (!conv) return conv;
@@ -653,6 +662,14 @@ function createSceneWorld(seed) {
     if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
     // Ensure storyMemory exists for all conversations (belt-and-suspenders)
     if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
+    // --- Schema v4→v5: memoryMode ---
+    // Always run (not just oldVersion < 5) so invalid values self-heal. Idempotent.
+    conv.memoryMode = normalizeMemoryMode(conv.memoryMode);
+    // --- Schema v5→v6: memoryRemoteEndpoint ---
+    // Always run so missing/corrupted fields self-heal. Idempotent.
+    if (typeof conv.memoryRemoteEndpoint !== 'string') {
+      conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+    }
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
     if (conv.replyCharLimit != null) {
@@ -2387,6 +2404,8 @@ function getSceneBodyDetails(block) {
       storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
       storyAuxApiKey: DEFAULTS.storyAuxApiKey,
       storyMemory: createStoryMemory(),
+      memoryMode: DEFAULTS.memoryMode,
+      memoryRemoteEndpoint: DEFAULTS.memoryRemoteEndpoint,
       schemaVersion: STORAGE_SCHEMA_VERSION,
       messages: [],
     };
@@ -2467,7 +2486,7 @@ function getSceneBodyDetails(block) {
         var digestContent = '[较早对话压缩摘要]\n' + olderDigest;
         // Attach story memory to the digest so it survives compression
         if (isStoryStarted(conv)) {
-          var smText = buildStoryMemorySystemText(conv);
+          var smText = retrieveStoryMemoryText(conv, '', 4000);
           if (smText) {
             digestContent += '\n\n[长期章节记忆 — 请在压缩时优先保留]\n' + smText;
           }
@@ -3506,6 +3525,18 @@ function getSceneBodyDetails(block) {
 
     btn.classList.add('show');
     btn.removeAttribute('aria-hidden');
+  }
+
+  // Reset all scroll-follow / detached-streaming flags at the start of a new request.
+  // Prevents state leakage from a previous turn where the user scrolled away
+  // during streaming — without this reset, the next stream silently skips all
+  // updateLastBubble calls and the user sees nothing.
+  function resetStreamFollowState() {
+    state.ui.autoFollowStreaming = true;
+    state.ui.userScrolling = false;
+    state.ui.detachedDuringStreaming = false;
+    state.ui.detachedContentDirty = false;
+    updateScrollToBottomButton(false);
   }
 
   // =========================================================================
@@ -5127,7 +5158,7 @@ function handleMessageAction(action, msgIndex) {
     conv.storyMemory = sm;
   }
 
-  function scheduleStoryMemoryUpdate(convId, fullContent) {
+  function scheduleLocalStoryMemoryUpdate(convId, fullContent) {
     if (!convId || !fullContent) return;
     var conv = null;
     for (var ci = 0; ci < state.conversations.length; ci++) {
@@ -5254,6 +5285,317 @@ function handleMessageAction(action, msgIndex) {
       }
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  // =========================================================================
+  // MemoryAdapter — abstraction layer for story memory (local/remote)
+  // =========================================================================
+
+  // hasRemoteMemoryConfig — true when conv has a remote endpoint AND memoryMode is 'remote'.
+  function hasRemoteMemoryConfig(conv) {
+    if (!conv) return false;
+    if (conv.memoryMode !== 'remote') return false;
+    return normalizeMemoryEndpoint(conv.memoryRemoteEndpoint).length > 0;
+  }
+
+  // LocalMemoryAdapter — wraps existing local storyMemory logic.
+  // Provides the same interface a future RemoteMemoryAdapter would implement.
+  var LocalMemoryAdapter = {
+    retrieveText: function(conv, userText, budget) {
+      if (!conv) return '';
+      budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+      var text = buildStoryMemorySystemText(conv);
+      if (text && text.length > budget) {
+        text = text.slice(0, Math.max(0, budget - 3)) + '...';
+      }
+      return text;
+    },
+    scheduleUpdate: function(convId, fullContent) {
+      scheduleLocalStoryMemoryUpdate(convId, fullContent);
+    }
+  };
+
+  // MockRemoteMemoryAdapter — placeholder for future Supabase/remote backend.
+  // Delegates everything to LocalMemoryAdapter so behavior is identical.
+  // No network requests are made. This exists purely so the memoryMode
+  // switching infrastructure can be built and tested without a real backend.
+  var MockRemoteMemoryAdapter = {
+    retrieveText: function(conv, userText, budget) {
+      // Build payload to validate shape (not sent over network).
+      buildMemoryRetrievePayload(conv, userText, budget);
+      // Get local memory text, then normalize as if remote returned it.
+      var localText = LocalMemoryAdapter.retrieveText(conv, userText, budget);
+      var normalized = normalizeMemoryRetrieveResult({ memoryText: localText }, budget);
+      return normalized.memoryText;
+    },
+    scheduleUpdate: function(convId, fullContent) {
+      // Find conversation to build update payload for validation (not saved, no network request).
+      var conv = null;
+      for (var ci = 0; ci < state.conversations.length; ci++) {
+        if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+      }
+      if (conv) {
+        buildMemoryUpdatePayload(conv, fullContent);
+      }
+      // Delegate to local adapter.
+      LocalMemoryAdapter.scheduleUpdate(convId, fullContent);
+    }
+  };
+
+  // RemoteMemoryAdapter — wraps local memory with background remote POST.
+  // LocalMemoryAdapter always runs first (safe, synchronous entry path).
+  // Remote update is deferred via setTimeout to avoid impacting UI or generation.
+  // Failures are logged via console.warn only; never shown to the user.
+  var RemoteMemoryAdapter = {
+    retrieveText: function(conv, userText, budget) {
+      // Fallback to local if no remote config is set — no error, no popup.
+      if (!hasRemoteMemoryConfig(conv)) {
+        return LocalMemoryAdapter.retrieveText(conv, userText, budget);
+      }
+      // TODO: Real remote retrieve will be async (prefetch/cache).
+      // _buildStoryMessages is currently synchronous, so for now we
+      // fall back to local. When the call site supports async, replace
+      // this branch with a fetch() to the remote endpoint.
+      return LocalMemoryAdapter.retrieveText(conv, userText, budget);
+    },
+    scheduleUpdate: function(convId, fullContent) {
+      if (!convId || !fullContent) return;
+      var conv = null;
+      for (var ci = 0; ci < state.conversations.length; ci++) {
+        if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+      }
+      if (!conv) return;
+      // Always run local update first — never block on remote.
+      LocalMemoryAdapter.scheduleUpdate(convId, fullContent);
+      // Without remote config, nothing else to do.
+      if (!hasRemoteMemoryConfig(conv)) return;
+      // Background remote POST: deferred, low-priority, non-blocking.
+      var maxRetries = 3;
+      var retries = 0;
+      function tryPost() {
+        if (state.isStreaming) {
+          retries++;
+          if (retries > maxRetries) {
+            console.warn('[OmniChat] Remote memory update skipped: streaming for too long');
+            return;
+          }
+          setTimeout(tryPost, 2000);
+          return;
+        }
+        postRemoteMemoryUpdate(conv, fullContent).catch(function(e) {
+          // Never throw to UI — postRemoteMemoryUpdate already console.warns internally.
+          // This catch is a safety net for unexpected synchronous throws.
+          console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
+        });
+      }
+      setTimeout(tryPost, 1500);
+    }
+  };
+
+  function getMemoryAdapter(conv) {
+    // Select adapter based on conv.memoryMode.
+    // 'remote' -> RemoteMemoryAdapter (falls back to local if unconfigured)
+    // 'mock-remote' -> MockRemoteMemoryAdapter
+    // All other values (including 'local', undefined, unknown) -> LocalMemoryAdapter
+    if (conv && conv.memoryMode === 'remote') {
+      return RemoteMemoryAdapter;
+    }
+    if (conv && conv.memoryMode === 'mock-remote') {
+      return MockRemoteMemoryAdapter;
+    }
+    return LocalMemoryAdapter;
+  }
+
+  function retrieveStoryMemoryText(conv, userText, budget) {
+    return getMemoryAdapter(conv).retrieveText(conv, userText, budget);
+  }
+
+  // scheduleStoryMemoryUpdate — public entry point, delegates to the active adapter.
+  // Replaces the old direct implementation (now renamed to scheduleLocalStoryMemoryUpdate).
+  function scheduleStoryMemoryUpdate(convId, fullContent) {
+    if (!convId || !fullContent) return;
+    var conv = null;
+    for (var ci = 0; ci < state.conversations.length; ci++) {
+      if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+    }
+    if (!conv) return;
+    getMemoryAdapter(conv).scheduleUpdate(convId, fullContent);
+  }
+
+  // =========================================================================
+  // Memory API Payload Helpers — build/normalize payloads for future /api/memory/* endpoints.
+  // No network calls; purely payload shape validation.
+  // =========================================================================
+
+  // buildMemoryRetrievePayload — construct the request body for POST /api/memory/retrieve.
+  // Returns a plain JSON object. No API keys or provider secrets included.
+  function buildMemoryRetrievePayload(conv, userText, budget) {
+    budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+    var recentMessages = [];
+    if (conv && conv.messages && conv.messages.length > 0) {
+      var slice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
+      for (var i = 0; i < slice.length; i++) {
+        var m = slice[i];
+        if (m.role === 'user' || m.role === 'assistant') {
+          recentMessages.push({
+            role: m.role,
+            content: clipStr(m.content || '', 500)
+          });
+        }
+      }
+    }
+    return {
+      conversationId: conv ? conv.id || '' : '',
+      userText: userText || '',
+      budget: budget,
+      sceneState: createSceneState(conv ? conv.sceneState : undefined),
+      storyMemory: normalizeStoryMemory(conv && conv.storyMemory ? conv.storyMemory : undefined),
+      recentMessages: recentMessages,
+      memoryMode: conv ? (conv.memoryMode || 'local') : 'local'
+    };
+  }
+
+  // buildMemoryUpdatePayload — construct the request body for POST /api/memory/update.
+  // Returns a plain JSON object. No API keys included.
+  function buildMemoryUpdatePayload(conv, storyContent) {
+    var recentMessages = [];
+    if (conv && conv.messages && conv.messages.length > 0) {
+      var slice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
+      for (var i = 0; i < slice.length; i++) {
+        var m = slice[i];
+        if (m.role === 'user' || m.role === 'assistant') {
+          recentMessages.push({
+            role: m.role,
+            content: clipStr(m.content || '', 500)
+          });
+        }
+      }
+    }
+    // Take last 3000 characters of storyContent
+    var content = storyContent || '';
+    if (content.length > 3000) {
+      content = content.slice(content.length - 3000);
+    }
+    return {
+      conversationId: conv ? conv.id || '' : '',
+      storyContent: content,
+      sceneState: createSceneState(conv ? conv.sceneState : undefined),
+      storyMemory: normalizeStoryMemory(conv && conv.storyMemory ? conv.storyMemory : undefined),
+      recentMessages: recentMessages,
+      memoryMode: conv ? (conv.memoryMode || 'local') : 'local'
+    };
+  }
+
+  // normalizeMemoryRetrieveResult — defensive normalize of a remote /api/memory/retrieve response.
+  // Ensures memoryText is a string truncated to budget, and ID arrays are arrays.
+  function normalizeMemoryRetrieveResult(result, budget) {
+    budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+    var memoryText = typeof (result && result.memoryText) === 'string' ? result.memoryText : '';
+    if (memoryText.length > budget) {
+      memoryText = memoryText.slice(0, Math.max(0, budget - 3)) + '...';
+    }
+    return {
+      memoryText: memoryText,
+      selectedChapterIds: Array.isArray(result && result.selectedChapterIds) ? result.selectedChapterIds : [],
+      selectedFactIds: Array.isArray(result && result.selectedFactIds) ? result.selectedFactIds : []
+    };
+  }
+
+  // normalizeMemoryUpdateResult — defensive normalize of a remote /api/memory/update response.
+  // Returns a clean object with chapters/pinnedFacts/unresolvedThreads. Does not mutate input.
+  function normalizeMemoryUpdateResult(result) {
+    result = result || {};
+    return {
+      chapters: normalizeStoryChapters(result.chapters),
+      pinnedFacts: clipStringArray(result.pinnedFacts, 12, 120),
+      unresolvedThreads: clipStringArray(result.unresolvedThreads, 12, 160)
+    };
+  }
+
+  // =========================================================================
+  // Remote Memory Endpoint Helpers — URL normalization and construction
+  // =========================================================================
+
+  // normalizeMemoryEndpoint — validate and normalize a remote memory endpoint URL.
+  // Only allows http:// or https:// URLs; rejects all other schemes (including empty).
+  // Strips trailing slashes for clean concatenation.
+  function normalizeMemoryEndpoint(endpoint) {
+    if (typeof endpoint !== 'string') return '';
+    var url = endpoint.trim();
+    if (!url) return '';
+    // Strip trailing slashes
+    while (url.length > 0 && url.charAt(url.length - 1) === '/') {
+      url = url.slice(0, -1);
+    }
+    // Only allow http:// or https://
+    if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+      return '';
+    }
+    return url;
+  }
+
+  // buildMemoryEndpointUrl — construct a full API URL from a normalized endpoint base.
+  // If the endpoint already ends with the target path, returns it as-is (no double-append).
+  // Default path is '/api/memory/update'. Returns '' on invalid input.
+  function buildMemoryEndpointUrl(endpoint, path) {
+    var base = normalizeMemoryEndpoint(endpoint);
+    if (!base) return '';
+    path = typeof path === 'string' && path.length > 0 ? path : '/api/memory/update';
+    // Avoid double-append: check if base already ends with the target path
+    if (base.length >= path.length &&
+        base.slice(base.length - path.length) === path) {
+      return base;
+    }
+    return base + path;
+  }
+
+  // postRemoteMemoryUpdate — POST memory update payload to the remote endpoint.
+  // Fire-and-forget: failures are logged via console.warn only; never throw to UI.
+  // Returns true on successful POST + JSON parse, false otherwise.
+  async function postRemoteMemoryUpdate(conv, fullContent) {
+    if (!hasRemoteMemoryConfig(conv)) return false;
+    try {
+      var payload = buildMemoryUpdatePayload(conv, fullContent);
+      var url = buildMemoryEndpointUrl(conv.memoryRemoteEndpoint, '/api/memory/update');
+      if (!url) return false;
+
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 8000);
+
+      var response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!response.ok) {
+        console.warn('[OmniChat] Remote memory update failed: HTTP ' + response.status);
+        return false;
+      }
+
+      try {
+        var result = await response.json();
+        normalizeMemoryUpdateResult(result);
+        // Phase 1: do NOT write remote result back to conv — preserves local memory integrity.
+        return true;
+      } catch (parseErr) {
+        console.warn('[OmniChat] Remote memory update: invalid JSON response');
+        return false;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        console.warn('[OmniChat] Remote memory update timed out');
+      } else {
+        console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
+      }
+      return false;
     }
   }
 
@@ -5605,9 +5947,7 @@ function handleMessageAction(action, msgIndex) {
     var requestController = state.abortController;
     var turnConvId = conv.id;
     state.isStreaming = true;
-    state.ui.autoFollowStreaming = true;
-    state.ui.userScrolling = false;
-    updateScrollToBottomButton(false);
+    resetStreamFollowState();
 
     // --- Insert placeholder — starts empty, streaming cursor shows activity ---
     var placeholderIdx = conv.messages.length;
@@ -5992,7 +6332,7 @@ function handleMessageAction(action, msgIndex) {
       systemPrompt = (systemPrompt || '') + '\n\n' + sceneStateRef;
 
       // Inject chapter memory if available
-      var storyMemText = buildStoryMemorySystemText(conv);
+      var storyMemText = retrieveStoryMemoryText(conv, userText, 4000);
       if (storyMemText) {
         systemPrompt = (systemPrompt || '') + '\n\n' + storyMemText;
       }
@@ -6497,9 +6837,7 @@ function handleMessageAction(action, msgIndex) {
     var requestController = state.abortController;
     var sendConvId = conv.id;
     state.isStreaming = true;
-    state.ui.autoFollowStreaming = true;
-    state.ui.userScrolling = false;
-    updateScrollToBottomButton(false);
+    resetStreamFollowState();
     updateSendUI();
 
     const pConf = getProviderConfig(conv.provider);

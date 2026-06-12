@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqatumfu">
+  <meta name="build-version" content="mqavbpqi">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -771,7 +771,7 @@
 const STORAGE_KEY = 'omnichat_data';
 const SECRETS_STORAGE_KEY = 'omnichat_secrets_v1';
 const PREFS_STORAGE_KEY = 'omnichat_prefs_v1';
-const STORAGE_SCHEMA_VERSION = 4;
+const STORAGE_SCHEMA_VERSION = 6;
 const STORAGE_VERSION = 1;
 const PROVIDERS = {
 openai: {
@@ -851,6 +851,8 @@ storyAuxProvider: '',
 storyAuxModel: '',
 storyAuxMaxTokens: 5000,
 storyAuxApiKey: '',
+memoryMode: 'local',
+memoryRemoteEndpoint: '',
 sceneStatus: {
 health: '', stamina: '', composure: '', focus: '',
 currentObjective: '', constraints: ''
@@ -1308,6 +1310,12 @@ msg._requestContent = msg.content;
 }
 return msg;
 }
+function normalizeMemoryMode(value) {
+if (value === 'mock-remote') return 'mock-remote';
+if (value === 'remote') return 'remote';
+// All other values (including undefined, null, 'local', unknown strings) default to 'local'
+return 'local';
+}
 // Normalize a conversation to current schema — idempotent
 function normalizeConversation(conv) {
 if (!conv) return conv;
@@ -1332,6 +1340,14 @@ if (conv.storyAuxMaxTokens == null) conv.storyAuxMaxTokens = DEFAULTS.storyAuxMa
 if (conv.storyAuxApiKey == null) conv.storyAuxApiKey = DEFAULTS.storyAuxApiKey;
 // Ensure storyMemory exists for all conversations (belt-and-suspenders)
 if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
+// --- Schema v4→v5: memoryMode ---
+// Always run (not just oldVersion < 5) so invalid values self-heal. Idempotent.
+conv.memoryMode = normalizeMemoryMode(conv.memoryMode);
+// --- Schema v5→v6: memoryRemoteEndpoint ---
+// Always run so missing/corrupted fields self-heal. Idempotent.
+if (typeof conv.memoryRemoteEndpoint !== 'string') {
+conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+}
 // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
 var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];
 if (conv.replyCharLimit != null) {
@@ -2842,6 +2858,8 @@ storyAuxModel: DEFAULTS.storyAuxModel,
 storyAuxMaxTokens: DEFAULTS.storyAuxMaxTokens,
 storyAuxApiKey: DEFAULTS.storyAuxApiKey,
 storyMemory: createStoryMemory(),
+memoryMode: DEFAULTS.memoryMode,
+memoryRemoteEndpoint: DEFAULTS.memoryRemoteEndpoint,
 schemaVersion: STORAGE_SCHEMA_VERSION,
 messages: [],
 };
@@ -2911,7 +2929,7 @@ requestMessages = rawMessages.slice(recentStart);
 if (olderDigest) {
 var digestContent = '[较早对话压缩摘要]\n' + olderDigest;
 if (isStoryStarted(conv)) {
-var smText = buildStoryMemorySystemText(conv);
+var smText = retrieveStoryMemoryText(conv, '', 4000);
 if (smText) {
 digestContent += '\n\n[长期章节记忆 — 请在压缩时优先保留]\n' + smText;
 }
@@ -3731,6 +3749,13 @@ document.body.appendChild(btn);
 }
 btn.classList.add('show');
 btn.removeAttribute('aria-hidden');
+}
+function resetStreamFollowState() {
+state.ui.autoFollowStreaming = true;
+state.ui.userScrolling = false;
+state.ui.detachedDuringStreaming = false;
+state.ui.detachedContentDirty = false;
+updateScrollToBottomButton(false);
 }
 function syncSettingsToUI() {
 const conv = getCurrentConv();
@@ -5163,7 +5188,7 @@ sm.lastMessageCount = conv.messages ? conv.messages.length : 0;
 sm = normalizeStoryMemory(sm);
 conv.storyMemory = sm;
 }
-function scheduleStoryMemoryUpdate(convId, fullContent) {
+function scheduleLocalStoryMemoryUpdate(convId, fullContent) {
 if (!convId || !fullContent) return;
 var conv = null;
 for (var ci = 0; ci < state.conversations.length; ci++) {
@@ -5261,6 +5286,233 @@ console.warn('[OmniChat] Story memory update failed:', e.message || e);
 }
 } finally {
 if (timeoutId) clearTimeout(timeoutId);
+}
+}
+function hasRemoteMemoryConfig(conv) {
+if (!conv) return false;
+if (conv.memoryMode !== 'remote') return false;
+return normalizeMemoryEndpoint(conv.memoryRemoteEndpoint).length > 0;
+}
+var LocalMemoryAdapter = {
+retrieveText: function(conv, userText, budget) {
+if (!conv) return '';
+budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+var text = buildStoryMemorySystemText(conv);
+if (text && text.length > budget) {
+text = text.slice(0, Math.max(0, budget - 3)) + '...';
+}
+return text;
+},
+scheduleUpdate: function(convId, fullContent) {
+scheduleLocalStoryMemoryUpdate(convId, fullContent);
+}
+};
+var MockRemoteMemoryAdapter = {
+retrieveText: function(conv, userText, budget) {
+buildMemoryRetrievePayload(conv, userText, budget);
+var localText = LocalMemoryAdapter.retrieveText(conv, userText, budget);
+var normalized = normalizeMemoryRetrieveResult({ memoryText: localText }, budget);
+return normalized.memoryText;
+},
+scheduleUpdate: function(convId, fullContent) {
+var conv = null;
+for (var ci = 0; ci < state.conversations.length; ci++) {
+if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+}
+if (conv) {
+buildMemoryUpdatePayload(conv, fullContent);
+}
+LocalMemoryAdapter.scheduleUpdate(convId, fullContent);
+}
+};
+var RemoteMemoryAdapter = {
+retrieveText: function(conv, userText, budget) {
+if (!hasRemoteMemoryConfig(conv)) {
+return LocalMemoryAdapter.retrieveText(conv, userText, budget);
+}
+return LocalMemoryAdapter.retrieveText(conv, userText, budget);
+},
+scheduleUpdate: function(convId, fullContent) {
+if (!convId || !fullContent) return;
+var conv = null;
+for (var ci = 0; ci < state.conversations.length; ci++) {
+if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+}
+if (!conv) return;
+LocalMemoryAdapter.scheduleUpdate(convId, fullContent);
+if (!hasRemoteMemoryConfig(conv)) return;
+var maxRetries = 3;
+var retries = 0;
+function tryPost() {
+if (state.isStreaming) {
+retries++;
+if (retries > maxRetries) {
+console.warn('[OmniChat] Remote memory update skipped: streaming for too long');
+return;
+}
+setTimeout(tryPost, 2000);
+return;
+}
+postRemoteMemoryUpdate(conv, fullContent).catch(function(e) {
+console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
+});
+}
+setTimeout(tryPost, 1500);
+}
+};
+function getMemoryAdapter(conv) {
+if (conv && conv.memoryMode === 'remote') {
+return RemoteMemoryAdapter;
+}
+if (conv && conv.memoryMode === 'mock-remote') {
+return MockRemoteMemoryAdapter;
+}
+return LocalMemoryAdapter;
+}
+function retrieveStoryMemoryText(conv, userText, budget) {
+return getMemoryAdapter(conv).retrieveText(conv, userText, budget);
+}
+function scheduleStoryMemoryUpdate(convId, fullContent) {
+if (!convId || !fullContent) return;
+var conv = null;
+for (var ci = 0; ci < state.conversations.length; ci++) {
+if (state.conversations[ci].id === convId) { conv = state.conversations[ci]; break; }
+}
+if (!conv) return;
+getMemoryAdapter(conv).scheduleUpdate(convId, fullContent);
+}
+function buildMemoryRetrievePayload(conv, userText, budget) {
+budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+var recentMessages = [];
+if (conv && conv.messages && conv.messages.length > 0) {
+var slice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
+for (var i = 0; i < slice.length; i++) {
+var m = slice[i];
+if (m.role === 'user' || m.role === 'assistant') {
+recentMessages.push({
+role: m.role,
+content: clipStr(m.content || '', 500)
+});
+}
+}
+}
+return {
+conversationId: conv ? conv.id || '' : '',
+userText: userText || '',
+budget: budget,
+sceneState: createSceneState(conv ? conv.sceneState : undefined),
+storyMemory: normalizeStoryMemory(conv && conv.storyMemory ? conv.storyMemory : undefined),
+recentMessages: recentMessages,
+memoryMode: conv ? (conv.memoryMode || 'local') : 'local'
+};
+}
+function buildMemoryUpdatePayload(conv, storyContent) {
+var recentMessages = [];
+if (conv && conv.messages && conv.messages.length > 0) {
+var slice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
+for (var i = 0; i < slice.length; i++) {
+var m = slice[i];
+if (m.role === 'user' || m.role === 'assistant') {
+recentMessages.push({
+role: m.role,
+content: clipStr(m.content || '', 500)
+});
+}
+}
+}
+var content = storyContent || '';
+if (content.length > 3000) {
+content = content.slice(content.length - 3000);
+}
+return {
+conversationId: conv ? conv.id || '' : '',
+storyContent: content,
+sceneState: createSceneState(conv ? conv.sceneState : undefined),
+storyMemory: normalizeStoryMemory(conv && conv.storyMemory ? conv.storyMemory : undefined),
+recentMessages: recentMessages,
+memoryMode: conv ? (conv.memoryMode || 'local') : 'local'
+};
+}
+function normalizeMemoryRetrieveResult(result, budget) {
+budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+var memoryText = typeof (result && result.memoryText) === 'string' ? result.memoryText : '';
+if (memoryText.length > budget) {
+memoryText = memoryText.slice(0, Math.max(0, budget - 3)) + '...';
+}
+return {
+memoryText: memoryText,
+selectedChapterIds: Array.isArray(result && result.selectedChapterIds) ? result.selectedChapterIds : [],
+selectedFactIds: Array.isArray(result && result.selectedFactIds) ? result.selectedFactIds : []
+};
+}
+function normalizeMemoryUpdateResult(result) {
+result = result || {};
+return {
+chapters: normalizeStoryChapters(result.chapters),
+pinnedFacts: clipStringArray(result.pinnedFacts, 12, 120),
+unresolvedThreads: clipStringArray(result.unresolvedThreads, 12, 160)
+};
+}
+function normalizeMemoryEndpoint(endpoint) {
+if (typeof endpoint !== 'string') return '';
+var url = endpoint.trim();
+if (!url) return '';
+while (url.length > 0 && url.charAt(url.length - 1) === '/') {
+url = url.slice(0, -1);
+}
+if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+return '';
+}
+return url;
+}
+function buildMemoryEndpointUrl(endpoint, path) {
+var base = normalizeMemoryEndpoint(endpoint);
+if (!base) return '';
+path = typeof path === 'string' && path.length > 0 ? path : '/api/memory/update';
+if (base.length >= path.length &&
+base.slice(base.length - path.length) === path) {
+return base;
+}
+return base + path;
+}
+async function postRemoteMemoryUpdate(conv, fullContent) {
+if (!hasRemoteMemoryConfig(conv)) return false;
+try {
+var payload = buildMemoryUpdatePayload(conv, fullContent);
+var url = buildMemoryEndpointUrl(conv.memoryRemoteEndpoint, '/api/memory/update');
+if (!url) return false;
+var controller = new AbortController();
+var timeoutId = setTimeout(function() { controller.abort(); }, 8000);
+var response;
+try {
+response = await fetch(url, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload),
+signal: controller.signal,
+});
+} finally {
+clearTimeout(timeoutId);
+}
+if (!response.ok) {
+console.warn('[OmniChat] Remote memory update failed: HTTP ' + response.status);
+return false;
+}
+try {
+var result = await response.json();
+normalizeMemoryUpdateResult(result);
+return true;
+} catch (parseErr) {
+console.warn('[OmniChat] Remote memory update: invalid JSON response');
+return false;
+}
+} catch (e) {
+if (e && e.name === 'AbortError') {
+console.warn('[OmniChat] Remote memory update timed out');
+} else {
+console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
+}
+return false;
 }
 }
 function withTimeout(promise, ms) {
@@ -5537,9 +5789,7 @@ state.abortController = new AbortController();
 var requestController = state.abortController;
 var turnConvId = conv.id;
 state.isStreaming = true;
-state.ui.autoFollowStreaming = true;
-state.ui.userScrolling = false;
-updateScrollToBottomButton(false);
+resetStreamFollowState();
 var placeholderIdx = conv.messages.length;
 var placeholderMsg = {
 role: 'assistant',
@@ -5861,7 +6111,7 @@ var sceneStateRef = [
 '上次方向：' + (ss.directions ? ss.directions.replace(/\n/g, ' / ') : '未记录'),
 ].join('\n');
 systemPrompt = (systemPrompt || '') + '\n\n' + sceneStateRef;
-var storyMemText = buildStoryMemorySystemText(conv);
+var storyMemText = retrieveStoryMemoryText(conv, userText, 4000);
 if (storyMemText) {
 systemPrompt = (systemPrompt || '') + '\n\n' + storyMemText;
 }
@@ -6259,9 +6509,7 @@ state.abortController = new AbortController();
 var requestController = state.abortController;
 var sendConvId = conv.id;
 state.isStreaming = true;
-state.ui.autoFollowStreaming = true;
-state.ui.userScrolling = false;
-updateScrollToBottomButton(false);
+resetStreamFollowState();
 updateSendUI();
 const pConf = getProviderConfig(conv.provider);
 if (!conv.autoCompress && countApproxChars(conv) > REQUEST_CHAR_SOFT_LIMIT) {
