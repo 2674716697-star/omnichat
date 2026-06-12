@@ -98,7 +98,7 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         var data = JSON.parse(raw);
-        state.conversations = data.conversations || [];
+        state.conversations = Array.isArray(data.conversations) ? data.conversations : [];
         state.conversations.forEach(function(conv) {
           conv.sceneState = createSceneState(conv.sceneState);
           conv.sceneWorld = createSceneWorld(conv.sceneWorld);
@@ -161,7 +161,8 @@
       }
     } catch (e) {
       // Main data corrupted — secrets and prefs were already restored above.
-      showToast('主数据加载失败，已恢复密钥和设置。', 'warning');
+      console.warn('[OmniChat] 主数据加载失败:', e);
+      showToast('主数据加载失败，已恢复密钥和设置。', 'warning', 2000);
       mainOk = false;
     }
 
