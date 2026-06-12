@@ -3528,13 +3528,9 @@ function getSceneBodyDetails(block) {
     var btn = document.getElementById('scrollToBottomBtn');
     var el = getScrollContainer();
 
-    // Button is visible when:
-    // 1. Explicit showIntent (e.g. user scrolled away, streaming has dirty content)
-    // 2. User scrolled away from bottom and hasn't explicitly recovered
-    // 3. There's detached content pending from streaming
+    // Button is visible when explicit showIntent or user scrolled away
     var shouldShow = showIntent ||
-      (!state.ui.autoFollowStreaming && !isNearBottom(el, 80)) ||
-      state.ui.detachedContentDirty;
+      (!state.ui.autoFollowStreaming && !isNearBottom(el, 80));
 
     if (!shouldShow) {
       if (btn) {
@@ -5837,11 +5833,6 @@ function handleMessageAction(action, msgIndex) {
     var scheduleRender = function () {
       if (!isCurrentTurn()) return;
       if (_renderPending || renderTimer) return;
-      if (state.ui.detachedDuringStreaming) {
-        state.ui.detachedContentDirty = true;
-        updateScrollToBottomButton(true);
-        return;
-      }
       _renderPending = true;
       var elapsed = performance.now() - lastRenderAt;
       var doRender = function () {
@@ -5849,7 +5840,13 @@ function handleMessageAction(action, msgIndex) {
         _renderPending = false;
         if (!isCurrentTurn()) return;
         updateLastBubble(assistantMsg);
-        scrollToBottomIfNeeded({ smooth: false });
+        // When detached: keep rendering the last bubble so streaming text
+        // is still visible, but don't auto-scroll (user is reading above).
+        if (!state.ui.detachedDuringStreaming) {
+          scrollToBottomIfNeeded({ smooth: false });
+        } else {
+          updateScrollToBottomButton(true);
+        }
         lastRenderAt = performance.now();
       };
       if (elapsed >= minRenderGap) {
@@ -5918,12 +5915,11 @@ function handleMessageAction(action, msgIndex) {
 
     // Final render for this part — caller keeps _streaming=true
     if (isCurrentTurn()) {
-      if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-        state.ui.detachedContentDirty = true;
-        updateScrollToBottomButton(true);
-      } else {
-        updateLastBubble(assistantMsg);
+      updateLastBubble(assistantMsg);
+      if (!state.ui.detachedDuringStreaming) {
         scrollToBottomIfNeeded({ smooth: false });
+      } else {
+        updateScrollToBottomButton(true);
       }
     }
 
@@ -6071,12 +6067,11 @@ function handleMessageAction(action, msgIndex) {
       assistantMsg.sceneCharacterSnapshot = createSceneCharacter(conv.sceneCharacter);
       contentPromoted = true;
       if (state.currentConversationId === turnConvId) {
-        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
-          updateScrollToBottomButton(true);
-        } else {
-          renderMessages();
+        renderMessages();
+        if (!state.ui.detachedDuringStreaming) {
           scrollToBottomIfNeeded({ smooth: false });
+        } else {
+          updateScrollToBottomButton(true);
         }
       }
 
@@ -6085,12 +6080,11 @@ function handleMessageAction(action, msgIndex) {
       // ===== Scene finalizing: show light status while aux/repair runs =====
       assistantMsg._sceneFinalizing = true;
       if (state.currentConversationId === turnConvId) {
-        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
-          updateScrollToBottomButton(true);
-        } else {
-          updateLastBubble(assistantMsg);
+        updateLastBubble(assistantMsg);
+        if (!state.ui.detachedDuringStreaming) {
           scrollToBottomIfNeeded({ smooth: false });
+        } else {
+          updateScrollToBottomButton(true);
         }
       }
 
@@ -6242,12 +6236,11 @@ function handleMessageAction(action, msgIndex) {
       updateScenePanelUI();
       // Re-render to show action buttons
       if (state.currentConversationId === turnConvId) {
-        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
-          updateScrollToBottomButton(true);
-        } else {
-          renderMessages();
+        renderMessages();
+        if (!state.ui.detachedDuringStreaming) {
           scrollToBottomIfNeeded({ smooth: false });
+        } else {
+          updateScrollToBottomButton(true);
         }
       }
 
@@ -7241,18 +7234,14 @@ function handleMessageAction(action, msgIndex) {
         updateTimestamp(conv);
         updateTopBar();
 
-        // If user is detached (scrolled away during streaming), defer full render.
-        // Don't force DOM rebuild that would interrupt their scrolling.
-        // The "↓ 查看最新回复" button will trigger the final render on click.
-        if (state.ui.detachedDuringStreaming && !state.ui.autoFollowStreaming) {
-          state.ui.detachedContentDirty = true;
-          updateScrollToBottomButton(true);
-        } else {
-          // User is at bottom — normal full render
-          fullRenderMessages(conv.messages);
+        // Always do final render so markdown/actions are properly formatted,
+        // even if user scrolled away during streaming. Skip auto-scroll when
+        // detached so we don't yank the user away from what they're reading.
+        fullRenderMessages(conv.messages);
+        if (!state.ui.detachedDuringStreaming) {
           scrollToBottomIfNeeded({ smooth: false });
-          updateScrollToBottomButton(false);
         }
+        updateScrollToBottomButton(state.ui.detachedDuringStreaming);
       }
       debouncedSave();
     }
@@ -7295,22 +7284,20 @@ function handleMessageAction(action, msgIndex) {
       if (!isCurrentTurn()) return;
       if (renderScheduled) return;
 
-      // Detached mode: user scrolled away — accumulate content in memory only
-      if (state.ui.detachedDuringStreaming) {
-        state.ui.detachedContentDirty = true;
-        updateScrollToBottomButton(true);
-        return;
-      }
-
       renderScheduled = true;
       const delay = Math.max(0, minRenderGap - (performance.now() - lastRenderAt));
       setTimeout(() => {
         requestAnimationFrame(() => {
           // Re-check current turn inside the async callback
           if (!isCurrentTurn()) { renderScheduled = false; return; }
-          // Light touch: only update last bubble during streaming
+          // Light touch: only update last bubble during streaming.
+          // Always render even when detached — user is reading above,
+          // the last bubble is not in their viewport, so no disruption.
           updateLastBubble(assistantMsg);
-          if (state.ui.autoFollowStreaming) {
+          if (state.ui.detachedDuringStreaming) {
+            // Don't auto-scroll; show button so user can jump back when ready
+            updateScrollToBottomButton(true);
+          } else if (state.ui.autoFollowStreaming) {
             var sc = getScrollContainer();
             if (sc && isNearBottom(sc, 120)) {
               scheduleFollowScroll(120);
