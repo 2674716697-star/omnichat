@@ -6657,24 +6657,34 @@ function handleMessageAction(action, msgIndex) {
         if (_moreTl) { _moreTl.kill(); _moreTl = null; }
 
         if (expanded) {
+          // 1. Set initial invisible state BEFORE display change (prevents CSS opacity flash)
+          if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            gsap.set(btns, { opacity: 0, y: 6 });
+          }
+          // 2. Add expanded class → CSS sets display:inline-flex (buttons enter layout)
           qa.classList.add('expanded');
           moreBtn.setAttribute('aria-expanded', 'true');
           moreBtn.innerHTML = '▾ 收起'; // ▾ 收起
 
           if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            _moreTl = gsap.timeline();
-            _moreTl.fromTo(btns, { opacity: 0, y: 6 }, {
-              opacity: 1, y: 0,
-              duration: 0.2,
-              stagger: 0.04,
-              ease: 'power2.out'
-            });
-            _moreTl.eventCallback('onComplete', function() {
-              updateBottomBarHeight();
-              if (state.ui.autoFollowStreaming) {
-                var sc = getScrollContainer();
-                if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
-              }
+            // 3. Defer one frame so display change settles before animating
+            requestAnimationFrame(function() {
+              _moreTl = gsap.timeline({
+                onComplete: function() {
+                  updateBottomBarHeight();
+                  if (state.ui.autoFollowStreaming) {
+                    var sc = getScrollContainer();
+                    if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
+                  }
+                }
+              });
+              // 4. Animate in: opacity 0→1, y 6→0 (initial state already set via gsap.set)
+              _moreTl.to(btns, {
+                opacity: 1, y: 0,
+                duration: 0.22,
+                stagger: 0.04,
+                ease: 'power2.out'
+              });
             });
           } else {
             requestAnimationFrame(function() {
@@ -6691,18 +6701,19 @@ function handleMessageAction(action, msgIndex) {
 
           if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             var revBtns = Array.from(btns).reverse();
-            _moreTl = gsap.timeline();
-            _moreTl.to(revBtns, {
-              opacity: 0, y: 6,
-              duration: 0.16,
-              stagger: 0.03,
-              ease: 'power2.in',
+            _moreTl = gsap.timeline({
               onComplete: function() {
+                // Remove expanded class only after ALL tweens finish — not mid-animation
                 qa.classList.remove('expanded');
+                gsap.set(btns, { clearProps: 'all' });
+                updateBottomBarHeight();
               }
             });
-            _moreTl.eventCallback('onComplete', function() {
-              updateBottomBarHeight();
+            _moreTl.to(revBtns, {
+              opacity: 0, y: 6,
+              duration: 0.18,
+              stagger: 0.03,
+              ease: 'power2.in'
             });
           } else {
             qa.classList.remove('expanded');

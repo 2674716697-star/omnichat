@@ -5128,6 +5128,7 @@ html.has-custom-bg .user .message-bubble {
   display: inline-flex; /* expanded: back in flow for GSAP stagger */
   opacity: 1;
   pointer-events: auto;
+  will-change: transform, opacity; /* promoted layer for GSAP stagger animation */
 }
 #btnQuickMore { font-weight: 500; }
 .quick-actions.expanded #btnQuickMore { opacity: 0.6; }
