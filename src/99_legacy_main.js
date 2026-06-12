@@ -1686,24 +1686,24 @@
         state.ui.userScrolling = false;
         state.ui.programmaticScroll = true;
 
-        var conv = getCurrentConv();
-        if (conv && conv.messages.length) {
-          fullRenderMessages(conv.messages);
-        }
-
-        var sc = getScrollContainer();
-        var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (sc) {
-          if (prefersReduced) {
+        try {
+          var sc = getScrollContainer();
+          if (sc) {
+            // Use instant scrollTop instead of smooth scrollTo to avoid
+            // intermediate scroll events racing with programmaticScroll cleanup
             sc.scrollTop = sc.scrollHeight;
-          } else {
-            sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
           }
+        } finally {
+          // Double-rAF lets scroll events from scrollTop settle before
+          // we clear programmaticScroll, preventing the flag from being
+          // prematurely cleared by the smooth-scroll race
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              state.ui.programmaticScroll = false;
+            });
+          });
+          updateScrollToBottomButton(false);
         }
-        requestAnimationFrame(function() {
-          state.ui.programmaticScroll = false;
-        });
-        updateScrollToBottomButton(false);
       });
       document.body.appendChild(btn);
     }

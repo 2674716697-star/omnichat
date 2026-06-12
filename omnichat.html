@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqb067xm">
+  <meta name="build-version" content="mqb0fpf8">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -3776,23 +3776,19 @@ state.ui.detachedContentDirty = false;
 state.ui.autoFollowStreaming = true;
 state.ui.userScrolling = false;
 state.ui.programmaticScroll = true;
-var conv = getCurrentConv();
-if (conv && conv.messages.length) {
-fullRenderMessages(conv.messages);
-}
+try {
 var sc = getScrollContainer();
-var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (sc) {
-if (prefersReduced) {
 sc.scrollTop = sc.scrollHeight;
-} else {
-sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
 }
-}
+} finally {
+requestAnimationFrame(function() {
 requestAnimationFrame(function() {
 state.ui.programmaticScroll = false;
 });
+});
 updateScrollToBottomButton(false);
+}
 });
 document.body.appendChild(btn);
 }
