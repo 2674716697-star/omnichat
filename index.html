@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="description" content="Mira �?多模�?AI 聊天与世界故事助手，支持角色卡、剧情走向和连续记忆">
+  <meta name="description" content="Mira - 多模型 AI 聊天与世界故事助手，支持角色卡、剧情走向和连续记忆">
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,11 +14,11 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mq9mrufi">
+  <meta name="build-version" content="mqai5xz1">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
-  <title>Mira �?AI 故事聊天</title>
+  <title>Mira - AI 故事聊天</title>
   <link rel="stylesheet" href="style.css">
   <style id="layoutEmergencyFix">
     .drawer-overlay {
@@ -66,7 +66,7 @@
 </head>
 <body>
 
-  <!-- Splash Screen �?minimal Mira mark + rose gold sweep -->
+  <!-- Splash Screen - minimal Mira mark + rose gold sweep -->
   <div class="splash" id="splash">
     <div class="splash-bg"></div>
     <div class="splash-content">
@@ -278,7 +278,7 @@
         <div class="setting-group">
           <label class="setting-label">
             回复字数
-            <span class="setting-hint" style="display:block;font-weight:400">每轮回复的中文字数目标，误差�?±50 字。仅作内容长度提示，不影�?Max Tokens 硬上限</span>
+            <span class="setting-hint" style="display:block;font-weight:400">每轮回复的中文字数目标，误差约 ±50 字。仅作内容长度提示，不影响 Max Tokens 硬上限</span>
           </label>
           <select class="select" id="inputReplyCharLimit">
             <option value="100">100 </option>
@@ -346,7 +346,7 @@
         <!-- Auto Compress -->
         <div class="setting-group setting-row">
           <label class="setting-label">
-            自动压缩上下�?            <span class="setting-hint" style="display:block;font-weight:400">开启后才会压缩旧消息；关闭时始终发送完整上下文，超长可能被服务商拒绝</span>
+            自动压缩上下文            <span class="setting-hint" style="display:block;font-weight:400">开启后才会压缩旧消息；关闭时始终发送完整上下文，超长可能被服务商拒绝</span>
           </label>
           <label class="toggle">
             <input type="checkbox" id="inputAutoCompress">
@@ -358,7 +358,7 @@
         <div class="setting-group setting-row">
           <label class="setting-label">
             思考完成后保持展开
-            <span class="setting-hint" style="display:block;font-weight:400">AI 回复完成�?reasoning / 思考过�?details 保持展开状</span>
+            <span class="setting-hint" style="display:block;font-weight:400">AI 回复完成后 reasoning / 思考过程 details 保持展开状态</span>
           </label>
           <label class="toggle">
             <input type="checkbox" id="inputKeepThinking" checked>
@@ -369,20 +369,20 @@
         <!-- Scene Detail Level -->
         <div class="setting-group">
           <label class="setting-label">
-            状态卡详细�?            <span class="setting-hint" style="display:block;font-weight:400">控制 AI 回复末尾人物状�?身体细节/剧情走向的描述细腻程</span>
+            状态卡详细度            <span class="setting-hint" style="display:block;font-weight:400">控制 AI 回复末尾人物状态/身体细节/剧情走向的描述细腻程度</span>
           </label>
           <select class="select" id="inputSceneDetail">
-            <option value="low">�?�?简</option>
-            <option value="medium" selected>�?�?清楚</option>
-            <option value="high">�?�?细腻</option>
-            <option value="ultra">超高 �?丰富</option>
+            <option value="low">低 - 简</option>
+            <option value="medium" selected>中 - 清楚</option>
+            <option value="high">高 - 细腻</option>
+            <option value="ultra">超高 - 丰富</option>
           </select>
         </div>
 
         <!-- Auxiliary Model for Story State -->
         <div class="setting-group">
           <label class="setting-label">
-            剧情状态辅助模�?            <span class="setting-hint" style="display:block;font-weight:400">从正文提取状态卡�?A/B/C/D 选项。建议选速度快成本低的模型</span>
+            剧情状态辅助模型            <span class="setting-hint" style="display:block;font-weight:400">从正文提取状态卡和 A/B/C/D 选项。建议选速度快成本低的模型</span>
           </label>
           <div class="setting-aux-row">
             <span class="setting-aux-label">Provider</span>
@@ -452,7 +452,7 @@
             <option value="0">0 - 关闭</option>
           </select>
           <div class="tool-warning" id="toolWarning">
-            当前网页端未执行外部工具调用，入口已锁定为关闭，避免误触发循环或额外费用�?          </div>
+            当前网页端未执行外部工具调用，入口已锁定为关闭，避免误触发循环或额外费用。          </div>
         </div>
 
         <!-- Font Family -->
@@ -469,7 +469,7 @@
 
           <div class="setting-group">
             <button class="btn btn-secondary btn-sm" id="btnClearCache" style="font-size:11px">刷新应用缓存</button>
-            <div class="setting-hint">清除 Service Worker �?Cache Storage，下次加载获取最新版本。不会删除聊天数据</div>
+            <div class="setting-hint">清除 Service Worker 和 Cache Storage，下次加载获取最新版本。不会删除聊天数据</div>
           </div>
 
           </div>
@@ -505,15 +505,15 @@
           <button class="bg-preset" data-theme="yaoguang" data-border="yaoguang" style="--accent:#e0b860;--glow:rgba(224,184,96,0.35);background-image:url(bg/thumb/yaoguang.jpg);background-size:cover" aria-label="爻光"></button>
           <!-- 星穹铁道: 昔涟 -->
           <button class="bg-preset" data-theme="xilian" data-border="xilian" style="--accent:#80c0e0;--glow:rgba(128,192,224,0.3);background-image:url(bg/thumb/xilian.jpg);background-size:cover" aria-label="昔涟"></button>
-          <!-- 星穹铁道: 大丽�?-->
+          <!-- 星穹铁道: 大丽花 -->
           <button class="bg-preset" data-theme="dahlia" data-border="dahlia" style="--accent:#e85070;--glow:rgba(232,80,112,0.4);background-image:url(bg/thumb/dahlia.jpg);background-size:cover" aria-label="大丽"></button>
-          <!-- 星穹铁道: 卡芙�?-->
+          <!-- 星穹铁道: 卡芙卡 -->
           <button class="bg-preset" data-theme="kafka" data-border="kafka" style="--accent:#e068a0;--glow:rgba(224,104,160,0.35);background-image:url(bg/thumb/kafka.jpg);background-size:cover" aria-label="卡芙"></button>
-          <!-- 绝区�? 仪玄 -->
+          <!-- 绝区零: 仪玄 -->
           <button class="bg-preset" data-theme="yixuan" data-border="yixuan" style="--accent:#40b8c8;--glow:rgba(64,184,200,0.3);background-image:url(bg/thumb/yixuan.jpg);background-size:cover" aria-label="仪玄"></button>
-          <!-- 绝区�? 星见�?-->
+          <!-- 绝区零: 星见雅 -->
           <button class="bg-preset" data-theme="miyabi" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background-image:url(bg/thumb/miyabi.jpg);background-size:cover" aria-label="星见"></button>
-          <!-- 绝区�? 叶舜�?-->
+          <!-- 绝区零: 叶舜光 -->
           <button class="bg-preset" data-theme="yeshunguang" data-border="yeshunguang" style="--accent:#c8a850;--glow:rgba(200,168,80,0.3);background-image:url(bg/thumb/yeshunguang.jpg);background-size:cover" aria-label="叶舜"></button>
           <!-- 崩坏3: 爱莉希雅 -->
           <button class="bg-preset" data-theme="elysia" data-border="elysia" style="--accent:#f0a0b8;--glow:rgba(240,160,184,0.3);background-image:url(bg/thumb/elysia.jpg);background-size:cover" aria-label="爱莉希雅"></button>
@@ -521,13 +521,13 @@
           <button class="bg-preset" data-theme="rita" data-border="rita" style="--accent:#e84868;--glow:rgba(232,72,104,0.4);background-image:url(bg/thumb/rita.jpg);background-size:cover" aria-label="丽塔"></button>
           <!-- 崩坏3: 符华 -->
           <button class="bg-preset" data-theme="fuhua" data-border="fuhua" style="--accent:#f0a060;--glow:rgba(240,160,96,0.35);background-image:url(bg/thumb/fuhua.jpg);background-size:cover" aria-label="符华"></button>
-          <!-- 崩坏3: 八重�?-->
+          <!-- 崩坏3: 八重樱 -->
           <button class="bg-preset" data-theme="sakura-b3" data-border="sakura-b3" style="--accent:#f0a8b8;--glow:rgba(240,168,184,0.3);background-image:url(bg/thumb/sakura-b3.jpg);background-size:cover" aria-label="八重"></button>
-          <!-- 崩坏3: 雷之律�?-->
+          <!-- 崩坏3: 雷之律者 -->
           <button class="bg-preset" data-theme="hot" data-border="hot" style="--accent:#a060e0;--glow:rgba(160,96,224,0.4);background-image:url(bg/thumb/hot.jpg);background-size:cover" aria-label="雷之律"></button>
-          <!-- 崩坏3: 空之律�?-->
+          <!-- 崩坏3: 空之律者 -->
           <button class="bg-preset" data-theme="hov" data-border="hov" style="--accent:#d8b8e8;--glow:rgba(216,184,232,0.3);background-image:url(bg/thumb/hov.jpg);background-size:cover" aria-label="空之律"></button>
-          <!-- 崩坏3: 李素�?-->
+          <!-- 崩坏3: 李素裳 -->
           <button class="bg-preset" data-theme="sushang" data-border="sushang" style="--accent:#80b8d8;--glow:rgba(128,184,216,0.3);background-image:url(bg/thumb/sushang.jpg);background-size:cover" aria-label="李素"></button>
 
         </div>
@@ -604,11 +604,11 @@
             <div class="scene-field"><label>种族/形</label><div class="scene-chips" id="speciesChips"></div></div>
             <div class="scene-field"><label>外貌</label><textarea class="input scene-input" id="sceneCharAppearance" rows="2" placeholder="外貌特征、着装"></textarea></div>
             <div class="scene-field"><label>性格/习惯</label><textarea class="input scene-input" id="sceneCharTraits" rows="2" placeholder="性格特点、行为习惯"></textarea></div>
-            <div class="scene-field"><label>状态属</label><textarea class="input scene-input" id="sceneCharStats" rows="2" placeholder="自由文本，如：体�?80/100&#10;冷静 6/10"></textarea></div>
+            <div class="scene-field"><label>状态属性</label><textarea class="input scene-input" id="sceneCharStats" rows="2" placeholder="自由文本，如：体力 80/100&#10;冷静 6/10"></textarea></div>
             <div class="scene-field"><label>当前目标</label><textarea class="input scene-input" id="sceneCharGoal" rows="2" placeholder="角色当前的目标或动机"></textarea></div>
           </div>
           <div class="scene-tab-content" id="tabNpc">
-            <p class="scene-tab-desc">NPC 会影响剧情推进。可以先�?1-3 个关键人物，后续再慢慢扩展</p>
+            <p class="scene-tab-desc">NPC 会影响剧情推进。可以先写 1-3 个关键人物，后续再慢慢扩展</p>
             <div class="scene-npc-grid" id="sceneNpcGrid"></div>
             <button class="btn btn-primary btn-sm btn-full" id="btnAddNpc" style="margin-top:8px">+ 添加 NPC</button>
           </div>
@@ -646,7 +646,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
-          <div class="story-editor-summary" id="storyEditorSummary">世界观：未填 · 主角：未�?· NPC�? · 规则：未</div>
+          <div class="story-editor-summary" id="storyEditorSummary">世界观：未填 · 主角：未填 · NPC：0 · 规则：未填</div>
           <div class="story-editor-body" id="storyEditorBody">
             <!-- Injected at runtime from scenePanelBody -->
           </div>
@@ -669,7 +669,7 @@
             </svg>
           </div>
           <h3>Mira</h3>
-          <p>多模�?AI 聊天 · 世界故事 · 角色�?· 剧情走向 · 连续记忆</p>
+          <p>多模型 AI 聊天 · 世界故事 · 角色扮演 · 剧情走向 · 连续记忆</p>
           <div class="welcome-status" id="welcomeStatus">
             <div class="welcome-step" id="welcomeApiStep">填写 API Key</div>
             <div class="welcome-step" id="welcomeModelStep">选择或输入模</div>
@@ -679,7 +679,7 @@
             <button class="btn btn-secondary" id="btnWelcomeHistory">查看历史</button>
           </div>
           <p class="welcome-hint" id="welcomeHint">完成配置后就可以直接输入消息开始对</p>
-          <p class="welcome-security">API Key 只保存在当前浏览�?设备。GitHub 同步不会同步密钥，手机端首次使用需填写一次；请勿在公共设备上使用</p>
+          <p class="welcome-security">API Key 只保存在当前浏览器/设备。GitHub 同步不会同步密钥，手机端首次使用需填写一次；请勿在公共设备上使用</p>
         </div>
       </div>
     </main>
@@ -690,10 +690,10 @@
         <button class="btn-quick" id="btnQuickNew" title="新建独立对话">新对</button>
         <button class="btn-quick" id="btnQuickDeleteLast" title="删除最后一">撤回一</button>
         <span class="scene-capsule" id="sceneCapsule" style="display:none">世界故事 · ON</span>
-        <button class="btn-quick btn-quick-more" id="btnQuickMore" title="更多操作" aria-expanded="false">�?更多</button>
+        <button class="btn-quick btn-quick-more" id="btnQuickMore" title="更多操作" aria-expanded="false">更多</button>
         <button class="btn-quick btn-quick-secondary" id="btnQuickClear" title="清空当前会话消息">清空本聊</button>
-        <button class="btn-quick btn-quick-secondary" id="btnQuickCopy" title="复制最�?AI 回复">复制回复</button>
-        <button class="btn-quick btn-quick-secondary" id="btnQuickPrecise" title="精确模式：低�?+ 防幻">精确</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickCopy" title="复制最近 AI 回复">复制回复</button>
+        <button class="btn-quick btn-quick-secondary" id="btnQuickPrecise" title="精确模式：低温 + 防幻">精确</button>
         <button class="btn-quick btn-quick-secondary" id="btnQuickExport" title="导出 Markdown">导出本聊</button>
         <button class="btn-quick btn-quick-secondary" id="btnGenHints" title="生成提示" style="display:none">生成提示</button>
         <button class="btn-quick btn-quick-memory" id="btnQuickMemory" title="补充设定/记忆">+ 记忆</button>
