@@ -523,8 +523,7 @@ html:not([style*="--splash-tint"]) .splash-bg::after {
   .btn-send.has-text { animation: none; }
   .btn-send.hidden-streaming,
   .btn-stop.hidden-streaming { opacity: 0; transform: none; }
-  .memory-panel { transform: none; transition: opacity 0.15s ease, max-height 0.2s ease; }
-  .memory-panel.open { transform: none; max-height: 200px; }
+  /* memory-panel: GSAP handles animation; instant toggle in reduced-motion */
   /* Top bar: instant glass, no transition */
   .top-bar {
     transition: none;
@@ -3444,16 +3443,10 @@ html {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transform: translateY(4px);
-  transition: max-height 0.32s var(--glide), opacity 0.24s var(--spring), transform 0.28s var(--glide), margin-bottom 0.28s var(--glide);
   margin-bottom: 0;
   pointer-events: none;
 }
 .memory-panel.open {
-  max-height: 200px;
-  opacity: 1;
-  transform: translateY(0);
-  margin-bottom: 8px;
   pointer-events: auto;
 }
 .memory-panel-inner {

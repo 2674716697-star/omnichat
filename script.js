@@ -8306,18 +8306,107 @@ function handleMessageAction(action, msgIndex) {
     });
 
     // --- Quick Memory Panel ---
+    var _memoryTl = null;
+
     var memoryToggle = function(force) {
       var isOpen = dom.memoryPanel.classList.contains('open');
       var shouldOpen = typeof force === 'boolean' ? force : !isOpen;
+
+      // Kill any in-progress animation to prevent overlap
+      if (_memoryTl) { _memoryTl.kill(); _memoryTl = null; }
+
+      // Reduced motion: instant toggle, skip all animation
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (shouldOpen) {
+          dom.memoryPanel.classList.add('open');
+          dom.memoryPanel.style.maxHeight = '200px';
+          dom.memoryPanel.style.opacity = '1';
+          dom.memoryPanel.style.marginBottom = '8px';
+          dom.btnQuickMemory.setAttribute('aria-expanded', 'true');
+          dom.memoryInput.focus();
+        } else {
+          dom.memoryPanel.classList.remove('open');
+          dom.memoryPanel.style.maxHeight = '0px';
+          dom.memoryPanel.style.opacity = '0';
+          dom.memoryPanel.style.marginBottom = '0px';
+          dom.btnQuickMemory.setAttribute('aria-expanded', 'false');
+        }
+        updateBottomBarHeight();
+        return;
+      }
+
       if (shouldOpen) {
         dom.memoryPanel.classList.add('open');
         dom.btnQuickMemory.setAttribute('aria-expanded', 'true');
-        dom.memoryInput.focus();
+
+        _memoryTl = gsap.timeline({ onComplete: function() {
+          updateBottomBarHeight();
+          dom.memoryInput.focus();
+        }});
+
+        // Panel expand
+        _memoryTl.to(dom.memoryPanel, {
+          maxHeight: 200,
+          opacity: 1,
+          marginBottom: 8,
+          duration: 0.38,
+          ease: 'power3.out'
+        }, 0);
+
+        // Inner content slides up with stagger
+        _memoryTl.from('.memory-panel-inner', {
+          y: 12,
+          autoAlpha: 0,
+          duration: 0.32,
+          ease: 'power2.out'
+        }, 0.06);
+        _memoryTl.from('.memory-input', {
+          y: 8,
+          autoAlpha: 0,
+          duration: 0.24,
+          ease: 'power2.out'
+        }, 0.12);
+        _memoryTl.from('.memory-actions', {
+          y: 6,
+          autoAlpha: 0,
+          duration: 0.22,
+          ease: 'power2.out'
+        }, 0.18);
       } else {
-        dom.memoryPanel.classList.remove('open');
-        dom.btnQuickMemory.setAttribute('aria-expanded', 'false');
+        // Collapse: reverse stagger — buttons disappear first, then input, then panel
+        _memoryTl = gsap.timeline({ onComplete: function() {
+          dom.memoryPanel.classList.remove('open');
+          dom.btnQuickMemory.setAttribute('aria-expanded', 'false');
+          gsap.set(dom.memoryPanel, { clearProps: 'all' });
+          updateBottomBarHeight();
+        }});
+
+        _memoryTl.to('.memory-actions', {
+          y: 4,
+          autoAlpha: 0,
+          duration: 0.16,
+          ease: 'power2.in'
+        }, 0);
+        _memoryTl.to('.memory-input', {
+          y: 6,
+          autoAlpha: 0,
+          duration: 0.18,
+          ease: 'power2.in'
+        }, 0.04);
+        _memoryTl.to('.memory-panel-inner', {
+          y: 8,
+          autoAlpha: 0,
+          duration: 0.22,
+          ease: 'power2.in'
+        }, 0.08);
+        _memoryTl.to(dom.memoryPanel, {
+          maxHeight: 0,
+          opacity: 0,
+          marginBottom: 0,
+          duration: 0.32,
+          ease: 'power3.in'
+        }, 0.1);
       }
-      updateBottomBarHeight();
     };
 
     dom.btnQuickMemory?.addEventListener('click', function(e) {
