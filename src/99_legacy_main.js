@@ -222,9 +222,8 @@
     toast.textContent = msg;
     dom.toastContainer.appendChild(toast);
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 200ms ease';
-      setTimeout(() => toast.remove(), 200);
+      toast.classList.add('toast-exit');
+      toast.addEventListener('transitionend', () => toast.remove(), { once: true });
     }, duration);
   }
 
@@ -246,7 +245,12 @@
   function hideConfirm() {
     state.pendingConfirmAction = null;
     dom.dialogCancel.style.display = '';
-    dom.dialogOverlay.style.display = 'none';
+    if (dom.dialogOverlay.style.display === 'none') return;
+    dom.dialogOverlay.classList.add('dialog-overlay-exit', 'dialog-exit');
+    dom.dialogOverlay.querySelector('.dialog').addEventListener('animationend', function() {
+      dom.dialogOverlay.style.display = 'none';
+      dom.dialogOverlay.classList.remove('dialog-overlay-exit', 'dialog-exit');
+    }, { once: true });
   }
 
   function showRenameDialog(id, currentTitle) {
@@ -258,7 +262,17 @@
 
   function hideRenameDialog() {
     state.pendingRenameId = null;
-    dom.renameDialogOverlay.style.display = 'none';
+    if (dom.renameDialogOverlay.style.display === 'none') return;
+    dom.renameDialogOverlay.classList.add('dialog-overlay-exit', 'dialog-exit');
+    var dialog = dom.renameDialogOverlay.querySelector('.dialog');
+    if (dialog) {
+      dialog.addEventListener('animationend', function() {
+        dom.renameDialogOverlay.style.display = 'none';
+        dom.renameDialogOverlay.classList.remove('dialog-overlay-exit', 'dialog-exit');
+      }, { once: true });
+    } else {
+      dom.renameDialogOverlay.style.display = 'none';
+    }
   }
 
   function showUpdateDialog() {
@@ -1530,8 +1544,17 @@
     state.ui.programmaticScroll = true;
     if (smooth) {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-      // Reset programmatic flag after smooth scroll completes
-      setTimeout(function() { state.ui.programmaticScroll = false; }, 400);
+      // Use native scrollend event, with 500ms fallback for older browsers
+      var scrollEnded = false;
+      var clearFlag = function() {
+        if (scrollEnded) return;
+        scrollEnded = true;
+        state.ui.programmaticScroll = false;
+      };
+      if ('onscrollend' in el) {
+        el.addEventListener('scrollend', clearFlag, { once: true });
+      }
+      setTimeout(clearFlag, 500);
     } else {
       scheduleFollowScroll(force ? 0 : 120);
     }
@@ -1561,9 +1584,35 @@
     var el = getScrollContainer();
     if (!el) { fn(); return; }
     var beforeTop = el.scrollTop;
+    // Detect whether the user was following the bottom before we mutate the DOM.
+    // If they were, we keep them at the new bottom after the mutation so that
+    // the scroll event handler (onUserScrollIntent) does not falsely flag them
+    // as detached — which would suppress all streaming renders.
+    var wasNearBottom = isNearBottom(el, 80);
     fn();
-    el.scrollTop = beforeTop;
-    requestAnimationFrame(function() { el.scrollTop = beforeTop; });
+    // Mark scroll as programmatic so onUserScrollIntent ignores scroll events
+    // triggered by our own scrollTop restoration. Without this, the preserved
+    // position may be far enough from the new bottom that the detector falsely
+    // enters detachedDuringStreaming mode, suppressing all streaming renders
+    // until the response completes.
+    state.ui.programmaticScroll = true;
+    if (wasNearBottom) {
+      // User was following the bottom — keep them at the new bottom so they
+      // don't get falsely flagged as detached when streaming begins.
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTop = beforeTop;
+    }
+    requestAnimationFrame(function() {
+      if (wasNearBottom) {
+        el.scrollTop = el.scrollHeight;
+      } else {
+        el.scrollTop = beforeTop;
+      }
+      // Clear the flag after the rAF-delayed restoration has also fired —
+      // the scroll event it triggers will be handled before the next rAF.
+      requestAnimationFrame(function() { state.ui.programmaticScroll = false; });
+    });
   }
 
   function checkUserScroll() {
@@ -1965,30 +2014,37 @@
 
     document.documentElement.style.setProperty('--bg-opacity', (bg.opacity / 100));
 
-    if (bg.type === 'none') {
-      overlay.style.backgroundImage = '';
-      overlay.style.display = 'none';
-      overlay.style.backgroundSize = '';
-      overlay.style.backgroundPosition = '';
-      document.documentElement.classList.remove('has-custom-bg');
-      document.documentElement.style.removeProperty('--splash-accent');
-      document.documentElement.style.removeProperty('--splash-accent2');
-    } else if (bg.type === 'gradient') {
-      overlay.style.backgroundImage = bg.value;
-      overlay.style.display = '';
-      overlay.style.backgroundSize = '';
-      overlay.style.backgroundPosition = '';
-      document.documentElement.classList.remove('has-custom-bg');
-      applyBgSplashTheme(bg);
-      applyBgControls();
-    } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
-      overlay.style.backgroundImage = 'url(' + bg.value + ')';
-      overlay.style.backgroundSize = 'cover';
-      overlay.style.display = '';
-      document.documentElement.classList.add('has-custom-bg');
-      applyBgSplashTheme(bg);
-      applyBgControls();
-    }
+    // Crossfade: fade out → swap background → fade in
+    overlay.style.opacity = '0';
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (bg.type === 'none') {
+          overlay.style.backgroundImage = '';
+          overlay.style.display = 'none';
+          overlay.style.backgroundSize = '';
+          overlay.style.backgroundPosition = '';
+          document.documentElement.classList.remove('has-custom-bg');
+          document.documentElement.style.removeProperty('--splash-accent');
+          document.documentElement.style.removeProperty('--splash-accent2');
+        } else if (bg.type === 'gradient') {
+          overlay.style.backgroundImage = bg.value;
+          overlay.style.display = '';
+          overlay.style.backgroundSize = '';
+          overlay.style.backgroundPosition = '';
+          document.documentElement.classList.remove('has-custom-bg');
+          applyBgSplashTheme(bg);
+          applyBgControls();
+        } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
+          overlay.style.backgroundImage = 'url(' + bg.value + ')';
+          overlay.style.backgroundSize = 'cover';
+          overlay.style.display = '';
+          document.documentElement.classList.add('has-custom-bg');
+          applyBgSplashTheme(bg);
+          applyBgControls();
+        }
+        overlay.style.opacity = '';
+      });
+    });
   }
 
   function applyBgSplashTheme(bg) {
@@ -3663,8 +3719,11 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // buildMemoryEndpointUrl — construct a full API URL from a normalized endpoint base.
-  // If the endpoint already ends with the target path, returns it as-is (no double-append).
-  // Default path is '/api/memory/update'. Returns '' on invalid input.
+  // Three patterns are supported:
+  //   1. Local/mock base (e.g. http://localhost:8000) → appends /api/memory/{update,retrieve}
+  //   2. Any /functions/v1 base (hosted Supabase or local CLI 127.0.0.1:54321) → appends /memory-{update,retrieve}
+  //   3. Exact function URL ending in /memory-update or /memory-retrieve → returns as-is (no append)
+  // Returns '' on invalid input.
   function buildMemoryEndpointUrl(endpoint, path) {
     var base = normalizeMemoryEndpoint(endpoint);
     if (!base) return '';
@@ -3674,6 +3733,26 @@ function handleMessageAction(action, msgIndex) {
         base.slice(base.length - path.length) === path) {
       return base;
     }
+    // Supabase Edge Function detection — any base whose path contains /functions/v1
+    // (hosted: https://<ref>.supabase.co/functions/v1, local CLI: http://127.0.0.1:54321/functions/v1)
+    // Map /api/memory/update → /memory-update, /api/memory/retrieve → /memory-retrieve
+    var FUNCTION_V1_PATH = '/functions/v1';
+    if (base.indexOf(FUNCTION_V1_PATH) !== -1) {
+      // If base already ends with a known function name, it's an exact URL → return as-is
+      var knownFunctions = ['/memory-update', '/memory-retrieve'];
+      for (var i = 0; i < knownFunctions.length; i++) {
+        if (base.length >= knownFunctions[i].length &&
+            base.slice(base.length - knownFunctions[i].length) === knownFunctions[i]) {
+          return base;
+        }
+      }
+      // Map internal path names to Supabase Edge Function names
+      var mapped = path;
+      if (path === '/api/memory/update') mapped = '/memory-update';
+      else if (path === '/api/memory/retrieve') mapped = '/memory-retrieve';
+      return base + mapped;
+    }
+    // Default: local/mock server — append path as-is
     return base + path;
   }
 
