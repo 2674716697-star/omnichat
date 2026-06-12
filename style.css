@@ -4951,7 +4951,7 @@ html.is-standalone body {
 #scrollToBottomBtn {
   position: fixed;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(8px); /* hidden: shifted down; .show slides up to 0 */
   bottom: calc(var(--bottom-bar-h, 90px) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 12px);
   z-index: 60;
   width: 34px;
@@ -4987,10 +4987,6 @@ html.is-standalone body {
   pointer-events: auto;
   transform: translateX(-50%) translateY(0); /* slide up into view */
 }
-/* Default hidden state: shifted down for slide-up entrance */
-#scrollToBottomBtn:not(.show) {
-  transform: translateX(-50%) translateY(8px);
-}
 #scrollToBottomBtn:hover {
   opacity: 0.9;
   background: rgba(28, 28, 28, 0.55);
@@ -5017,9 +5013,7 @@ html.is-standalone body {
 @media (prefers-reduced-motion: reduce) {
   #scrollToBottomBtn {
     transition: opacity 0.1s ease;
-  }
-  #scrollToBottomBtn:active {
-    transform: translateX(-50%);
+    transform: translateX(-50%); /* no slide offset under reduced motion */
   }
 }
 
@@ -5111,12 +5105,11 @@ html.has-custom-bg .user .message-bubble {
 .quick-actions {
   overflow-x: auto;
   gap: 5px;
+  padding-bottom: 2px;
+  margin-bottom: 5px;
 }
 @media (min-width: 641px) {
   .quick-actions { flex-wrap: nowrap; }
-}
-  padding-bottom: 2px;
-  margin-bottom: 5px;
 }
 .btn-quick {
   font-size: 11px;
