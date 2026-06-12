@@ -8526,24 +8526,73 @@ function handleMessageAction(action, msgIndex) {
       });
     }
 
-    // "更多" toggle for secondary quick actions
+    // "更多" toggle for secondary quick actions — GSAP stagger animation
+    var _moreTl = null;
     var moreBtn = $('#btnQuickMore');
     if (moreBtn) {
       moreBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         var qa = document.getElementById('quickActions');
-        if (qa) { qa.classList.toggle('expanded'); }
-        var expanded = qa && qa.classList.contains('expanded');
-        moreBtn.setAttribute('aria-expanded', expanded);
-        moreBtn.innerHTML = expanded ? '▾ 收起' : '▸ 更多';
-        requestAnimationFrame(function() {
-          updateBottomBarHeight();
-          // Keep at bottom if user was near it
-          if (state.ui.autoFollowStreaming) {
-            var sc = getScrollContainer();
-            if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
+        if (!qa) return;
+        var expanded = !qa.classList.contains('expanded');
+        var btns = qa.querySelectorAll('.btn-quick-secondary');
+
+        // Kill in-progress animation
+        if (_moreTl) { _moreTl.kill(); _moreTl = null; }
+
+        if (expanded) {
+          qa.classList.add('expanded');
+          moreBtn.setAttribute('aria-expanded', 'true');
+          moreBtn.innerHTML = '▾ 收起'; // ▾ 收起
+
+          if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            _moreTl = gsap.timeline();
+            _moreTl.fromTo(btns, { opacity: 0, y: 6 }, {
+              opacity: 1, y: 0,
+              duration: 0.2,
+              stagger: 0.04,
+              ease: 'power2.out'
+            });
+            _moreTl.eventCallback('onComplete', function() {
+              updateBottomBarHeight();
+              if (state.ui.autoFollowStreaming) {
+                var sc = getScrollContainer();
+                if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
+              }
+            });
+          } else {
+            requestAnimationFrame(function() {
+              updateBottomBarHeight();
+              if (state.ui.autoFollowStreaming) {
+                var sc = getScrollContainer();
+                if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
+              }
+            });
           }
-        });
+        } else {
+          moreBtn.setAttribute('aria-expanded', 'false');
+          moreBtn.innerHTML = '▸ 更多'; // ▸ 更多
+
+          if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            var revBtns = Array.from(btns).reverse();
+            _moreTl = gsap.timeline();
+            _moreTl.to(revBtns, {
+              opacity: 0, y: 6,
+              duration: 0.16,
+              stagger: 0.03,
+              ease: 'power2.in',
+              onComplete: function() {
+                qa.classList.remove('expanded');
+              }
+            });
+            _moreTl.eventCallback('onComplete', function() {
+              updateBottomBarHeight();
+            });
+          } else {
+            qa.classList.remove('expanded');
+            requestAnimationFrame(function() { updateBottomBarHeight(); });
+          }
+        }
       });
     }
 

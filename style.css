@@ -5118,9 +5118,16 @@ html.has-custom-bg .user .message-bubble {
   white-space: nowrap;
   flex-shrink: 0;
 }
-/* Bottom toolbar: secondary buttons hidden behind "更多" */
-.btn-quick-secondary { display: none; }
-.quick-actions.expanded .btn-quick-secondary { display: inline-flex; }
+/* Bottom toolbar: secondary buttons hidden behind "更多" — animated via GSAP */
+.btn-quick-secondary {
+  display: inline-flex;
+  opacity: 0;
+  pointer-events: none;
+}
+.quick-actions.expanded .btn-quick-secondary {
+  opacity: 1;
+  pointer-events: auto;
+}
 #btnQuickMore { font-weight: 500; }
 .quick-actions.expanded #btnQuickMore { opacity: 0.6; }
 
