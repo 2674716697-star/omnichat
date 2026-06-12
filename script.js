@@ -2725,7 +2725,14 @@ function getSceneBodyDetails(block) {
     }
 
     state.ui._storyOriginals = null;
-    overlay.style.display = 'none';
+
+    // Smooth exit animation before hiding
+    overlay.classList.add('story-editor-overlay-exit');
+    overlay.addEventListener('transitionend', function handler() {
+      overlay.removeEventListener('transitionend', handler);
+      overlay.style.display = 'none';
+      overlay.classList.remove('story-editor-overlay-exit');
+    }, { once: true });
     state.ui.storyEditorOpen = false;
     document.documentElement.classList.remove('story-editor-open');
     document.body.style.overflow = '';

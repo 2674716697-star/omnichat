@@ -538,6 +538,13 @@ html:not([style*="--splash-tint"]) .splash-bg::after {
   .btn-quick { transition: background 0.1s ease, color 0.1s ease; }
   .btn-send, .btn-stop { transition: opacity 0.1s ease, background 0.1s ease; }
   .input-message::placeholder { transition: none; }
+  /* Streaming & thinking: disable all motion */
+  .streaming-cursor::after { animation: none; }
+  .thinking-content { animation: none; }
+  .thinking-header::before { transition: none; }
+  .finalizing-dot { animation: none; opacity: 0.8; }
+  .conv-item-actions { transition: none; }
+  .conv-item { transition: none; }
 }
 
 /* --- App Container --- */
@@ -1020,7 +1027,9 @@ html:not(.is-splashing) .top-bar {
   transition: opacity var(--transition-fast);
 }
 
-.conv-item:hover .conv-item-actions,
+@media (hover: hover) and (pointer: fine) {
+  .conv-item:hover .conv-item-actions { opacity: 1; }
+}
 .conv-item:active .conv-item-actions {
   opacity: 1;
 }
@@ -1131,6 +1140,15 @@ html:not(.is-splashing) .top-bar {
   background: var(--accent-dim);
   color: var(--accent-bright);
   border-color: var(--accent);
+}
+.conv-group-add:hover {
+  background: rgba(200, 155, 156, 0.08);
+  color: var(--accent-bright);
+  border-color: rgba(200, 155, 156, 0.25);
+}
+.conv-group-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .archive-section-header {
@@ -1503,11 +1521,45 @@ html:not(.is-splashing) .top-bar {
 .btn-primary {
   background: var(--accent);
   color: #fff;
+  transition: background 150ms var(--spring), opacity 150ms var(--spring);
+}
+.btn-primary:hover {
+  opacity: 0.9;
+}
+.btn-primary:active {
+  transform: scale(0.97);
 }
 
 .btn-secondary {
   background: var(--bg-elevated);
   color: var(--text-primary);
+  transition: background 150ms var(--spring), color 150ms var(--spring);
+}
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.06);
+}
+.btn-secondary:active {
+  background: rgba(255,255,255,0.10);
+  transform: scale(0.97);
+}
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-danger {
+  transition: background 150ms var(--spring), color 150ms var(--spring);
+}
+.btn-danger:hover {
+  background: rgba(224, 85, 85, 0.15);
+}
+.btn-danger:active {
+  background: rgba(224, 85, 85, 0.25);
+  transform: scale(0.97);
+}
+.btn-danger:focus-visible {
+  outline: 2px solid var(--danger-bright);
+  outline-offset: 2px;
 }
 
 .btn-danger {
@@ -1781,9 +1833,11 @@ html {
 .bg-adjust-overlay {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(0,0,0,0.92);
-  display: none; flex-direction: column;
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: opacity 240ms var(--spring);
 }
-.bg-adjust-overlay.open { display: flex; }
+.bg-adjust-overlay.open { opacity: 1; pointer-events: auto; }
 .bg-adjust-topbar {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; padding-top: calc(10px + var(--safe-top));
@@ -2036,6 +2090,20 @@ html:not(.is-splashing) .welcome-step:nth-child(2) { animation-delay: 230ms; }
   padding: 10px 18px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
+  transition: background 150ms var(--spring), color 150ms var(--spring), transform 120ms var(--spring);
+  cursor: pointer;
+}
+.welcome-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+.welcome-actions .btn-secondary:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.08);
+}
+.welcome-actions .btn-secondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .welcome-hint {
@@ -2472,6 +2540,7 @@ html.welcome-visible .welcome-security {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.18);
   color: var(--text-primary);
+  transform: scale(0.97);
 }
 
 /* --- Choice chip feedback states --- */
@@ -3188,6 +3257,20 @@ html:not(.is-splashing) .bottom-bar {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+.dialog-overlay-exit {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+@keyframes dialogOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.94) translateY(6px); }
+}
+
+.dialog.dialog-exit {
+  animation: dialogOut 200ms ease forwards;
+}
+
 .dialog-body {
   font-size: 14px;
   line-height: 1.5;
@@ -3439,6 +3522,14 @@ html {
   border-color: rgba(200, 155, 156, 0.40);
   color: #fff;
 }
+.btn-quick-memory:active {
+  transform: scale(0.95);
+  background: rgba(200, 155, 156, 0.10);
+}
+.btn-quick-memory:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .memory-panel {
   max-height: 0;
   overflow: hidden;
@@ -3497,6 +3588,10 @@ html {
 .btn-memory-save:active {
   transform: scale(0.96);
 }
+.btn-memory-save:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .btn-memory-clear {
   padding: 4px 10px;
   border: 0.5px solid rgba(255,255,255,0.08);
@@ -3511,6 +3606,14 @@ html {
 .btn-memory-clear:hover {
   background: rgba(255,255,255,0.04);
   color: var(--text-primary);
+}
+.btn-memory-clear:active {
+  background: rgba(255,255,255,0.08);
+  transform: scale(0.96);
+}
+.btn-memory-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ============================================================
@@ -4093,6 +4196,9 @@ html {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.scene-tab:active {
+  transform: scale(0.96);
+}
 
 .scene-tab:hover {
   color: #fff;
@@ -4146,6 +4252,10 @@ html {
   white-space: nowrap;
 }
 .scene-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.scene-chip:hover {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.72);
+}
 .scene-chip:active { transform: scale(0.98); }
 .scene-chip.active {
   background: rgba(255,255,255,0.05);
@@ -4561,6 +4671,18 @@ html {
   cursor: pointer;
   line-height: 1;
   padding: 0;
+  transition: color 150ms var(--spring), transform 120ms var(--spring);
+}
+.hints-close:hover {
+  color: rgba(255,255,255,0.7);
+}
+.hints-close:active {
+  transform: scale(0.88);
+  color: var(--text-primary);
+}
+.hints-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .hints-chip {
@@ -5070,6 +5192,14 @@ html.has-custom-bg .user .message-bubble {
   padding-bottom: calc(var(--safe-bottom, 0px) + 10px);
   box-sizing: border-box;
   animation: dialogIn 0.28s var(--spring);
+  transition: opacity 200ms ease;
+}
+.story-editor-overlay.story-editor-overlay-exit {
+  opacity: 0;
+  pointer-events: none;
+}
+.story-editor-overlay.story-editor-overlay-exit .story-editor-sheet {
+  animation: dialogOut 200ms ease forwards;
 }
 .story-editor-sheet {
   display: flex; flex-direction: column;
