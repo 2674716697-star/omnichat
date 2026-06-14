@@ -119,7 +119,7 @@ html = html.replace(
 
 // Inline minified JS with version
 html = html.replace(
-  '<script src="script.js"></script>',
+  /<script src="script\.js"(?:\s+defer)?><\/script>/,
   () => '<script>' + jsMin + '</script>'
 );
 

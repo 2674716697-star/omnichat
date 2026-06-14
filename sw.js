@@ -1,9 +1,10 @@
 /* ============================================================
    Mira — Service Worker
-   Network-first app shell, offline fallback, NEVER caches sw.js.
+   Cache-first with background refresh. Instant repeat loads,
+   picks up new deploys on the next navigation. NEVER caches sw.js.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-v9';
+const CACHE_NAME = 'omnichat-v10';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png|jpe?g|gif)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
@@ -51,22 +52,41 @@ self.addEventListener('fetch', (event) => {
     isIndex ||
     CORE_ASSET_RE.test(url.pathname);
 
-  // Core app files are network-first so deploys are picked up without manual
-  // service worker version bumps. Cached fallback is only for offline use.
+  // Core app files: cache-first with background network refresh.
+  // Returns cached copy instantly (<100ms), then fetches network in
+  // the background to update cache for the NEXT navigation.
   if (isCoreAsset) {
     event.respondWith(
       (async () => {
-        // Try network (with navigation preload if available)
+        const cache = await caches.open(CACHE_NAME);
+
+        // 1. Try cache first — instant return for repeat visits
+        const cached = await cache.match(event.request);
+        if (cached) {
+          // Background refresh: update cache for next time
+          event.waitUntil(
+            (async () => {
+              try {
+                const netResp = await fetch(event.request);
+                if (netResp.ok) {
+                  cache.put(event.request, netResp.clone());
+                  if (isDocument || isIndex) {
+                    const indexUrl = new URL('/omnichat/index.html', self.location.origin);
+                    cache.put(new Request(indexUrl, { method: 'GET' }), netResp.clone());
+                  }
+                }
+              } catch (_) { /* network unavailable — cached version is fine */ }
+            })()
+          );
+          return cached;
+        }
+
+        // 2. No cache — go to network (first visit / cache cleared)
         try {
           const preload = event.preloadResponse;
           const netResp = preload ? await preload : await fetch(event.request);
           if (netResp.ok) {
-            const clone = netResp.clone();
-            // Cache the actual response, keyed by request URL
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(event.request, clone);
-            // For navigation requests to directory paths, also cache under
-            // index.html so offline fallback can find it regardless of URL form.
+            cache.put(event.request, netResp.clone());
             if (isDocument || isIndex) {
               const indexUrl = new URL('/omnichat/index.html', self.location.origin);
               cache.put(new Request(indexUrl, { method: 'GET' }), netResp.clone());
@@ -74,22 +94,18 @@ self.addEventListener('fetch', (event) => {
           }
           return netResp;
         } catch (_err) {
-          // Network failed — try cache, then offline fallback
+          // Network failed, no cache — try navigation fallback
         }
 
-        // Try exact cache match first
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-
-        // For navigation requests, try cached index.html as offline fallback
+        // 3. Offline with no matching cache — try index.html variants
         if (isDocument || isIndex) {
-          const indexCached = await caches.match('/omnichat/index.html');
+          const indexCached = await cache.match('/omnichat/index.html');
           if (indexCached) return indexCached;
-          const rootCached = await caches.match('/omnichat/');
+          const rootCached = await cache.match('/omnichat/');
           if (rootCached) return rootCached;
         }
 
-        // Last resort: return a simple offline page inline
+        // 4. Last resort: inline offline page
         if (isDocument || isIndex) {
           return new Response(
             '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
@@ -113,19 +129,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Other assets are also network-first, with cache fallback for offline use.
+  // Other assets: same cache-first with background refresh
   event.respondWith(
     (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(event.request);
+      if (cached) {
+        event.waitUntil(
+          (async () => {
+            try {
+              const netResp = await fetch(event.request);
+              if (netResp.ok) cache.put(event.request, netResp.clone());
+            } catch (_) {}
+          })()
+        );
+        return cached;
+      }
       try {
         const netResp = await fetch(event.request);
-        if (netResp.ok) {
-          const clone = netResp.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
+        if (netResp.ok) cache.put(event.request, netResp.clone());
         return netResp;
       } catch (_err) {
-        const cached = await caches.match(event.request);
-        return cached || new Response('Offline', { status: 503 });
+        return new Response('Offline', { status: 503 });
       }
     })()
   );
