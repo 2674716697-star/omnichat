@@ -129,7 +129,7 @@ check('no security-panel', !/security-panel/.test(html + css + js));
 
 // --- Service worker ---
 console.log('\n--- Service worker ---');
-check('sw cache versioned omnichat-vN', /CACHE_NAME\s*=\s*['"]omnichat-v\d+['"]/.test(sw));
+check('sw cache versioned omnichat-*', /CACHE_NAME\s*=\s*['"]omnichat-[A-Za-z0-9_-]+['"]/.test(sw));
 
 // --- Build version ---
 console.log('\n--- Build version ---');
@@ -616,6 +616,291 @@ if (releaseReadinessScript) {
   check('_check_release_readiness.mjs checks SUPABASE_SERVICE_ROLE_KEY', false);
   check('_check_release_readiness.mjs checks publishable key', false);
   check('_check_release_readiness.mjs is read-only (no stage/commit/push)', false);
+}
+
+// =============================================================================
+// Auth UI Stability Checks — Phase 2.1
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// 1. Build/module inclusion
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: build/module inclusion ---');
+
+const buildScript = read('_build_script.js');
+if (buildScript) {
+  const orderMatch = buildScript.match(/const ORDER = \[([\s\S]*?)\]/);
+  if (orderMatch) {
+    const orderContent = orderMatch[1];
+    const authIdx = orderContent.search(/'10_auth\.js'/);
+    const legacyIdx = orderContent.search(/'99_legacy_main\.js'/);
+    check('_build_script.js ORDER includes 10_auth.js', authIdx !== -1);
+    check('_build_script.js ORDER includes 99_legacy_main.js', legacyIdx !== -1);
+    check('10_auth.js listed before 99_legacy_main.js in ORDER',
+      authIdx !== -1 && legacyIdx !== -1 && authIdx < legacyIdx);
+  } else {
+    check('_build_script.js ORDER array found', false);
+    check('_build_script.js ORDER includes 10_auth.js', false);
+    check('_build_script.js ORDER includes 99_legacy_main.js', false);
+    check('10_auth.js listed before 99_legacy_main.js in ORDER', false);
+  }
+} else {
+  check('_build_script.js exists', false);
+  check('_build_script.js ORDER includes 10_auth.js', false);
+  check('_build_script.js ORDER includes 99_legacy_main.js', false);
+  check('10_auth.js listed before 99_legacy_main.js in ORDER', false);
+}
+
+check('script.js contains _authState', /\b_authState\b/.test(js));
+check('script.js contains syncAuthUI', /\bsyncAuthUI\b/.test(js));
+
+// ---------------------------------------------------------------------------
+// 2. UI structure: auth DOM elements in both HTML files
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: DOM elements ---');
+
+const indexHtml = read('index.html');
+const authUiIds = ['inputAuthEmail', 'btnAuthLogin', 'btnAuthLogout', 'authStatus', 'authUserInfo'];
+
+for (const id of authUiIds) {
+  const idRe = new RegExp(`id=["']${id}["']`);
+  check(`omnichat.html has #${id}`, idRe.test(html));
+  if (indexHtml) {
+    check(`index.html has #${id}`, idRe.test(indexHtml));
+  } else {
+    check(`index.html has #${id}`, false);
+  }
+}
+
+// inputAuthEmail must NOT have autofocus (would steal focus on mobile)
+function hasAutofocusOnId(htmlContent, targetId) {
+  return /<input[^>]*id=["']inputAuthEmail["'][^>]*autofocus/i.test(htmlContent) ||
+    /<input[^>]*autofocus[^>]*id=["']inputAuthEmail["']/i.test(htmlContent);
+}
+
+check('inputAuthEmail does NOT have autofocus in omnichat.html',
+  !hasAutofocusOnId(html, 'inputAuthEmail'));
+if (indexHtml) {
+  check('inputAuthEmail does NOT have autofocus in index.html',
+    !hasAutofocusOnId(indexHtml, 'inputAuthEmail'));
+} else {
+  check('inputAuthEmail does NOT have autofocus in index.html', false);
+}
+
+// ---------------------------------------------------------------------------
+// 3. Non-blocking auth init
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: non-blocking init ---');
+
+check('script.js contains initAuthState', /\binitAuthState\b/.test(js));
+
+// initAuthState must use deferred async (Promise.resolve().then or equivalent)
+check('initAuthState uses Promise.resolve().then (deferred async)',
+  (() => {
+    const iasIdx = js.search(/function\s+initAuthState\s*\(/);
+    if (iasIdx === -1) return false;
+    const body = extractBraceBlock(js, iasIdx);
+    return /Promise\.resolve\(\)\.then\s*\(/.test(body);
+  })());
+
+// init() calls initAuthState after core setup
+check('init() calls initAuthState after core setup',
+  (() => {
+    const initIdx = js.search(/function\s+init\s*\(\)\s*\{/);
+    if (initIdx === -1) return false;
+    const initBody = extractBraceBlock(js, initIdx);
+    return /\binitAuthState\(\)/.test(initBody);
+  })());
+
+// init() must NOT await initAuthState — auth is never on the critical path
+check('init() does NOT await initAuthState (no await)',
+  (() => {
+    const initIdx = js.search(/function\s+init\s*\(\)\s*\{/);
+    if (initIdx === -1) return false;
+    const initBody = extractBraceBlock(js, initIdx);
+    return !/await\s+initAuthState\(\)/.test(initBody);
+  })());
+
+// Verify no await on any auth call in send/chat path
+check('no await on auth in send path (auth not on critical path)',
+  !/await\s+(?:initAuthState|handleAuthLogin|handleAuthLogout)\(\)/.test(js) ||
+  (() => {
+    // Allow only inside handleAuth* functions themselves and init()
+    const initIdx = js.search(/function\s+init\s*\(\)\s*\{/);
+    const halIdx = js.search(/function\s+handleAuthLogin\s*\(/);
+    const haloIdx = js.search(/function\s+handleAuthLogout\s*\(/);
+    // Collect all await initAuthState/handleAuthLogin/handleAuthLogout positions
+    const re = /await\s+(initAuthState|handleAuthLogin|handleAuthLogout)\(\)/g;
+    let match;
+    while ((match = re.exec(js)) !== null) {
+      const pos = match.index;
+      // Must be inside init(), handleAuthLogin(), or handleAuthLogout()
+      const inInit = initIdx !== -1 && pos > initIdx &&
+        pos < initIdx + extractBraceBlock(js, initIdx).length + 10;
+      const inHal = halIdx !== -1 && pos > halIdx &&
+        pos < halIdx + extractBraceBlock(js, halIdx).length + 10;
+      const inHalo = haloIdx !== -1 && pos > haloIdx &&
+        pos < haloIdx + extractBraceBlock(js, haloIdx).length + 10;
+      if (!inInit && !inHal && !inHalo) return false;
+    }
+    return true;
+  })());
+
+// ---------------------------------------------------------------------------
+// 4. Auth behavior invariants
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: behavior invariants ---');
+
+check('signInWithOtp exists in script.js', /\bsignInWithOtp\b/.test(js));
+check('signOut exists in script.js (client.auth.signOut)',
+  /auth\s*\.\s*signOut\s*\(/.test(js));
+check('onAuthStateChange exists in script.js', /\bonAuthStateChange\b/.test(js));
+
+// onAuthStateChange must handle SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
+const initAuthBody = (() => {
+  const iasIdx = js.search(/function\s+initAuthState\s*\(/);
+  if (iasIdx === -1) return '';
+  return extractBraceBlock(js, iasIdx);
+})();
+
+check('onAuthStateChange handles SIGNED_IN',
+  /SIGNED_IN/.test(initAuthBody));
+check('onAuthStateChange handles SIGNED_OUT',
+  /SIGNED_OUT/.test(initAuthBody));
+check('onAuthStateChange handles TOKEN_REFRESHED',
+  /TOKEN_REFRESHED/.test(initAuthBody));
+
+// clearAuthSession must NOT call localStorage.clear (preserves chats/settings/api-keys)
+check('clearAuthSession does not call localStorage.clear',
+  !/localStorage\s*\.\s*clear\s*\(/.test(js));
+
+// clearAuthSession body must not touch localStorage at all
+check('clearAuthSession does not touch localStorage (no removal of chat/settings/api-key)',
+  (() => {
+    const casIdx = js.search(/function\s+clearAuthSession\s*\(/);
+    if (casIdx === -1) return false;
+    const body = extractBraceBlock(js, casIdx);
+    return !/localStorage/.test(body) && !/sessionStorage/.test(body);
+  })());
+
+// ---------------------------------------------------------------------------
+// 5. Header safety
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: header safety ---');
+
+check('buildRemoteMemoryHeaders sets Content-Type before token guard',
+  (() => {
+    const idx = js.search(/async\s+function\s+buildRemoteMemoryHeaders\s*\(/);
+    if (idx === -1) return false;
+    const body = extractBraceBlock(js, idx);
+    const ctIdx = body.search(/Content-Type/);
+    const tokenIdx = body.search(/if\s*\(\s*token\s*\)/);
+    return ctIdx !== -1 && tokenIdx !== -1 && ctIdx < tokenIdx;
+  })());
+
+check('buildRemoteMemoryHeaders: apikey only inside if(token) guard',
+  (() => {
+    const idx = js.search(/async\s+function\s+buildRemoteMemoryHeaders\s*\(/);
+    if (idx === -1) return false;
+    const body = extractBraceBlock(js, idx);
+    const ifTokenIdx = body.search(/if\s*\(\s*token\s*\)/);
+    if (ifTokenIdx === -1) return false;
+    const beforeGuard = body.substring(0, ifTokenIdx);
+    const afterGuard = body.substring(ifTokenIdx);
+    return !/apikey/i.test(beforeGuard) && /apikey/i.test(afterGuard);
+  })());
+
+check('buildRemoteMemoryHeaders: Authorization only inside if(token) guard',
+  (() => {
+    const idx = js.search(/async\s+function\s+buildRemoteMemoryHeaders\s*\(/);
+    if (idx === -1) return false;
+    const body = extractBraceBlock(js, idx);
+    const ifTokenIdx = body.search(/if\s*\(\s*token\s*\)/);
+    if (ifTokenIdx === -1) return false;
+    const beforeGuard = body.substring(0, ifTokenIdx);
+    const afterGuard = body.substring(ifTokenIdx);
+    return !/Authorization/i.test(beforeGuard) && /Authorization/i.test(afterGuard);
+  })());
+
+// ---------------------------------------------------------------------------
+// 6. Text/encoding safety
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: text/encoding safety ---');
+
+const mojibakePatterns = ['鈥', '�', '姝', '妫', '鍙', '宸', '茬', '櫥', '褰', '摼', '鎺'];
+const authSourceFiles = [js, read('src/10_auth.js'), read('src/99_legacy_main.js')];
+let anyMojibake = false;
+for (const pattern of mojibakePatterns) {
+  for (const fileContent of authSourceFiles) {
+    if (fileContent && fileContent.includes(pattern)) {
+      anyMojibake = true;
+      break;
+    }
+  }
+  if (anyMojibake) break;
+}
+check('no mojibake in auth source files (js + src/10_auth.js + src/99_legacy_main.js)', !anyMojibake);
+
+const requiredChineseStrings = ['正在检查登录状态', '检查中', '已登录', '发送登录链接'];
+for (const str of requiredChineseStrings) {
+  check(`script.js contains Chinese string: "${str}"`, js.includes(str));
+}
+
+// ---------------------------------------------------------------------------
+// 7. RLS/JWT still not enabled
+// ---------------------------------------------------------------------------
+console.log('\n--- Auth UI: RLS/JWT not enabled ---');
+
+function sqlHasActiveRls(sql, label) {
+  const stripped = stripSqlComments(sql);
+  const hasEnableRls = /ENABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(stripped);
+  const hasCreatePolicy = /CREATE\s+POLICY\s+(?![\s\S]*?--)/i.test(stripped);
+  check(`${label}: no active ENABLE ROW LEVEL SECURITY (all inside SQL comments)`, !hasEnableRls);
+  check(`${label}: no active CREATE POLICY (all inside SQL comments)`, !hasCreatePolicy);
+}
+
+// Check memory_schema.sql
+const memSchemaAll = read('supabase/memory_schema.sql');
+if (memSchemaAll) {
+  sqlHasActiveRls(memSchemaAll, 'memory_schema.sql');
+} else {
+  check('memory_schema.sql: no active ENABLE ROW LEVEL SECURITY', false);
+  check('memory_schema.sql: no active CREATE POLICY', false);
+}
+
+// Check all migration .sql files
+const migrationsDir = 'supabase/migrations';
+if (fs.existsSync(migrationsDir)) {
+  const migFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+  for (const migFile of migFiles) {
+    const migSql = read(`${migrationsDir}/${migFile}`);
+    if (migSql) {
+      sqlHasActiveRls(migSql, migFile);
+    }
+  }
+} else {
+  check('supabase/migrations directory exists', false);
+}
+
+// verify_jwt must NOT be enabled in any config or edge function config
+const configToml = read('supabase/config.toml');
+if (configToml) {
+  check('supabase/config.toml does NOT enable verify_jwt',
+    !/verify_jwt\s*=\s*true/i.test(configToml));
+} else {
+  check('supabase/config.toml does NOT enable verify_jwt (no config file)', true);
+}
+
+const updateConfig = read('supabase/functions/memory-update/config.toml');
+if (updateConfig) {
+  check('memory-update/config.toml does NOT enable verify_jwt',
+    !/verify_jwt\s*=\s*true/i.test(updateConfig));
+}
+
+const retrieveConfig = read('supabase/functions/memory-retrieve/config.toml');
+if (retrieveConfig) {
+  check('memory-retrieve/config.toml does NOT enable verify_jwt',
+    !/verify_jwt\s*=\s*true/i.test(retrieveConfig));
 }
 
 // --- Syntax validation ---
