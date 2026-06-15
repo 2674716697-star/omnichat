@@ -9,7 +9,7 @@
   - 不写/不读 `messages` / `story_chapters`。
   - 不调用辅助模型（无 LLM summarizer），不生成章节摘要。
   - 不使用 pgvector 语义检索。
-- Supabase Auth / RLS / Storage 尚未启用；`user_profiles` 只是后端预留表，暂不接前端。
+- 前端可选 Supabase Auth UI 已实现（登录/注册界面、Email OTP 流程），但 **Supabase Auth 后端（verify_jwt）/ RLS / Storage 仍尚未启用**；`user_profiles` 只是后端预留表，暂不接前端。Auth UI 提供可选登录界面，不改变后端安全态势（仍为 personal mode）。
 - 远端记忆只影响下一轮缓存记忆（第 N 轮检索结果用于第 N+1 轮），绝不阻塞当前轮的流式回复。
 - 模型 API Key 只保存在用户本地浏览器，后端不接收、不存储、不返回。
 - `supabase/memory_schema.sql` 是当前完整参考 schema；`supabase/migrations/*.sql` 是按时间戳执行的增量源。新库部署二选一：执行完整 schema 或执行 migrations，不混用到同一个空库。
@@ -1695,7 +1695,7 @@ $env:RUN_REMOTE_MEMORY_CONTRACT='1'; $env:REMOTE_MEMORY_ENDPOINT='https://<your-
 | 项目 | 当前状态 |
 |------|----------|
 | JWT 验证（`verify_jwt`） | ❌ **未启用** — 两个 Edge Function 均不检查请求是否携带有效 JWT |
-| Supabase Auth | ❌ **未接入** — 前端没有 Supabase 登录/注册流程 |
+| Supabase Auth（前端 UI） | ⚠️ **前端 UI 已实现，后端未启用** — 前端有可选登录/注册界面（Email OTP），但 Edge Function 的 `verify_jwt` 未启用，JWT 验证未生效 |
 | RLS（Row Level Security） | ❌ **未启用** — 所有表默认无 RLS 策略，service_role 可全量读写 |
 | API Key 存储 | ✅ 仅存用户本地浏览器 — 服务端不保存任何模型 API Key |
 | 数据库访问方式 | service_role（`SUPABASE_SERVICE_ROLE_KEY` 环境变量） |

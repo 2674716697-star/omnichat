@@ -6,6 +6,16 @@
 
 ---
 
+### 2026-06-15 进度更新
+
+- **Path A commit 拆分已完成** — 20 个未提交改动已按功能拆分为 3 个独立 commit（Backend schema + Frontend adapter + Checks/docs）。
+- **前端可选 Supabase Auth UI 已实现**（commit `06c6a8e`）— 登录/注册 UI 组件、Email OTP 流程、会话状态管理均已实现于前端。Auth UI 是可选的前端功能；用户可以不登录继续使用 personal mode。
+- **Auth UI 不变式检查已实现**（commit `b2f4b8a`）— `_check_stability.mjs` 新增 Auth UI 存在性/一致性检查，确保登出按钮、登录按钮在不同登录状态下正确显示/隐藏。
+- **当前分支可能领先 origin** — 以上 commit 尚未 push，不要假定已推送或已部署。
+- **⚠️ RLS / verify_jwt / CORS 收紧 / Storage 仍未实现** — 这些是后端安全基础设施，需要 Supabase Dashboard 配置后才能启用。前端 Auth UI 只是可选登录界面，不改变后端安全态势。
+
+---
+
 ## 1. 当前未提交改动清单
 
 根据 `_check_release_readiness.mjs` 的分组逻辑整理（2026-06-15 `git status --short` 快照）：
@@ -67,6 +77,8 @@ node _check_stability.mjs
 node _check_release_readiness.mjs
 ```
 
+> **2026-06-15 更新**: Path A commit 拆分已完成。以下为历史设计记录。
+
 ---
 
 ## 2. 发布清理路径 A（commit 拆分）
@@ -114,7 +126,7 @@ node _check_release_readiness.mjs
 
 ## 3. 设计路径 B：Profile/Auth/RLS 架构
 
-> **性质**: 纯设计文档，不包含任何实现代码。所有决策需评审通过后才能进入 implementation。
+> **性质**: 设计文档。前端可选 Auth UI（登录/注册界面、Email OTP 流程）已在 commit `06c6a8e` 实现，不变式检查在 commit `b2f4b8a`。以下 RLS/JWT/Storage/Profile API 部分仍为设计阶段，未实现。所有后端安全决策需评审通过后才能进入 implementation。
 
 ### 3.1 Auth 模式
 
@@ -358,3 +370,54 @@ CREATE POLICY "avatars owner update/delete"
 - `RELEASE_CLEANUP_AND_AUTH_PLAN.md`（本文档）— 聚焦当前未提交改动的整理方案 + Profile/Auth 设计。
 - 两个文档互补，本文档的部分内容（如 migration 策略、API Key 原则）直接引用自 `BACKEND_MEMORY_PLAN.md`，确保一致性。
 - 本文档中的 Auth/RLS/Storage 设计是 `BACKEND_MEMORY_PLAN.md` 中"下一阶段：用户认证与多用户安全"章节的详细展开。
+
+---
+
+## 8. 下一步：外部/用户操作（需要 Dashboard 权限）
+
+在真实 Email OTP 可以端到端测试之前，必须在 Supabase Dashboard 中完成以下配置。这些操作**不能自动化**，需要用户或项目管理员在 Dashboard 中手动执行：
+
+### 8.1 Supabase Dashboard Auth 配置
+
+| # | 操作 | 路径 | 说明 |
+|----|------|------|------|
+| 1 | 关闭公开注册 | Authentication → Settings → 关闭 "Allow new users to sign up" | 仅允许管理员在 Dashboard 手动创建用户（invite-only） |
+| 2 | 配置 Email OTP Provider | Authentication → Providers → Email → 开启 "Email OTP" | 启用 passwordless magic link/OTP 登录 |
+| 3 | 配置允许的重定向 URL | Authentication → URL Configuration → Site URL + Redirect URLs | 添加 `http://localhost:*`（本地开发）和未来部署域名 |
+| 4 | 手动创建测试用户 | Authentication → Users → Add User | 为每个受邀用户创建账号（输入邮箱，系统发送 OTP） |
+
+### 8.2 为什么不能自动化
+
+- Supabase Dashboard 没有公开的配置 API（Management API 仅部分操作可用）。
+- OAuth provider 配置涉及密钥、重定向 URL 验证，必须人工审核。
+- invite-only 模式下用户创建是手动/受控流程，自动化可能意外开放注册。
+- **不要盲目自动化这些步骤** — 错误配置可能导致安全漏洞或用户被锁。
+
+---
+
+## 9. 下一步：Dashboard 配置完成后的代码步骤
+
+Dashboard Auth 设置配置完成后，以下代码步骤可以安全推进：
+
+### 9.1 已验证登录 smoke test
+
+1. 在浏览器中打开 app，点击登录按钮，完成 Email OTP 流程。
+2. 确认 `supabase.auth.getSession()` 返回有效 JWT。
+3. 确认 `buildRemoteMemoryHeaders()` 在登录后附带 `Authorization: Bearer <jwt>`。
+4. 确认未登录时 `buildRemoteMemoryHeaders()` 不发送 Authorization header。
+5. 确认登出后 JWT 被清除，header 恢复为 personal mode。
+
+### 9.2 可选：已验证远端 contract 测试
+
+设置 `RUN_REMOTE_MEMORY_CONTRACT=1` 并附带有效 JWT 运行 `_check_remote_memory_contract.mjs`，确认：
+- Edge Function 正确识别 `Authorization: Bearer <jwt>`。
+- `getOptionalAuthUserId` 返回正确的 `authUserId`。
+- memory-update 写入时 `user_id = authUserId`。
+- memory-retrieve 只返回 `user_id = authUserId` 的 facts。
+
+### 9.3 不要做（Dashboard 配置完成后的初始阶段）
+
+- ❌ **不要立即启用 RLS** — 需要先确认所有旧 conversation 已被认领或标记。
+- ❌ **不要立即启用 verify_jwt** — 需要先确认所有客户端已登录并能正确发送 JWT。
+- ❌ **不要收紧 CORS** — 保持 `*` 直到多客户端验证通过。
+- ❌ **不要启用 Storage** — 头像/背景上传需要独立的 bucket 配置和 RLS 策略。
