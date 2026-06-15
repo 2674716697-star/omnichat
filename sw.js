@@ -4,7 +4,7 @@
    picks up new deploys on the next navigation. NEVER caches sw.js.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-v10';
+const CACHE_NAME = 'omnichat-mqepwuh9';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png|jpe?g|gif)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
@@ -43,6 +43,28 @@ self.addEventListener('fetch', (event) => {
 
   // Never intercept API calls
   if (url.pathname.includes('/v1/') || url.pathname.includes('/chat/completions') || url.pathname.includes('/models')) return;
+
+  // Wallpapers: network-first — always try network, cache for offline fallback.
+  // Avoids cache-first serving stale/missing backgrounds after deploys.
+  const WALLPAPER_RE = /\/bg\/.+\.(jpg|jpeg|gif|png|webp)$/i;
+  if (WALLPAPER_RE.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        try {
+          const netResp = await fetch(event.request);
+          if (netResp.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, netResp.clone());
+          }
+          return netResp;
+        } catch (_) {
+          const cached = await caches.match(event.request);
+          return cached || new Response('Offline', { status: 503 });
+        }
+      })()
+    );
+    return;
+  }
 
   const isDocument = event.request.destination === 'document';
   const isIndex = INDEX_PATHS.has(url.pathname);

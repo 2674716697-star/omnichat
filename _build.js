@@ -12,6 +12,20 @@ const commitHash = (() => {
   return 'precommit';
 })();
 
+// Auto-bump SW cache name so every deploy invalidates old caches.
+// Without this, users keep getting stale cached HTML/JS/CSS after updates.
+(() => {
+  const swPath = 'sw.js';
+  let swContent = fs.readFileSync(swPath, 'utf-8');
+  const newName = 'omnichat-' + buildVersion;
+  const oldName = swContent.match(/const CACHE_NAME = '([^']+)'/);
+  if (oldName) {
+    swContent = swContent.replace("const CACHE_NAME = '" + oldName[1] + "'", "const CACHE_NAME = '" + newName + "'");
+    fs.writeFileSync(swPath, swContent, 'utf-8');
+    console.log('SW cache:', oldName[1], '->', newName);
+  }
+})();
+
 // Minify CSS: remove comments, collapse whitespace, remove unnecessary semicolons
 function minifyCSS(css) {
   return css
