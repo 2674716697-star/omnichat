@@ -1,14 +1,14 @@
 -- =============================================================================
--- Mira Memory Schema — Supabase CLI Migration Mirror
+-- Mira Memory Schema — 历史基础 Migration（初始 Schema 快照）
 -- =============================================================================
--- This file is a CLI-compatible copy of supabase/memory_schema.sql.
--- The canonical source of truth is supabase/memory_schema.sql.
--- When the schema changes, BOTH files must be updated in sync.
+-- 这是历史基础 migration，记录了创建时的初始 schema 状态。
+-- 当前完整参考 schema 是 supabase/memory_schema.sql（会随新功能持续更新）。
+-- 后续字段通过后续按时间戳命名的增量 migration 补齐，不要回写此文件的可执行 SQL。
 --
--- Usage:
---   - For Dashboard SQL Editor: copy & paste supabase/memory_schema.sql
---   - For Supabase CLI:         supabase db push   (uses this file)
---   - For local dev:            supabase migration up (uses this file)
+-- 部署指引：
+--   - Dashboard SQL Editor：复制 supabase/memory_schema.sql（完整参考）
+--   - Supabase CLI：        所有 migration 按时间戳顺序执行
+--   - 本地开发：            supabase migration up
 -- =============================================================================
 
 -- =============================================================================

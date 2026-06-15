@@ -25,7 +25,7 @@
   //
   // Use _check_stability.mjs to confirm migration integrity after changes.
   // =========================================================================
-  const STORAGE_SCHEMA_VERSION = 6;
+  const STORAGE_SCHEMA_VERSION = 7;
   const STORAGE_VERSION = 1;
 
   const PROVIDERS = {
@@ -110,8 +110,8 @@
     storyAuxModel: '',
     storyAuxMaxTokens: 5000,
     storyAuxApiKey: '',
-    memoryMode: 'local',
-    memoryRemoteEndpoint: '',
+    memoryMode: 'remote',
+    memoryRemoteEndpoint: 'https://lazsvokcrbykzjgzegpq.supabase.co/functions/v1',
     sceneStatus: {
       health: '', stamina: '', composure: '', focus: '',
       currentObjective: '', constraints: ''
@@ -147,3 +147,61 @@
     serverError: '服务商接口异常，请稍后重试。',
     streamParseError: '流式响应解析失败。',
   };
+
+  // =========================================================================
+  // SUPABASE CONFIG — Phase 1: lazy optional auth, no forced login, no RLS.
+  // Publishable key is safe for client-side; never put service_role here.
+  // =========================================================================
+  const SUPABASE_PROJECT_URL = 'https://lazsvokcrbykzjgzegpq.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_zQ_2YgDPNT5cX0S5eprOYg_inGgic1n';
+
+  // =========================================================================
+  // RUNTIME CONFIG OVERRIDE — Phase 1.2
+  //
+  // getRuntimeConfigValue(name, fallback) reads configuration that can be
+  // injected at deploy time without modifying source code.  This lets the
+  // same build work across environments (staging, on-prem, open-source forks).
+  //
+  // Resolution order (first wins):
+  //   1. window.__MIRA_CONFIG__[name]          — JS injection
+  //   2. <meta name="mira:<name>" content="…"> — HTML meta tag
+  //   3. fallback                              — hardcoded constant
+  //
+  // Always returns a string (or null if fallback is null).  Never throws.
+  //
+  // Supported config names:
+  //   supabaseProjectUrl    → overrides SUPABASE_PROJECT_URL
+  //   supabasePublishableKey→ overrides SUPABASE_PUBLISHABLE_KEY
+  //   memoryRemoteEndpoint  → overrides DEFAULTS.memoryRemoteEndpoint
+  //
+  // Safety notes:
+  //   - publishable key is NOT a secret — it's safe in client-side code.
+  //   - For public repos that prefer zero hardcoded values, inject via
+  //     window.__MIRA_CONFIG__ in a <script> tag or set meta tags.
+  //   - Runtime overrides never touch localStorage (API keys, user prefs).
+  // =========================================================================
+  function getRuntimeConfigValue(name, fallback) {
+    try {
+      // 1. window.__MIRA_CONFIG__ object (JavaScript injection)
+      if (typeof window !== 'undefined' && window.__MIRA_CONFIG__) {
+        var cfg = window.__MIRA_CONFIG__;
+        if (typeof cfg === 'object' && cfg !== null) {
+          var raw = cfg[name];
+          if (typeof raw === 'string' && raw.length > 0) return raw;
+        }
+      }
+      // 2. <meta name="mira:<name>" content="…">
+      if (typeof document !== 'undefined' && typeof name === 'string' && name.length > 0) {
+        var meta = document.querySelector('meta[name="mira:' + name + '"]');
+        if (meta) {
+          var content = meta.getAttribute('content');
+          if (typeof content === 'string' && content.trim().length > 0) {
+            return content.trim();
+          }
+        }
+      }
+    } catch (_) {
+      // Never throw — silently fall back
+    }
+    return fallback;
+  }

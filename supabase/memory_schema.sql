@@ -42,19 +42,27 @@ $$ LANGUAGE plpgsql;
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS conversations (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       uuid,                         -- nullable: personal mode doesn't require auth
-  title         text NOT NULL DEFAULT '',
-  provider      text NOT NULL DEFAULT '',
-  model         text NOT NULL DEFAULT '',
-  settings_json jsonb NOT NULL DEFAULT '{}',
-  archived      boolean NOT NULL DEFAULT false,
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  updated_at    timestamptz NOT NULL DEFAULT now()
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                 uuid,                         -- nullable: personal mode doesn't require auth
+  client_conversation_id  text NOT NULL DEFAULT '',     -- frontend generateId() value; maps to conv.id on client
+  title                   text NOT NULL DEFAULT '',
+  provider                text NOT NULL DEFAULT '',
+  model                   text NOT NULL DEFAULT '',
+  settings_json           jsonb NOT NULL DEFAULT '{}',
+  archived                boolean NOT NULL DEFAULT false,
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  updated_at              timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversations_user_updated
   ON conversations (user_id, updated_at DESC);
+
+-- Unique constraint on non-empty client_conversation_id values.
+-- Empty string is allowed for rows created via other paths (e.g. direct DB inserts
+-- or migrations of old data that predate the client_conversation_id column).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_client_conv_id
+  ON conversations (client_conversation_id)
+  WHERE client_conversation_id != '';
 
 -- Attach updated_at trigger
 DROP TRIGGER IF EXISTS trg_conversations_updated_at ON conversations;
@@ -175,6 +183,48 @@ CREATE TRIGGER trg_memory_facts_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- =============================================================================
+-- Table: user_profiles
+-- =============================================================================
+-- Reserved for future Auth user profiles.  No FK to auth.users to avoid
+-- Dashboard/CLI environment differences breaking the migration.
+--
+-- Fields:
+--   avatar_url / profile_background_url — URL fields; may point to Supabase
+--     Storage or external links in the future.  Not a Storage bucket now.
+--   personalization_json — long-term personalization space (writing preferences,
+--     user称呼, reading preferences, default role preferences).  No secrets.
+--
+-- Does NOT store model API keys or provider secrets.
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id                   uuid PRIMARY KEY,
+  schema_version            integer NOT NULL DEFAULT 1,
+  display_name              text NOT NULL DEFAULT '',
+  bio                       text NOT NULL DEFAULT '',
+  avatar_url                text NOT NULL DEFAULT '',
+  profile_background_url    text NOT NULL DEFAULT '',
+  profile_background_position text NOT NULL DEFAULT 'center center',
+  profile_theme_json        jsonb NOT NULL DEFAULT '{}',
+  personalization_json      jsonb NOT NULL DEFAULT '{}',
+  preferences_json          jsonb NOT NULL DEFAULT '{}',
+  public_profile_json       jsonb NOT NULL DEFAULT '{}',
+  private_profile_json      jsonb NOT NULL DEFAULT '{}',
+  ui_state_json             jsonb NOT NULL DEFAULT '{}',
+  asset_settings_json       jsonb NOT NULL DEFAULT '{}',
+  created_at                timestamptz NOT NULL DEFAULT now(),
+  updated_at                timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_display_name
+  ON user_profiles (lower(display_name));
+
+-- Attach updated_at trigger
+DROP TRIGGER IF EXISTS trg_user_profiles_updated_at ON user_profiles;
+CREATE TRIGGER trg_user_profiles_updated_at
+  BEFORE UPDATE ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- =============================================================================
 -- Row Level Security (RLS) — COMMENTED OUT by default
 -- =============================================================================
 -- Personal mode (no Supabase Auth) should leave RLS disabled.
@@ -258,4 +308,32 @@ CREATE POLICY "Users can manage facts in their conversations"
       SELECT c.user_id FROM conversations c WHERE c.id = memory_facts.conversation_id
     )
   );
+
+-- user_profiles
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own profile"
+  ON user_profiles
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 */
+
+-- =============================================================================
+-- Privileges for service_role
+-- =============================================================================
+-- Edge Functions use the service_role key to bypass RLS and access tables
+-- directly.  These grants must be applied explicitly — Supabase does not
+-- auto-grant table permissions to service_role.
+-- Run this block once after creating the schema (and after any migration that
+-- adds new tables).
+
+GRANT USAGE ON SCHEMA public TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON conversations TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON messages     TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON story_states TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON story_chapters TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON memory_facts TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_profiles TO service_role;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
