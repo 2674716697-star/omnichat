@@ -415,6 +415,44 @@ Dashboard Auth 设置配置完成后，以下代码步骤可以安全推进：
 - memory-update 写入时 `user_id = authUserId`。
 - memory-retrieve 只返回 `user_id = authUserId` 的 facts。
 
+**运行命令:**
+
+```powershell
+# PowerShell
+$env:RUN_REMOTE_MEMORY_CONTRACT = "1"
+$env:REMOTE_MEMORY_AUTH_TOKEN = "<your-valid-jwt>"
+$env:REMOTE_MEMORY_PUBLISHABLE_KEY = "sb_publishable_..."  # optional, falls back to source default
+node _check_remote_memory_contract.mjs
+```
+
+```bash
+# Bash
+RUN_REMOTE_MEMORY_CONTRACT=1 \
+REMOTE_MEMORY_AUTH_TOKEN="<your-valid-jwt>" \
+REMOTE_MEMORY_PUBLISHABLE_KEY="sb_publishable_..." \
+node _check_remote_memory_contract.mjs
+```
+
+**环境变量说明:**
+
+| 变量 | 必须 | 说明 |
+|------|------|------|
+| `RUN_REMOTE_MEMORY_CONTRACT` | 是 | 设为 `1` 启用远程测试 |
+| `REMOTE_MEMORY_AUTH_TOKEN` | 是（认证模式） | 有效 JWT（从 `supabase.auth.getSession()` 获取） |
+| `REMOTE_MEMORY_PUBLISHABLE_KEY` | 否 | Supabase publishable key；未设置时从 `src/01_constants.js` 读取默认值 |
+| `REMOTE_MEMORY_ENDPOINT` | 否 | 覆盖默认 Edge Function URL |
+
+**认证测试写入的数据:**
+- conversationId 前缀为 `contract-auth-*`（区别于个人模式的 `contract-*` 前缀）。
+- 每次运行写入一个新的 conversation 和 memory_fact。
+- 测试数据可保留在 DB 中，前缀使其可自识别。
+
+**认证测试验证项:**
+1. memory-update → 200 + ok:true + 返回有效的 conversationUuid。
+2. memory-retrieve → 200 + 返回 selectedFactIds 数组 + memoryText 字符串。
+3. memoryText 包含测试内容则 PASS；若响应 shape 正确但内容不匹配则 WARN（因为 auth 所有权/去重/部署版本可能不同）。
+4. malformed Authorization → 401 为 PASS（advisory 检查，不阻塞）。
+
 ### 9.3 不要做（Dashboard 配置完成后的初始阶段）
 
 - ❌ **不要立即启用 RLS** — 需要先确认所有旧 conversation 已被认领或标记。

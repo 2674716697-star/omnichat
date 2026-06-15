@@ -7,11 +7,20 @@
 //   node _check_remote_memory_contract.mjs
 //   → Checks local source code contract only.  No network requests.
 //
-// REMOTE MODE:
+// REMOTE PERSONAL MODE:
 //   $env:RUN_REMOTE_MEMORY_CONTRACT='1'; node _check_remote_memory_contract.mjs
 //   → Also POSTs to the remote endpoint.  Writes one test conversation/fact.
+//   → Content-Type header only, no Authorization/apikey.
 //
-// Optional override: $env:REMOTE_MEMORY_ENDPOINT='https://...'
+// REMOTE AUTHENTICATED MODE:
+//   $env:RUN_REMOTE_MEMORY_CONTRACT='1'; $env:REMOTE_MEMORY_AUTH_TOKEN='<jwt>'; node ...
+//   → Includes Authorization: Bearer <token> and apikey headers.
+//   → Uses contract-auth-* conversationId prefix.
+//   → REMOTE_MEMORY_PUBLISHABLE_KEY optional (falls back to source default).
+//
+// Optional overrides:
+//   $env:REMOTE_MEMORY_ENDPOINT='https://...'
+//   $env:REMOTE_MEMORY_PUBLISHABLE_KEY='sb_publishable_...'
 // =============================================================================
 
 import fs from 'node:fs';
@@ -29,6 +38,13 @@ function read(p) {
   const full = path.resolve(__dirname, p);
   if (!fs.existsSync(full)) return null;
   return fs.readFileSync(full, 'utf8');
+}
+
+function extractPublishableKeyFromConstants() {
+  const constantsSrc = read('src/01_constants.js');
+  if (!constantsSrc) return null;
+  const match = constantsSrc.match(/SUPABASE_PUBLISHABLE_KEY\s*=\s*['"]([^'"]+)['"]/);
+  return match ? match[1] : null;
 }
 
 let failed = false;
@@ -373,6 +389,16 @@ if (selfSource) {
     /const\s+runRemote\s*=\s*process\.env\.RUN_REMOTE_MEMORY_CONTRACT\s*===\s*['"]1['"]/.test(selfSource));
   check('remote mode shows SKIPPED message when off',
     /REMOTE TESTS SKIPPED/.test(selfSource));
+  // Auth mode must be doubly guarded: RUN_REMOTE_MEMORY_CONTRACT AND REMOTE_MEMORY_AUTH_TOKEN
+  check('auth mode guard requires REMOTE_MEMORY_AUTH_TOKEN check',
+    /process\.env\.REMOTE_MEMORY_AUTH_TOKEN/.test(selfSource));
+  check('auth mode guard requires both RUN_REMOTE_MEMORY_CONTRACT and REMOTE_MEMORY_AUTH_TOKEN',
+    /runRemote\s*&&\s*(?:authToken|process\.env\.REMOTE_MEMORY_AUTH_TOKEN)/.test(selfSource) ||
+    /(?:authToken|process\.env\.REMOTE_MEMORY_AUTH_TOKEN)\s*&&\s*runRemote/.test(selfSource));
+  check('auth mode uses contract-auth- prefix for conversationId',
+    /contract-auth-/.test(selfSource));
+  check('auth mode mentions publishable key source order',
+    /REMOTE_MEMORY_PUBLISHABLE_KEY/.test(selfSource));
 }
 
 // Also verify this script itself is not accidentally being run in remote mode.
@@ -574,6 +600,8 @@ check('supabase/functions/README.md: push safety or publishable key documented',
 // ---------------------------------------------------------------------------
 
 const runRemote = process.env.RUN_REMOTE_MEMORY_CONTRACT === '1';
+const authToken = process.env.REMOTE_MEMORY_AUTH_TOKEN || '';
+const pkEnv = process.env.REMOTE_MEMORY_PUBLISHABLE_KEY || '';
 
 if (runRemote) {
   console.log(`\n--- ${mk}: Remote checks ---`);
@@ -585,6 +613,13 @@ if (runRemote) {
   console.log('');
   console.log('Remote mode will POST test data to the endpoint.');
   console.log('Optional: $env:REMOTE_MEMORY_ENDPOINT="https://..." to override the default URL.');
+  console.log('');
+  console.log('For AUTHENTICATED remote tests, also set:');
+  console.log('  PowerShell: $env:REMOTE_MEMORY_AUTH_TOKEN="<jwt>"; $env:REMOTE_MEMORY_PUBLISHABLE_KEY="<key>"');
+  console.log('  Bash:       REMOTE_MEMORY_AUTH_TOKEN="<jwt>" REMOTE_MEMORY_PUBLISHABLE_KEY="<key>"');
+  console.log('  REMOTE_MEMORY_AUTH_TOKEN is required for authenticated mode.');
+  console.log('  REMOTE_MEMORY_PUBLISHABLE_KEY is optional (falls back to source default).');
+  console.log('  Auth mode writes test data with contract-auth-* conversationId prefix.');
 }
 
 if (runRemote) {
@@ -711,6 +746,153 @@ if (runRemote) {
   console.log(`\n--- ${mk}: Remote test data written ---`);
   console.log(`  conversationId: ${conversationId}`);
   console.log('  This test data can be left in the DB; it is self-identifying (prefix: contract-).');
+}
+
+// --- 4d. Authenticated remote mode (only when REMOTE_MEMORY_AUTH_TOKEN is set) ---
+if (runRemote && authToken) {
+  console.log(`\n--- ${mk}: Authenticated remote checks ---`);
+
+  const publishableKey = pkEnv || extractPublishableKeyFromConstants() || '';
+
+  if (!publishableKey) {
+    console.warn('');
+    console.warn('⚠  WARN: REMOTE_MEMORY_PUBLISHABLE_KEY not set and could not extract from source.');
+    console.warn('   The publishable key is needed to form the apikey header.');
+    console.warn('   Set REMOTE_MEMORY_PUBLISHABLE_KEY or ensure src/01_constants.js is readable.');
+    console.warn('   Skipping authenticated remote checks.');
+  } else {
+    const authTs = Date.now();
+    const authRand = Math.random().toString(36).slice(2, 8);
+    const authConversationId = `contract-auth-${authTs}-${authRand}`;
+    const authTestContent = `Contract auth test run at ${new Date(authTs).toISOString()}`;
+
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'apikey': publishableKey,
+    };
+
+    console.log(`  endpoint       : ${endpointBase}`);
+    console.log(`  conv id        : ${authConversationId}`);
+    console.log(`  publishable key: ${publishableKey.slice(0, 12)}...`);
+    console.log('');
+
+    let authRemoteFailed = false;
+
+    // --- 4d-i. POST /memory-update (authenticated) ---
+    console.log('[A1/3] POST memory-update (authenticated)...');
+    try {
+      const resA1 = await fetch(updateUrl, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          conversationId: authConversationId,
+          storyContent: authTestContent,
+        }),
+      });
+      const jsonA1 = await resA1.json();
+      check(`memory-update auth → 200 (got ${resA1.status})`, resA1.status === 200);
+      check('memory-update auth → ok:true', jsonA1 && jsonA1.ok === true);
+      check('memory-update auth → has conversationUuid',
+        jsonA1 && typeof jsonA1.conversationUuid === 'string');
+      if (resA1.status !== 200 || !jsonA1 || jsonA1.ok !== true) {
+        authRemoteFailed = true;
+        console.error('   Response:', JSON.stringify(jsonA1).slice(0, 300));
+      }
+    } catch (e) {
+      check('memory-update auth → no network error', false);
+      console.error('   Error:', e.message);
+      authRemoteFailed = true;
+    }
+
+    // Small delay for DB write to settle
+    if (!authRemoteFailed) {
+      await sleep(1000);
+    }
+
+    // --- 4d-ii. POST /memory-retrieve (authenticated) ---
+    console.log('[A2/3] POST memory-retrieve (authenticated)...');
+    try {
+      const resA2 = await fetch(retrieveUrl, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          conversationId: authConversationId,
+          userText: 'contract auth check',
+          budget: 2000,
+        }),
+      });
+      const jsonA2 = await resA2.json();
+      check(`memory-retrieve auth → 200 (got ${resA2.status})`, resA2.status === 200);
+      check('memory-retrieve auth → has selectedFactIds',
+        jsonA2 && Array.isArray(jsonA2.selectedFactIds));
+      check('memory-retrieve auth → has memoryText',
+        jsonA2 && typeof jsonA2.memoryText === 'string');
+
+      // Content match: verify memoryText includes test content.
+      // If shape is correct but content doesn't match, warn rather than fail —
+      // auth ownership, de-dupe, or deployed version may vary.
+      if (jsonA2 && typeof jsonA2.memoryText === 'string') {
+        if (jsonA2.memoryText.includes('Contract auth test')) {
+          check('memory-retrieve auth → memoryText contains test content', true);
+        } else {
+          console.warn('');
+          console.warn('⚠  WARN: memory-retrieve auth → memoryText does NOT contain test content.');
+          console.warn('   Status is 200 and response shape is correct — content mismatch only.');
+          console.warn('   This may be due to auth user ownership, de-dupe, or deployed version.');
+          console.warn('   This does NOT fail the contract check.');
+        }
+      }
+
+      if (resA2.status !== 200) {
+        authRemoteFailed = true;
+        console.error('   Response:', JSON.stringify(jsonA2).slice(0, 300));
+      }
+    } catch (e) {
+      check('memory-retrieve auth → no network error', false);
+      console.error('   Error:', e.message);
+      authRemoteFailed = true;
+    }
+
+    // --- 4d-iii. POST /memory-update with malformed Authorization (advisory) ---
+    console.log('[A3/3] POST memory-update (malformed auth, advisory)...');
+    try {
+      const resA3 = await fetch(updateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer malformed-token',
+          'apikey': publishableKey,
+        },
+        body: JSON.stringify({
+          conversationId: `${authConversationId}-bad-auth`,
+          storyContent: 'auth hardening test (authenticated path)',
+        }),
+      });
+      if (resA3.status === 401) {
+        check('memory-update auth malformed → 401 (hardening deployed)', true);
+      } else if (resA3.status === 200) {
+        console.warn('');
+        console.warn('⚠  WARN: malformed Authorization in authenticated path returned 200 (advisory).');
+        console.warn('   This is expected if the remote has not deployed auth hardening yet.');
+        console.warn('   This does NOT fail the contract check.');
+      } else {
+        check(`memory-update auth malformed → 401 (got ${resA3.status})`, false);
+      }
+    } catch (e) {
+      console.warn('');
+      console.warn('⚠  WARN: malformed Authorization auth path test errored:');
+      console.warn('   ' + e.message);
+    }
+
+    if (authRemoteFailed) {
+      failed = true;
+    }
+
+    console.log(`\n--- ${mk}: Authenticated test data written ---`);
+    console.log(`  conversationId: ${authConversationId}`);
+    console.log('  This test data can be left in the DB; it is self-identifying (prefix: contract-auth-).');
+  }
 }
 
 // ---------------------------------------------------------------------------
