@@ -1967,6 +1967,151 @@ function getSceneBodyDetails(block) {
     }
   }
   // =========================================================================
+  // AUTH STATE MANAGEMENT — Phase 2.1
+  // Minimal Supabase Auth state + UI helpers.
+  //
+  // Design principles:
+  //   - Anonymous usage preserved: everything degrades gracefully when
+  //     Supabase SDK is not loaded or no session exists.
+  //   - Auth state is shared across the module; mutations go through helpers.
+  //   - UI synchronisation is a pure DOM function — call syncAuthUI() after
+  //     any state change.
+  //   - Supabase client calls live in 99_legacy_main.js (after getSupabaseClient)
+  //     to respect concatenation order.  This file only holds state + UI.
+  // =========================================================================
+
+  // Shared auth state — mutable only through the set/clear helpers below.
+  var _authState = {
+    user: null,        // { id: string, email: string } | null
+    session: null,     // Supabase session object | null
+    loading: true,     // true while initial session check is in flight
+    error: null,       // string | null — last user-visible error message
+    initialised: false // true after first init attempt completes
+  };
+
+  // getAuthState() — returns a shallow copy so callers can read but not mutate.
+  function getAuthState() {
+    return {
+      user: _authState.user,
+      loading: _authState.loading,
+      error: _authState.error,
+      initialised: _authState.initialised
+    };
+  }
+
+  // setAuthSession(session) — update auth state from a valid Supabase session.
+  function setAuthSession(session) {
+    if (session && session.user) {
+      _authState.session = session;
+      _authState.user = {
+        id: session.user.id,
+        email: session.user.email || ''
+      };
+      _authState.error = null;
+    }
+    syncAuthUI();
+  }
+
+  // clearAuthSession() — clear auth state (sign out).
+  // Preserves all local chats, settings, and API keys.
+  function clearAuthSession() {
+    _authState.session = null;
+    _authState.user = null;
+    _authState.error = null;
+    syncAuthUI();
+  }
+
+  // setAuthLoading(loading) — update loading state.
+  function setAuthLoading(loading) {
+    _authState.loading = !!loading;
+    syncAuthUI();
+  }
+
+  // setAuthError(message) — set a user-visible error message.
+  function setAuthError(message) {
+    _authState.error = typeof message === 'string' ? message : null;
+    syncAuthUI();
+  }
+
+  // markAuthInitialised() — mark first init attempt as complete.
+  function markAuthInitialised() {
+    _authState.loading = false;
+    _authState.initialised = true;
+    syncAuthUI();
+  }
+
+  // isValidEmail(email) — basic email format check for OTP input.
+  function isValidEmail(email) {
+    if (typeof email !== 'string') return false;
+    var trimmed = email.trim();
+    if (trimmed.length === 0) return false;
+    // Simple pattern: something@something.something
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  }
+
+  // syncAuthUI() — update auth section in settings drawer to reflect _authState.
+  // Safe to call before DOM is ready (returns silently).
+  function syncAuthUI() {
+    if (typeof document === 'undefined') return;
+
+    var emailInput = document.getElementById('inputAuthEmail');
+    var loginBtn = document.getElementById('btnAuthLogin');
+    var logoutBtn = document.getElementById('btnAuthLogout');
+    var statusEl = document.getElementById('authStatus');
+    var userInfoEl = document.getElementById('authUserInfo');
+
+    // Loading state
+    if (_authState.loading) {
+      if (statusEl) {
+        statusEl.textContent = '正在检查登录状态…';
+        statusEl.className = 'auth-status';
+      }
+      if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '检查中…'; loginBtn.style.display = ''; }
+      if (logoutBtn) logoutBtn.style.display = 'none';
+      if (userInfoEl) userInfoEl.style.display = 'none';
+      if (emailInput) emailInput.style.display = 'none';
+      return;
+    }
+
+    // Logged in
+    if (_authState.user) {
+      if (emailInput) emailInput.style.display = 'none';
+      if (loginBtn) loginBtn.style.display = 'none';
+      if (userInfoEl) {
+        userInfoEl.style.display = '';
+        userInfoEl.textContent = '已登录：' + (_authState.user.email || _authState.user.id);
+      }
+      if (logoutBtn) {
+        logoutBtn.style.display = '';
+        logoutBtn.disabled = false;
+      }
+      if (statusEl) {
+        statusEl.textContent = _authState.error || '';
+        statusEl.className = _authState.error ? 'auth-status auth-status-error' : 'auth-status';
+      }
+      return;
+    }
+
+    // Logged out — show email input + login button
+    if (emailInput) emailInput.style.display = '';
+    if (loginBtn) {
+      loginBtn.style.display = '';
+      loginBtn.disabled = false;
+      loginBtn.textContent = '发送登录链接';
+    }
+    if (userInfoEl) userInfoEl.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (statusEl) {
+      if (_authState.error) {
+        statusEl.textContent = _authState.error;
+        statusEl.className = 'auth-status auth-status-error';
+      } else {
+        statusEl.textContent = '';
+        statusEl.className = 'auth-status';
+      }
+    }
+  }
+  // =========================================================================
   // STATE — runtime application state (persisted to localStorage)
   // =========================================================================
 
@@ -3762,6 +3907,9 @@ function getSceneBodyDetails(block) {
     dom.inputActionElaborate.value = state.actionPrompts.elaborate || '';
 
     populateModelSelect();
+
+    // Sync auth UI when settings opens
+    syncAuthUI();
   }
 
   function syncSettingsFromUI() {
@@ -5878,6 +6026,131 @@ function handleMessageAction(action, msgIndex) {
       // Silent fallback — never block on auth failure
     }
     return headers;
+  }
+
+  // =========================================================================
+  // AUTH HANDLERS — Phase 2.1
+  // Called from init() and event listeners.  Uses getSupabaseClient (above)
+  // and the auth state helpers from 10_auth.js.
+  // =========================================================================
+
+  // initAuthState() — async, non-blocking. Called once after app load.
+  // Checks for existing Supabase session and listens for changes.
+  function initAuthState() {
+    if (_authState.initialised) return;
+
+    setAuthLoading(true);
+
+    // Defer to next microtask so init() returns immediately.
+    // Auth is never on the critical path for chat.
+    Promise.resolve().then(async function() {
+      try {
+        var client = getSupabaseClient();
+        if (!client) {
+          markAuthInitialised();
+          return;
+        }
+
+        // 1. Restore existing session (survives refresh via Supabase cookies)
+        var sessionResult = await client.auth.getSession();
+        var session = sessionResult && sessionResult.data && sessionResult.data.session;
+        if (session && session.user) {
+          setAuthSession(session);
+        }
+
+        // 2. Listen for future auth changes (login, logout, token refresh)
+        client.auth.onAuthStateChange(function(event, newSession) {
+          if (event === 'SIGNED_IN' && newSession && newSession.user) {
+            setAuthSession(newSession);
+          } else if (event === 'SIGNED_OUT') {
+            clearAuthSession();
+          } else if (event === 'TOKEN_REFRESHED' && newSession) {
+            setAuthSession(newSession);
+          } else if (event === 'USER_UPDATED' && newSession && newSession.user) {
+            setAuthSession(newSession);
+          }
+        });
+
+        markAuthInitialised();
+      } catch (e) {
+        console.warn('[OmniChat] Auth init failed:', (e && e.message) || e);
+        markAuthInitialised();
+      }
+    });
+  }
+
+  // handleAuthLogin() — read email from input, validate, send OTP.
+  async function handleAuthLogin() {
+    var emailInput = document.getElementById('inputAuthEmail');
+    var email = emailInput ? emailInput.value.trim() : '';
+
+    if (!isValidEmail(email)) {
+      setAuthError('请输入有效的邮箱地址');
+      return;
+    }
+
+    setAuthError(null);
+
+    var statusEl = document.getElementById('authStatus');
+    if (statusEl) {
+      statusEl.textContent = '正在发送登录链接…';
+      statusEl.className = 'auth-status';
+    }
+
+    try {
+      var client = getSupabaseClient();
+      if (!client) {
+        setAuthError('Supabase 不可用（SDK 未加载或配置缺失）');
+        return;
+      }
+
+      var result = await client.auth.signInWithOtp({
+        email: email,
+        options: {
+          // Magic link: user clicks link → auto signed in via onAuthStateChange
+        }
+      });
+
+      if (result && result.error) {
+        setAuthError(result.error.message || '发送失败，请稍后重试');
+        return;
+      }
+
+      // Success — user will receive email with magic link
+      if (statusEl) {
+        statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
+        statusEl.className = 'auth-status auth-status-success';
+      }
+      _authState.error = null;
+
+      // Clear the email input for privacy
+      if (emailInput) emailInput.value = '';
+
+    } catch (e) {
+      setAuthError((e && e.message) || '登录请求失败，请检查网络');
+    }
+  }
+
+  // handleAuthLogout() — sign out, clear auth state, preserve local data.
+  async function handleAuthLogout() {
+    try {
+      var client = getSupabaseClient();
+      if (client) {
+        await client.auth.signOut();
+      }
+    } catch (e) {
+      console.warn('[OmniChat] Sign out error:', (e && e.message) || e);
+    }
+
+    // Always clear local auth state regardless of remote success.
+    // local chats, settings, and API keys are NEVER touched.
+    clearAuthSession();
+
+    var statusEl = document.getElementById('authStatus');
+    if (statusEl) {
+      statusEl.textContent = '已退出登录';
+      statusEl.className = 'auth-status';
+    }
   }
 
   // postRemoteMemoryUpdate — POST memory update payload to the remote endpoint.
@@ -8990,6 +9263,16 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       });
     }
 
+    // Auth login / logout buttons
+    var btnAuthLogin = $('#btnAuthLogin');
+    if (btnAuthLogin) {
+      btnAuthLogin.addEventListener('click', function() { handleAuthLogin(); });
+    }
+    var btnAuthLogout = $('#btnAuthLogout');
+    if (btnAuthLogout) {
+      btnAuthLogout.addEventListener('click', function() { handleAuthLogout(); });
+    }
+
     dom.btnExportAll?.addEventListener('click', () => exportAllJSON());
     dom.btnImport?.addEventListener('click', () => dom.importFileInput.click());
     dom.btnClearAll?.addEventListener('click', () => clearAllConversations());
@@ -9245,6 +9528,9 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
 
     // Auto-archive stale barely-used conversations
     setTimeout(() => autoArchiveCheck(), 3000);
+
+    // Init auth state — non-blocking, async, never delays chat
+    initAuthState();
 
     saveToStorage();
   }

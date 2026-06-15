@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqeh89d7">
+  <meta name="build-version" content="mqeo3yz4">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -471,6 +471,26 @@
             <button class="btn btn-secondary btn-sm" id="btnClearCache" style="font-size:11px">刷新应用缓存</button>
             <div class="setting-hint">清除 Service Worker 和 Cache Storage，下次加载获取最新版本。不会删除聊天数据</div>
           </div>
+
+          </div>
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-title">Account</div>
+          <div class="settings-section-body">
+
+        <div class="setting-group">
+          <label class="setting-label">邮箱登录（Email OTP）</label>
+          <div class="setting-hint">输入邮箱后点击发送，查收邮件中的魔法链接即可登录。无需密码。</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input type="email" class="input" id="inputAuthEmail" placeholder="you@example.com" autocomplete="email" style="flex:1">
+            <button class="btn btn-secondary btn-sm" id="btnAuthLogin" style="white-space:nowrap">发送登录链接</button>
+          </div>
+          <div class="auth-status" id="authStatus"></div>
+          <div id="authUserInfo" style="display:none;margin-top:6px;font-size:13px;color:var(--text-secondary);word-break:break-all"></div>
+          <button class="btn btn-secondary btn-sm" id="btnAuthLogout" style="display:none;margin-top:8px">退出登录</button>
+        </div>
 
           </div>
         </div>
@@ -2457,6 +2477,110 @@ dom.btnRefreshModels.textContent = '刷新模型列表';
 dom.btnRefreshModels.disabled = false;
 }
 }
+var _authState = {
+user: null, ;
+session: null, ;
+loading: true, ;
+error: null, ;
+initialised: false ;
+};
+function getAuthState() {
+return {
+user: _authState.user,
+loading: _authState.loading,
+error: _authState.error,
+initialised: _authState.initialised
+};
+}
+function setAuthSession(session) {
+if (session && session.user) {
+_authState.session = session;
+_authState.user = {
+id: session.user.id,
+email: session.user.email || ''
+};
+_authState.error = null;
+}
+syncAuthUI();
+}
+function clearAuthSession() {
+_authState.session = null;
+_authState.user = null;
+_authState.error = null;
+syncAuthUI();
+}
+function setAuthLoading(loading) {
+_authState.loading = !!loading;
+syncAuthUI();
+}
+function setAuthError(message) {
+_authState.error = typeof message === 'string' ? message : null;
+syncAuthUI();
+}
+function markAuthInitialised() {
+_authState.loading = false;
+_authState.initialised = true;
+syncAuthUI();
+}
+function isValidEmail(email) {
+if (typeof email !== 'string') return false;
+var trimmed = email.trim();
+if (trimmed.length === 0) return false;
+return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+function syncAuthUI() {
+if (typeof document === 'undefined') return;
+var emailInput = document.getElementById('inputAuthEmail');
+var loginBtn = document.getElementById('btnAuthLogin');
+var logoutBtn = document.getElementById('btnAuthLogout');
+var statusEl = document.getElementById('authStatus');
+var userInfoEl = document.getElementById('authUserInfo');
+if (_authState.loading) {
+if (statusEl) {
+statusEl.textContent = '正在检查登录状态…';
+statusEl.className = 'auth-status';
+}
+if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '检查中…'; loginBtn.style.display = ''; }
+if (logoutBtn) logoutBtn.style.display = 'none';
+if (userInfoEl) userInfoEl.style.display = 'none';
+if (emailInput) emailInput.style.display = 'none';
+return;
+}
+if (_authState.user) {
+if (emailInput) emailInput.style.display = 'none';
+if (loginBtn) loginBtn.style.display = 'none';
+if (userInfoEl) {
+userInfoEl.style.display = '';
+userInfoEl.textContent = '已登录：' + (_authState.user.email || _authState.user.id);
+}
+if (logoutBtn) {
+logoutBtn.style.display = '';
+logoutBtn.disabled = false;
+}
+if (statusEl) {
+statusEl.textContent = _authState.error || '';
+statusEl.className = _authState.error ? 'auth-status auth-status-error' : 'auth-status';
+}
+return;
+}
+if (emailInput) emailInput.style.display = '';
+if (loginBtn) {
+loginBtn.style.display = '';
+loginBtn.disabled = false;
+loginBtn.textContent = '发送登录链接';
+}
+if (userInfoEl) userInfoEl.style.display = 'none';
+if (logoutBtn) logoutBtn.style.display = 'none';
+if (statusEl) {
+if (_authState.error) {
+statusEl.textContent = _authState.error;
+statusEl.className = 'auth-status auth-status-error';
+} else {
+statusEl.textContent = '';
+statusEl.className = 'auth-status';
+}
+}
+}
 const state = {
 conversations: [],
 currentConversationId: null,
@@ -3921,6 +4045,7 @@ dom.inputActionContinue.value = state.actionPrompts.continue || '';
 dom.inputActionSummarize.value = state.actionPrompts.summarize || '';
 dom.inputActionElaborate.value = state.actionPrompts.elaborate || '';
 populateModelSelect();
+syncAuthUI();
 }
 function syncSettingsFromUI() {
 const conv = getCurrentConv();
@@ -5701,6 +5826,93 @@ headers['apikey'] = pk;
 } catch (e) {
 }
 return headers;
+}
+function initAuthState() {
+if (_authState.initialised) return;
+setAuthLoading(true);
+Promise.resolve().then(async function() {
+try {
+var client = getSupabaseClient();
+if (!client) {
+markAuthInitialised();
+return;
+}
+var sessionResult = await client.auth.getSession();
+var session = sessionResult && sessionResult.data && sessionResult.data.session;
+if (session && session.user) {
+setAuthSession(session);
+}
+client.auth.onAuthStateChange(function(event, newSession) {
+if (event === 'SIGNED_IN' && newSession && newSession.user) {
+setAuthSession(newSession);
+} else if (event === 'SIGNED_OUT') {
+clearAuthSession();
+} else if (event === 'TOKEN_REFRESHED' && newSession) {
+setAuthSession(newSession);
+} else if (event === 'USER_UPDATED' && newSession && newSession.user) {
+setAuthSession(newSession);
+}
+});
+markAuthInitialised();
+} catch (e) {
+console.warn('[OmniChat] Auth init failed:', (e && e.message) || e);
+markAuthInitialised();
+}
+});
+}
+async function handleAuthLogin() {
+var emailInput = document.getElementById('inputAuthEmail');
+var email = emailInput ? emailInput.value.trim() : '';
+if (!isValidEmail(email)) {
+setAuthError('请输入有效的邮箱地址');
+return;
+}
+setAuthError(null);
+var statusEl = document.getElementById('authStatus');
+if (statusEl) {
+statusEl.textContent = '正在发送登录链接…';
+statusEl.className = 'auth-status';
+}
+try {
+var client = getSupabaseClient();
+if (!client) {
+setAuthError('Supabase 不可用（SDK 未加载或配置缺失）');
+return;
+}
+var result = await client.auth.signInWithOtp({
+email: email,
+options: {
+}
+});
+if (result && result.error) {
+setAuthError(result.error.message || '发送失败，请稍后重试');
+return;
+}
+if (statusEl) {
+statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
+statusEl.className = 'auth-status auth-status-success';
+}
+_authState.error = null;
+if (emailInput) emailInput.value = '';
+} catch (e) {
+setAuthError((e && e.message) || '登录请求失败，请检查网络');
+}
+}
+async function handleAuthLogout() {
+try {
+var client = getSupabaseClient();
+if (client) {
+await client.auth.signOut();
+}
+} catch (e) {
+console.warn('[OmniChat] Sign out error:', (e && e.message) || e);
+}
+clearAuthSession();
+var statusEl = document.getElementById('authStatus');
+if (statusEl) {
+statusEl.textContent = '已退出登录';
+statusEl.className = 'auth-status';
+}
 }
 async function postRemoteMemoryUpdate(conv, fullContent) {
 if (!hasRemoteMemoryConfig(conv)) return false;
@@ -8299,6 +8511,14 @@ window.localStorage.setItem('omnichat_clear_cache', '1');
 window.location.reload();
 });
 }
+var btnAuthLogin = $('#btnAuthLogin');
+if (btnAuthLogin) {
+btnAuthLogin.addEventListener('click', function() { handleAuthLogin(); });
+}
+var btnAuthLogout = $('#btnAuthLogout');
+if (btnAuthLogout) {
+btnAuthLogout.addEventListener('click', function() { handleAuthLogout(); });
+}
 dom.btnExportAll?.addEventListener('click', () => exportAllJSON());
 dom.btnImport?.addEventListener('click', () => dom.importFileInput.click());
 dom.btnClearAll?.addEventListener('click', () => clearAllConversations());
@@ -8500,6 +8720,7 @@ document.head.appendChild(link);
 }, 3000);
 }
 setTimeout(() => autoArchiveCheck(), 3000);
+initAuthState();
 saveToStorage();
 }
 if (document.readyState === 'loading') {

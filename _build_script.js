@@ -20,7 +20,8 @@ const ORDER = [
   '07_markdown.js',             // Markdown: renderMarkdown, renderContentFast, getVisibleAssistantContent
   '08_conversation_actions.js', // Conversation Actions: newConversation, switchConversation, export/import, etc.
   '09_model_management.js',     // Model Management: populateModelSelect, refreshModels, updateToolWarning
-  '99_legacy_main.js',          // STATE, DOM, render, send, events, init
+  '10_auth.js',                 // Auth State: _authState, getAuthState, setAuthSession, clearAuthSession, syncAuthUI
+  '99_legacy_main.js',          // STATE, DOM, render, send, events, init (includes auth handlers)
 ];
 
 // Read and concatenate

@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqeh89d7">
+  <meta name="build-version" content="mqeo3yz4">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -471,6 +471,26 @@
             <button class="btn btn-secondary btn-sm" id="btnClearCache" style="font-size:11px">刷新应用缓存</button>
             <div class="setting-hint">清除 Service Worker 和 Cache Storage，下次加载获取最新版本。不会删除聊天数据</div>
           </div>
+
+          </div>
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-title">Account</div>
+          <div class="settings-section-body">
+
+        <div class="setting-group">
+          <label class="setting-label">邮箱登录（Email OTP）</label>
+          <div class="setting-hint">输入邮箱后点击发送，查收邮件中的魔法链接即可登录。无需密码。</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input type="email" class="input" id="inputAuthEmail" placeholder="you@example.com" autocomplete="email" style="flex:1">
+            <button class="btn btn-secondary btn-sm" id="btnAuthLogin" style="white-space:nowrap">发送登录链接</button>
+          </div>
+          <div class="auth-status" id="authStatus"></div>
+          <div id="authUserInfo" style="display:none;margin-top:6px;font-size:13px;color:var(--text-secondary);word-break:break-all"></div>
+          <button class="btn btn-secondary btn-sm" id="btnAuthLogout" style="display:none;margin-top:8px">退出登录</button>
+        </div>
 
           </div>
         </div>
