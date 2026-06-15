@@ -1,6 +1,6 @@
 // _build_script.js — Concatenate src/*.js into script.js
 // Run: node _build_script.js
-// After: node _build.js && node _safe_check.mjs
+// After: node _build.js && node _check_stability.mjs
 
 import fs from 'fs';
 
@@ -40,6 +40,10 @@ for (const file of ORDER) {
 // Verify critical identifiers exist in output
 const REQUIRED = [
   'STORAGE_SCHEMA_VERSION',
+  'STORAGE_VERSION',
+  'SUPABASE_PROJECT_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'getRuntimeConfigValue',
   'PROVIDERS',
   'SECRETS_STORAGE_KEY',
   'PREFS_STORAGE_KEY',
@@ -55,6 +59,9 @@ const REQUIRED = [
   'looksLikeWorldCharacterCard',
   'normalizeMemoryEndpoint',
   'buildMemoryEndpointUrl',
+  'getSupabaseClient',
+  'getSupabaseAccessToken',
+  'buildRemoteMemoryHeaders',
   'postRemoteMemoryUpdate',
   'normalizeMemoryMode',
   'normalizeMessage',
@@ -103,6 +110,8 @@ const REQUIRED = [
   'hasRemoteMemoryConfig',
   'getMemoryAdapter',
   'retrieveStoryMemoryText',
+  'getRemoteMemoryCacheText',
+  'prefetchRemoteMemory',
   'buildMemoryRetrievePayload',
   'buildMemoryUpdatePayload',
   'normalizeMemoryRetrieveResult',
