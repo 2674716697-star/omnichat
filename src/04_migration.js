@@ -242,10 +242,44 @@ function createSceneWorld(seed) {
     // --- Schema v4→v5: memoryMode ---
     // Always run (not just oldVersion < 5) so invalid values self-heal. Idempotent.
     conv.memoryMode = normalizeMemoryMode(conv.memoryMode);
-    // --- Schema v5→v6: memoryRemoteEndpoint ---
+    // --- Schema v6->v7: memoryMode upgrade (local->remote for old defaults) ---
+    // Old conversations before v7 defaulted to 'local' memory mode.
+    // Now that DEFAULTS.memoryMode is 'remote', migrate old local defaults
+    // so existing conversations can use backend memory.
+    // Only fires on v7 upgrade (oldVersion < 7) -- does NOT override
+    // a user who manually switches to 'local' after v7.
+    // Uses !conv.memoryRemoteEndpoint as heuristic: if the user never
+    // configured a remote endpoint, they were on the old default.
+    if (oldVersion < 7 && conv.memoryMode === 'local' && !conv.memoryRemoteEndpoint) {
+      conv.memoryMode = DEFAULTS.memoryMode;
+      conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+    }
+    // --- Schema v5->v6: memoryRemoteEndpoint ---
     // Always run so missing/corrupted fields self-heal. Idempotent.
     if (typeof conv.memoryRemoteEndpoint !== 'string') {
       conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+    }
+    // If memoryMode is remote but endpoint is empty, fill in the default.
+    // Don't overwrite an existing non-empty endpoint — user may have customized it.
+    if (conv.memoryMode === 'remote' && !conv.memoryRemoteEndpoint) {
+      conv.memoryRemoteEndpoint = DEFAULTS.memoryRemoteEndpoint;
+    }
+    // --- Schema v6→v7: remoteMemoryCache ---
+    // Defensive repair: ensure the cache object has a valid shape.
+    // Corrupt / missing caches are reset to null so the adapter treats them as cold.
+    if (conv.remoteMemoryCache) {
+      var rmc = conv.remoteMemoryCache;
+      if (typeof rmc.memoryText !== 'string' || typeof rmc.updatedAt !== 'number' || rmc.updatedAt < 0) {
+        conv.remoteMemoryCache = null;
+      }
+      // Normalize selectedFactIds to array
+      if (rmc && !Array.isArray(rmc.selectedFactIds)) {
+        rmc.selectedFactIds = [];
+      }
+      // Normalize budget
+      if (rmc && (typeof rmc.budget !== 'number' || rmc.budget <= 0)) {
+        rmc.budget = 4000;
+      }
     }
     // Migrate replyCharLimit to new range 100–2000 (clamp + normalize to nearest option)
     var REPLY_CHAR_OPTIONS = [100, 300, 500, 1000, 1500, 2000];

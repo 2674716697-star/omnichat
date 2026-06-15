@@ -30,6 +30,7 @@
       pendingStreamRender: false,
       detachedContentDirty: false,
     },
+    _remoteMemoryPrefetchLocks: {},
   };
 
   // =========================================================================
@@ -552,7 +553,10 @@
       storyAuxApiKey: DEFAULTS.storyAuxApiKey,
       storyMemory: createStoryMemory(),
       memoryMode: DEFAULTS.memoryMode,
-      memoryRemoteEndpoint: DEFAULTS.memoryRemoteEndpoint,
+      // Phase 1.2: allow runtime override for remote endpoint on new convos.
+      // Existing conversations are NOT rewritten — their stored endpoint is
+      // preserved to avoid contaminating user data.
+      memoryRemoteEndpoint: getRuntimeConfigValue('memoryRemoteEndpoint', DEFAULTS.memoryRemoteEndpoint),
       schemaVersion: STORAGE_SCHEMA_VERSION,
       messages: [],
     };
@@ -3552,10 +3556,20 @@ function handleMessageAction(action, msgIndex) {
       if (!hasRemoteMemoryConfig(conv)) {
         return LocalMemoryAdapter.retrieveText(conv, userText, budget);
       }
-      // TODO: Real remote retrieve will be async (prefetch/cache).
-      // _buildStoryMessages is currently synchronous, so for now we
-      // fall back to local. When the call site supports async, replace
-      // this branch with a fetch() to the remote endpoint.
+      budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+      // Cache-first: check if we have valid cached remote memory (30-min TTL).
+      var cache = conv.remoteMemoryCache;
+      var cacheValid = cache && typeof cache.memoryText === 'string' && cache.memoryText.length > 0 &&
+        typeof cache.updatedAt === 'number' &&
+        (Date.now() - cache.updatedAt < 30 * 60 * 1000);
+      // Fire background prefetch — never blocks the synchronous return.
+      prefetchRemoteMemory(conv, userText, budget);
+      if (cacheValid) {
+        // Combine local memory + cached remote memory, clip to budget.
+        return getRemoteMemoryCacheText(conv, budget);
+      }
+      // No valid cache — return local only. Background prefetch will populate
+      // the cache for the next turn.
       return LocalMemoryAdapter.retrieveText(conv, userText, budget);
     },
     scheduleUpdate: function(convId, fullContent) {
@@ -3582,7 +3596,13 @@ function handleMessageAction(action, msgIndex) {
           setTimeout(tryPost, 2000);
           return;
         }
-        postRemoteMemoryUpdate(conv, fullContent).catch(function(e) {
+        postRemoteMemoryUpdate(conv, fullContent).then(function(ok) {
+          if (ok) {
+            // After a successful remote update, refresh the retrieve cache
+            // so the next turn picks up the new remote memory.
+            prefetchRemoteMemory(conv, '', 4000);
+          }
+        }).catch(function(e) {
           // Never throw to UI — postRemoteMemoryUpdate already console.warns internally.
           // This catch is a safety net for unexpected synchronous throws.
           console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
@@ -3608,6 +3628,54 @@ function handleMessageAction(action, msgIndex) {
 
   function retrieveStoryMemoryText(conv, userText, budget) {
     return getMemoryAdapter(conv).retrieveText(conv, userText, budget);
+  }
+
+  // getRemoteMemoryCacheText — combine local memory text with cached remote memory.
+  // Returns the combined text clipped to budget. Falls back to local-only if the
+  // cache is missing or too small to fit.
+  function getRemoteMemoryCacheText(conv, budget) {
+    budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+    var localText = LocalMemoryAdapter.retrieveText(conv, '', budget);
+    var cache = conv && conv.remoteMemoryCache;
+    var remoteText = (cache && typeof cache.memoryText === 'string') ? cache.memoryText : '';
+    if (!remoteText) return localText;
+    var header = '\n\n[远端长期记忆]\n';
+    var headerLen = header.length;
+
+    // Remote gets at least 1200 chars (if enough text exists), at most 60% of budget.
+    var remoteMax = Math.floor(budget * 0.6);
+    var remoteTarget = remoteMax;
+    if (remoteText.length >= 1200 && remoteTarget < 1200) {
+      remoteTarget = 1200;
+    }
+    if (remoteTarget > remoteText.length) {
+      remoteTarget = remoteText.length;
+    }
+
+    // Clip remote text to its target budget.
+    var clippedRemote = remoteText;
+    if (clippedRemote.length > remoteTarget) {
+      clippedRemote = clippedRemote.slice(0, Math.max(0, remoteTarget - 3)) + '...';
+    }
+
+    // Local gets whatever budget remains after the header + remote text.
+    var localBudget = Math.max(0, budget - headerLen - clippedRemote.length);
+    var clippedLocal = localText || '';
+    if (clippedLocal.length > localBudget) {
+      clippedLocal = clippedLocal.slice(0, Math.max(0, localBudget - 3)) + '...';
+    }
+
+    // Remote first so the model sees backend memory before local story context.
+    var combined = header + clippedRemote;
+    if (clippedLocal) {
+      combined += '\n\n' + clippedLocal;
+    }
+
+    // Final safety clip to budget.
+    if (combined.length > budget) {
+      combined = combined.slice(0, Math.max(0, budget - 3)) + '...';
+    }
+    return combined;
   }
 
   // scheduleStoryMemoryUpdate — public entry point, delegates to the active adapter.
@@ -3772,6 +3840,78 @@ function handleMessageAction(action, msgIndex) {
     return base + path;
   }
 
+  // =========================================================================
+  // SUPABASE AUTH SCAFFOLD — Phase 1
+  // Lazy optional auth: no forced login, no JWT enforcement, no UI.
+  // If Supabase CDN loaded and user is signed in, attaches Authorization + apikey headers.
+  // =========================================================================
+
+  // Lazy Supabase browser client singleton. Returns null if SDK not available.
+  // Phase 1.2: reads supabaseProjectUrl / supabasePublishableKey from runtime
+  // config first (window.__MIRA_CONFIG__ or meta tags), falls back to constants.
+  let _supabaseClient = undefined;     // undefined = not yet attempted
+  function getSupabaseClient() {
+    if (_supabaseClient !== undefined) return _supabaseClient;
+    try {
+      var projectUrl = getRuntimeConfigValue('supabaseProjectUrl', SUPABASE_PROJECT_URL);
+      var publishableKey = getRuntimeConfigValue('supabasePublishableKey', SUPABASE_PUBLISHABLE_KEY);
+      if (!projectUrl || !publishableKey) {
+        _supabaseClient = null;
+        return null;
+      }
+      if (typeof window !== 'undefined' && window.supabase && window.supabase.createClient) {
+        _supabaseClient = window.supabase.createClient(projectUrl, publishableKey);
+      } else {
+        _supabaseClient = null;
+      }
+    } catch (e) {
+      console.warn('[OmniChat] Supabase client init failed:', (e && e.message) || e);
+      _supabaseClient = null;
+    }
+    return _supabaseClient;
+  }
+
+  // Get Supabase session access token, or null if not signed in.
+  async function getSupabaseAccessToken() {
+    try {
+      var client = getSupabaseClient();
+      if (!client) return null;
+      var sessionResult = await client.auth.getSession();
+      var session = sessionResult && sessionResult.data && sessionResult.data.session;
+      return session && session.access_token ? session.access_token : null;
+    } catch (e) {
+      console.warn('[OmniChat] Failed to get Supabase session:', (e && e.message) || e);
+      return null;
+    }
+  }
+
+  // buildRemoteMemoryHeaders — construct headers for remote memory requests.
+  // Personal mode (no auth session): returns only { 'Content-Type': 'application/json' }
+  // to avoid triggering CORS preflight against prototype functions whose
+  // Access-Control-Allow-Headers only lists Content-Type.
+  // Authenticated mode (valid access_token from Supabase Auth session):
+  // additionally attaches Authorization: Bearer <token> and apikey.
+  async function buildRemoteMemoryHeaders() {
+    var headers = { 'Content-Type': 'application/json' };
+    try {
+      var token = await getSupabaseAccessToken();
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+        // Phase 1.2: resolve publishable key via runtime config first,
+        // fall back to hardcoded constant.  Both are safe for client-side.
+        var pk = getRuntimeConfigValue('supabasePublishableKey', SUPABASE_PUBLISHABLE_KEY);
+        if (typeof pk === 'string' && pk) {
+          headers['apikey'] = pk;
+        }
+      }
+      // No token → stay with { 'Content-Type': 'application/json' } only.
+      // This is equivalent to the pre-auth behavior and avoids preflight.
+    } catch (e) {
+      // Silent fallback — never block on auth failure
+    }
+    return headers;
+  }
+
   // postRemoteMemoryUpdate — POST memory update payload to the remote endpoint.
   // Fire-and-forget: failures are logged via console.warn only; never throw to UI.
   // Returns true on successful POST + JSON parse, false otherwise.
@@ -3789,7 +3929,7 @@ function handleMessageAction(action, msgIndex) {
       try {
         response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await buildRemoteMemoryHeaders(),
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
@@ -3818,6 +3958,91 @@ function handleMessageAction(action, msgIndex) {
         console.warn('[OmniChat] Remote memory update error:', (e && e.message) || e);
       }
       return false;
+    }
+  }
+
+  // =========================================================================
+  // prefetchRemoteMemory — background fetch of remote memory retrieve.
+  // Fire-and-forget via setTimeout(0): never blocks the main thread or generation.
+  // On success, updates conv.remoteMemoryCache for the next turn.
+  // On failure, console.warn only — never toast, never throw.
+  // =========================================================================
+
+  // Outer fire-and-forget wrapper — detaches fully from the call stack.
+  function prefetchRemoteMemory(conv, userText, budget) {
+    if (!conv || !hasRemoteMemoryConfig(conv)) return;
+    budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
+
+    // --- in-flight guard: deduplicate concurrent prefetches for the same conv+budget ---
+    if (!state._remoteMemoryPrefetchLocks) { state._remoteMemoryPrefetchLocks = {}; }
+    var lockKey = conv.id + ':' + budget;
+    if (state._remoteMemoryPrefetchLocks[lockKey]) return;
+
+    // --- rate limiting: skip if cache was updated < 5 s ago and userText is empty or unchanged ---
+    var cache = conv.remoteMemoryCache;
+    if (cache && typeof cache.updatedAt === 'number' && (Date.now() - cache.updatedAt < 5000)) {
+      if (!userText || userText === cache.userText) return;
+    }
+
+    state._remoteMemoryPrefetchLocks[lockKey] = true;
+    setTimeout(function() {
+      _prefetchRemoteMemoryImpl(conv, userText, budget);
+    }, 0);
+  }
+
+  // Inner async implementation — does the actual fetch.
+  async function _prefetchRemoteMemoryImpl(conv, userText, budget) {
+    var lockKey = conv.id + ':' + budget;
+    try {
+      var payload = buildMemoryRetrievePayload(conv, userText, budget);
+      var url = buildMemoryEndpointUrl(conv.memoryRemoteEndpoint, '/api/memory/retrieve');
+      if (!url) return;
+
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 3500);
+
+      var response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: await buildRemoteMemoryHeaders(),
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!response.ok) {
+        console.warn('[OmniChat] Remote memory retrieve failed: HTTP ' + response.status);
+        return;
+      }
+
+      var result = await response.json();
+      var normalized = normalizeMemoryRetrieveResult(result, budget);
+
+      // Update cache — idempotent, safe for concurrent prefetches.
+      conv.remoteMemoryCache = {
+        memoryText: normalized.memoryText,
+        selectedFactIds: normalized.selectedFactIds,
+        updatedAt: Date.now(),
+        budget: budget,
+        userText: userText
+      };
+
+      // Persist the cache so it survives page reload.
+      debouncedSave();
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        // Timed out — silent, normal for background prefetch on slow connections.
+      } else {
+        console.warn('[OmniChat] Remote memory prefetch error:', (e && e.message) || e);
+      }
+    } finally {
+      // Release the in-flight lock so the next request can proceed.
+      if (state._remoteMemoryPrefetchLocks) {
+        delete state._remoteMemoryPrefetchLocks[lockKey];
+      }
     }
   }
 
