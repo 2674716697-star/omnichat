@@ -62,7 +62,7 @@ function minifyJS(js) {
 
     if (inSingleComment && ch === '\n') {
       inSingleComment = false;
-      if (prev !== ';' && prev !== '{' && prev !== '}' && prev !== '\n') out += ';';
+      if (prev !== ';' && prev !== '{' && prev !== '}' && prev !== ',' && prev !== '\n' && prev !== ' ') out += ';';
       out += '\n';
       continue;
     }

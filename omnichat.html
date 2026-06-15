@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqeo3yz4">
+  <meta name="build-version" content="mqep47c5">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -2478,11 +2478,11 @@ dom.btnRefreshModels.disabled = false;
 }
 }
 var _authState = {
-user: null, ;
-session: null, ;
-loading: true, ;
-error: null, ;
-initialised: false ;
+user: null,
+session: null,
+loading: true,
+error: null,
+initialised: false
 };
 function getAuthState() {
 return {
@@ -5089,7 +5089,7 @@ if (resp.status === 400 && /model/i.test(errText)) throw new Error(ERR_MSGS.mode
 if (resp.status === 400 && /max_tokens|context|length|too long/i.test(errText)) throw new Error('上下文或 Max Tokens 超出限制。');
 throw new Error(ERR_MSGS.serverError + ' (' + provider + ' ' + resp.status + ')');
 }
-if (stream) return resp; ;
+if (stream) return resp;
 var data = await resp.json();
 return parseNonStreamResponse(provider, data);
 }
@@ -5779,7 +5779,7 @@ return base + mapped;
 }
 return base + path;
 }
-let _supabaseClient = undefined; ;
+let _supabaseClient = undefined;
 function getSupabaseClient() {
 if (_supabaseClient !== undefined) return _supabaseClient;
 try {
@@ -6057,7 +6057,7 @@ parentSignal.removeEventListener('abort', onParentAbort);
 }
 async function ensureStoryDirections(assistantMsg, conv, fullContent, previousSceneState) {
 var existing = assistantMsg.sceneSnapshot && assistantMsg.sceneSnapshot.directions;
-if (existing && parseDirectionOptions(existing).length >= 4) return; ;
+if (existing && parseDirectionOptions(existing).length >= 4) return;
 var fromContent = parseDirectionOptions(fullContent);
 if (fromContent.length >= 4) {
 var dirsStr = fromContent.map(function(d) { return d.letter + '. ' + d.content; }).join('\n');
@@ -6120,7 +6120,7 @@ var reader = resp.body.getReader();
 var decoder = new TextDecoder();
 var buffer = '';
 var lastRenderAt = 0;
-var minRenderGap = 28; ;
+var minRenderGap = 28;
 var _renderPending = false;
 var scheduleRender = function () {
 if (!isCurrentTurn()) return;
@@ -6202,7 +6202,7 @@ return partContent;
 }
 function computeAdaptiveMaxTokens(conv, charLimit) {
 charLimit = charLimit || 500;
-var tokenRatio = 2.0; ;
+var tokenRatio = 2.0;
 var history = conv._tokenHistory;
 if (history && history.length > 0) {
 var weights = [0.5, 0.3, 0.2];
@@ -6224,11 +6224,11 @@ var streak = conv._escalateStreak || 0;
 var margin = streak >= 2 ? 2.0 : (streak >= 1 ? 1.5 : 1.25);
 var adaptive = Math.ceil((baseTokens + overhead) * margin);
 var estimatedInputTokens = Math.ceil(countApproxChars(conv) / 3);
-var contextWindow = 128000; ;
-var workingReserve = Math.ceil(contextWindow * 0.1); ;
+var contextWindow = 128000;
+var workingReserve = Math.ceil(contextWindow * 0.1);
 var maxSafeOutput = contextWindow - estimatedInputTokens - workingReserve;
 if (maxSafeOutput < adaptive) {
-adaptive = Math.max(maxSafeOutput, 500); ;
+adaptive = Math.max(maxSafeOutput, 500);
 }
 var userCap = conv.maxTokens || 5000;
 var providerCap = getProviderCap(conv.provider);
@@ -6292,8 +6292,8 @@ scrollToBottomIfNeeded({ smooth: false });
 updateSendUI();
 var model = resolveModel(conv);
 var storyContent = '';
-var assistantMsg = placeholderMsg; ;
-var contentPromoted = false; ;
+var assistantMsg = placeholderMsg;
+var contentPromoted = false;
 try {
 var messages = _buildStoryMessages(conv, text);
 var adaptiveMax = computeAdaptiveMaxTokens(conv, conv.replyCharLimit);
@@ -6540,7 +6540,7 @@ var lines = [];
 lines.push('[章节记忆]');
 if (hasChapters) {
 var chapters = sm.chapters;
-var startIdx = Math.max(0, chapters.length - 6); ;
+var startIdx = Math.max(0, chapters.length - 6);
 for (var ci = startIdx; ci < chapters.length; ci++) {
 var ch = chapters[ci];
 var chNum = ci + 1;
@@ -7283,10 +7283,10 @@ return state.currentConversationId === turnConvId && state.abortController === t
 }
 let renderScheduled = false;
 let lastRenderAt = 0;
-const minRenderGap = 28; ;
+const minRenderGap = 28;
 const flushFinalRender = () => {
 return new Promise(function(resolve) {
-renderScheduled = false; ;
+renderScheduled = false;
 assistantMsg._streaming = false;
 if (!isCurrentTurn()) { resolve(); return; }
 requestAnimationFrame(function() {
@@ -8390,7 +8390,7 @@ gsap.set(btns, { opacity: 0, y: 6 });
 }
 qa.classList.add('expanded');
 moreBtn.setAttribute('aria-expanded', 'true');
-moreBtn.innerHTML = '▾ 收起'; ;
+moreBtn.innerHTML = '▾ 收起';
 if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 requestAnimationFrame(function() {
 _moreTl = gsap.timeline({
@@ -8420,7 +8420,7 @@ if (sc && isNearBottom(sc, 60)) scheduleFollowScroll(60);
 }
 } else {
 moreBtn.setAttribute('aria-expanded', 'false');
-moreBtn.innerHTML = '▸ 更多'; ;
+moreBtn.innerHTML = '▸ 更多';
 if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 var revBtns = Array.from(btns).reverse();
 _moreTl = gsap.timeline({
@@ -8597,12 +8597,12 @@ await Promise.all(keys.map(function(k) { return caches.delete(k); }));
 try { sessionStorage.clear(); } catch(e) {}
 window.location.href = window.location.origin + window.location.pathname;
 })();
-return; ;
+return;
 }
 if (window.__updateReady) {
 setTimeout(() => {
 showUpdateDialog();
-}, 2500); ;
+}, 2500);
 }
 document.documentElement.classList.add('is-splashing');
 const splashDismissed = sessionStorage.getItem('omnichat_splash');
@@ -8645,7 +8645,7 @@ if (reloadCount >= 3) {
 sessionStorage.removeItem('omnichat_reload_ts');
 sessionStorage.removeItem('omnichat_reload_cnt');
 document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;font-family:sans-serif;text-align:center;padding:20px"><div><h2>应用更新失败</h2><p>请手动清理缓存后刷新。</p><p style="font-size:12px;opacity:0.5">设置 → Safari → 清除历史记录与网站数据<br>或 Chrome → 设置 → 隐私 → 清除浏览数据</p></div></div>';
-return; ;
+return;
 }
 } else {
 reloadCount = 0;
