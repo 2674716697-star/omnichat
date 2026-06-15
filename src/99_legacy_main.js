@@ -7302,32 +7302,25 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       }, 2500); // After splash
     }
 
-    // Mark page as splashing so bottom-bar is hidden during animation
+    // Anti-flash: is-splashing is already set on <html> in the initial markup,
+    // which locks background to #111115 as soon as CSS loads (prevents white
+    // flash). We keep it until the wallpaper is decoded, then reveal the app.
+    // No splash brand animation — user goes straight to the app.
     document.documentElement.classList.add('is-splashing');
 
-    // Splash screen — dismiss after minimum timer + wallpaper decoded.
-    // Gating on wallpaperReady prevents a black/white flash when the splash
-    // fades out before the background image has finished decoding.
-    const splashDismissed = sessionStorage.getItem('omnichat_splash');
     const onSplashDone = () => {
       document.documentElement.classList.remove('is-splashing');
       updateBottomBarHeight();
     };
-    const scheduleSplashDismiss = (delay, fadeDelay) => {
-      setTimeout(() => {
-        wallpaperReady.then(() => {
-          dom.splash.classList.add('dismissed');
-          window.setTimeout(onSplashDone, fadeDelay);
-        });
-      }, delay);
-    };
-    if (splashDismissed) {
-      dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
-      scheduleSplashDismiss(50, 220);
-    } else {
-      scheduleSplashDismiss(2200, 480);
-      sessionStorage.setItem('omnichat_splash', '1');
-    }
+
+    // Hide splash brand content immediately
+    dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
+    dom.splash.classList.add('dismissed');
+
+    // Reveal app as soon as wallpaper is ready (or instantly if no theme)
+    wallpaperReady.then(() => {
+      window.setTimeout(onSplashDone, 220);
+    });
 
     // Expose build version for debug (from meta tag injected by _build.js)
     var buildMeta = document.querySelector('meta[name="build-version"]');
