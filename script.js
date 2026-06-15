@@ -9417,22 +9417,76 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
 
     // Anti-flash: is-splashing is already set on <html> in the initial markup,
     // which locks background to #111115 as soon as CSS loads (prevents white
-    // flash). We keep it until the wallpaper is decoded, then reveal the app.
-    // No splash brand animation — user goes straight to the app.
+    // flash). We keep it until the wallpaper is decoded, then reveal the app
+    // with an orchestrated GSAP timeline. No splash brand animation.
     document.documentElement.classList.add('is-splashing');
-
-    const onSplashDone = () => {
-      document.documentElement.classList.remove('is-splashing');
-      updateBottomBarHeight();
-    };
 
     // Hide splash brand content immediately
     dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
     dom.splash.classList.add('dismissed');
 
-    // Reveal app as soon as wallpaper is ready (or instantly if no theme)
-    wallpaperReady.then(() => {
-      window.setTimeout(onSplashDone, 220);
+    // Orchestrated entrance — wallpaper fades in, then UI floats up
+    wallpaperReady.then(function() {
+      var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var hasGSAP = typeof gsap !== 'undefined' && gsap.timeline;
+
+      // Elements whose CSS @keyframes entrance we replace with GSAP
+      var entranceEls = document.querySelectorAll('.app-container, .top-bar, .bottom-bar, .welcome-screen, .welcome-step');
+      entranceEls.forEach(function(el) { el.style.animation = 'none'; });
+
+      // Remove dark lock — body gradient is now exposed behind the wallpaper overlay
+      document.documentElement.classList.remove('is-splashing');
+
+      // Reduced-motion or GSAP unavailable: instant reveal (CSS @keyframes
+      // were disabled above, so we just clear inline styles)
+      if (prefersReduced || !hasGSAP) {
+        var overlay = document.getElementById('chatBgOverlay');
+        if (overlay) overlay.style.opacity = '';
+        entranceEls.forEach(function(el) { el.style.opacity = ''; el.style.transform = ''; });
+        updateBottomBarHeight();
+        return;
+      }
+
+      // GSAP timeline: wallpaper anchors the transition, UI elements stagger in.
+      // All tweens use power3.out — exponential deceleration, no bounce/elastic.
+      var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo('#chatBgOverlay',
+        { opacity: 0 },
+        { opacity: 0.35, duration: 0.8 },
+        0
+      );
+
+      tl.fromTo('.app-container',
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5 },
+        0.15
+      );
+
+      tl.fromTo('.top-bar',
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.4 },
+        0.25
+      );
+
+      tl.fromTo('.bottom-bar',
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45 },
+        0.3
+      );
+
+      var welcomeEl = document.querySelector('.welcome-screen');
+      if (welcomeEl) {
+        tl.fromTo(welcomeEl,
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.4 },
+          0.35
+        );
+      }
+
+      // Cleanup: restore CSS control after GSAP finishes
+      tl.call(updateBottomBarHeight);
+      tl.set(entranceEls, { clearProps: 'all' });
     });
 
     // Expose build version for debug (from meta tag injected by _build.js)

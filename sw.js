@@ -4,7 +4,7 @@
    picks up new deploys on the next navigation. NEVER caches sw.js.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-mqeqgb32';
+const CACHE_NAME = 'omnichat-mqeqpgqs';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png|jpe?g|gif)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
