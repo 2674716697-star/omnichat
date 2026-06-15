@@ -9316,6 +9316,33 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     });
   }
 
+  // Preload the active theme wallpaper so it is decoded before the splash
+  // screen dismisses. Returns a Promise that resolves when the image is
+  // ready (or on error / 5s timeout — never blocks splash indefinitely).
+  function preloadThemeWallpaper() {
+    var key = state.activeTheme;
+    if (!key) return Promise.resolve();
+    var t = CHARACTER_THEMES[key];
+    if (!t || !t.wallpaper) return Promise.resolve();
+    return new Promise(function(resolve) {
+      var img = new Image();
+      var done = false;
+      var finish = function() {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      img.onload = function() {
+        if (img.decode) { img.decode().then(finish, finish); }
+        else finish();
+      };
+      img.onerror = finish;
+      img.src = t.wallpaper;
+      // Safety timeout: never block splash longer than 5 s
+      setTimeout(finish, 5000);
+    });
+  }
+
   // =========================================================================
   // INIT
   // =========================================================================
@@ -9323,6 +9350,11 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
   function init() {
     cacheDom();
     loadFromStorage();
+
+    // Preload current theme wallpaper so it's decoded before splash dismisses.
+    // Splash dismissal is gated on this promise — see splash code below.
+    var wallpaperReady = preloadThemeWallpaper();
+
     setupViewportInsets();
 
     // ResizeObserver: keep --bottom-bar-h in sync with actual bottom bar height
@@ -9386,25 +9418,27 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     // Mark page as splashing so bottom-bar is hidden during animation
     document.documentElement.classList.add('is-splashing');
 
-    // Splash screen - dismiss after animation
+    // Splash screen — dismiss after minimum timer + wallpaper decoded.
+    // Gating on wallpaperReady prevents a black/white flash when the splash
+    // fades out before the background image has finished decoding.
     const splashDismissed = sessionStorage.getItem('omnichat_splash');
     const onSplashDone = () => {
       document.documentElement.classList.remove('is-splashing');
       updateBottomBarHeight();
     };
+    const scheduleSplashDismiss = (delay, fadeDelay) => {
+      setTimeout(() => {
+        wallpaperReady.then(() => {
+          dom.splash.classList.add('dismissed');
+          window.setTimeout(onSplashDone, fadeDelay);
+        });
+      }, delay);
+    };
     if (splashDismissed) {
       dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
-      setTimeout(() => {
-        dom.splash.classList.add('dismissed');
-        // Wait until splash fade-out transition finishes before revealing bottom-bar
-        window.setTimeout(onSplashDone, 220);
-      }, 50);
+      scheduleSplashDismiss(50, 220);
     } else {
-      setTimeout(() => {
-        dom.splash.classList.add('dismissed');
-        // Wait until splash fade-out transition finishes before revealing bottom-bar
-        window.setTimeout(onSplashDone, 480);
-      }, 2200);
+      scheduleSplashDismiss(2200, 480);
       sessionStorage.setItem('omnichat_splash', '1');
     }
 

@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqepwuh9">
+  <meta name="build-version" content="mqeq7koe">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="manifest.json?v=mira-icon-20260609">
@@ -8553,9 +8553,32 @@ document.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') closeAllDrawers();
 });
 }
+function preloadThemeWallpaper() {
+var key = state.activeTheme;
+if (!key) return Promise.resolve();
+var t = CHARACTER_THEMES[key];
+if (!t || !t.wallpaper) return Promise.resolve();
+return new Promise(function(resolve) {
+var img = new Image();
+var done = false;
+var finish = function() {
+if (done) return;
+done = true;
+resolve();
+};
+img.onload = function() {
+if (img.decode) { img.decode().then(finish, finish); }
+else finish();
+};
+img.onerror = finish;
+img.src = t.wallpaper;
+setTimeout(finish, 5000);
+});
+}
 function init() {
 cacheDom();
 loadFromStorage();
+var wallpaperReady = preloadThemeWallpaper();
 setupViewportInsets();
 var bottomBar = document.querySelector('.bottom-bar');
 if (bottomBar && window.ResizeObserver) {
@@ -8610,17 +8633,19 @@ const onSplashDone = () => {
 document.documentElement.classList.remove('is-splashing');
 updateBottomBarHeight();
 };
+const scheduleSplashDismiss = (delay, fadeDelay) => {
+setTimeout(() => {
+wallpaperReady.then(() => {
+dom.splash.classList.add('dismissed');
+window.setTimeout(onSplashDone, fadeDelay);
+});
+}, delay);
+};
 if (splashDismissed) {
 dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
-setTimeout(() => {
-dom.splash.classList.add('dismissed');
-window.setTimeout(onSplashDone, 220);
-}, 50);
+scheduleSplashDismiss(50, 220);
 } else {
-setTimeout(() => {
-dom.splash.classList.add('dismissed');
-window.setTimeout(onSplashDone, 480);
-}, 2200);
+scheduleSplashDismiss(2200, 480);
 sessionStorage.setItem('omnichat_splash', '1');
 }
 var buildMeta = document.querySelector('meta[name="build-version"]');
