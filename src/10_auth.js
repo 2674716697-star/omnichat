@@ -18,6 +18,7 @@
     session: null,     // Supabase session object | null
     loading: true,     // true while initial session check is in flight
     error: null,       // string | null — last user-visible error message
+    notice: null,      // string | null — transient success/info message (survives syncAuthUI)
     initialised: false // true after first init attempt completes
   };
 
@@ -56,6 +57,7 @@
     _authState.session = null;
     _authState.user = null;
     _authState.error = null;
+    _authState.notice = null;
     syncAuthUI();
   }
 
@@ -68,6 +70,7 @@
   // setAuthError(message) — set a user-visible error message.
   function setAuthError(message) {
     _authState.error = typeof message === 'string' ? message : null;
+    _authState.notice = null;
     syncAuthUI();
   }
 
@@ -152,6 +155,90 @@
     return '发送失败，请稍后重试';
   }
 
+  // =========================================================================
+  // AUTH CALLBACK HELPERS — Phase 2.2
+  // Detects OAuth/magic-link callback parameters in URL, cleans them after
+  // processing, and guides users between browser and PWA contexts.
+  // =========================================================================
+
+  // detectAuthCallbackParams() — check URL for Supabase auth callback params.
+  // Returns { type: 'code'|'hash', value: string } | null.
+  // - 'code': query param ?code=... (PKCE magic link / OAuth)
+  // - 'hash': fragment #access_token=... (implicit grant, legacy)
+  function detectAuthCallbackParams() {
+    if (typeof window === 'undefined') return null;
+
+    // 1. PKCE code in query string (magic link, OAuth redirect)
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    if (code && code.trim()) {
+      return { type: 'code', value: code.trim() };
+    }
+
+    // 2. Token in hash fragment (implicit grant, legacy, or recovery)
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('access_token=') !== -1) {
+      return { type: 'hash', value: hash };
+    }
+
+    return null;
+  }
+
+  // cleanAuthCallbackUrl() — remove auth params from address bar.
+  // Preserves pathname and non-auth query params. Safe for GitHub Pages sub-paths.
+  function cleanAuthCallbackUrl() {
+    if (typeof window === 'undefined' || typeof history === 'undefined') return;
+
+    var url = new URL(window.location.href);
+
+    // Auth params to strip from query string
+    var stripQuery = ['code', 'state', 'error', 'error_description', 'error_code', 'access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type', 'type', 'provider_token', 'provider_refresh_token'];
+    for (var i = 0; i < stripQuery.length; i++) {
+      url.searchParams.delete(stripQuery[i]);
+    }
+
+    // Auth params to strip from hash
+    var hash = url.hash;
+    if (hash) {
+      // Remove leading # then parse
+      var hashContent = hash.replace(/^#/, '');
+      // If hash contains access_token, clear entire hash (auth-only hash)
+      if (hashContent.indexOf('access_token=') !== -1 ||
+          hashContent.indexOf('refresh_token=') !== -1) {
+        url.hash = '';
+      }
+    }
+
+    // Use replaceState to avoid adding a history entry
+    var cleaned = url.toString();
+    history.replaceState(null, '', cleaned);
+  }
+
+  // isStandalonePWA() — detect if page is running as installed PWA.
+  function isStandalonePWA() {
+    if (typeof window === 'undefined') return false;
+    return window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches;
+  }
+
+  // showAuthCallbackHint(isStandalone) — display hint after callback login.
+  // In browser: tell user they can return to installed PWA.
+  // In PWA: session is already active, just confirm.
+  // Only shows a brief status message; never blocks UI.
+  function showAuthCallbackHint(isPWA) {
+    if (isPWA) {
+      _authState.notice = '登录成功 — 已恢复会话';
+    } else {
+      // Running in a regular browser tab, not the installed PWA.
+      // User likely clicked the magic link in email → opened in browser.
+      _authState.notice = '已在当前浏览器登录，可返回已安装的 Mira App 继续使用';
+    }
+    _authState.error = null;
+    syncAuthUI();
+  }
+
   // syncAuthUI() — update auth section in settings drawer to reflect _authState.
   // Safe to call before DOM is ready (returns silently).
   function syncAuthUI() {
@@ -189,8 +276,16 @@
         logoutBtn.disabled = false;
       }
       if (statusEl) {
-        statusEl.textContent = _authState.error || '';
-        statusEl.className = _authState.error ? 'auth-status auth-status-error' : 'auth-status';
+        if (_authState.error) {
+          statusEl.textContent = _authState.error;
+          statusEl.className = 'auth-status auth-status-error';
+        } else if (_authState.notice) {
+          statusEl.textContent = _authState.notice;
+          statusEl.className = 'auth-status auth-status-success';
+        } else {
+          statusEl.textContent = '';
+          statusEl.className = 'auth-status';
+        }
       }
       return;
     }

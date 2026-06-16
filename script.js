@@ -1986,6 +1986,7 @@ function getSceneBodyDetails(block) {
     session: null,     // Supabase session object | null
     loading: true,     // true while initial session check is in flight
     error: null,       // string | null — last user-visible error message
+    notice: null,      // string | null — transient success/info message (survives syncAuthUI)
     initialised: false // true after first init attempt completes
   };
 
@@ -2024,6 +2025,7 @@ function getSceneBodyDetails(block) {
     _authState.session = null;
     _authState.user = null;
     _authState.error = null;
+    _authState.notice = null;
     syncAuthUI();
   }
 
@@ -2036,6 +2038,7 @@ function getSceneBodyDetails(block) {
   // setAuthError(message) — set a user-visible error message.
   function setAuthError(message) {
     _authState.error = typeof message === 'string' ? message : null;
+    _authState.notice = null;
     syncAuthUI();
   }
 
@@ -2120,6 +2123,90 @@ function getSceneBodyDetails(block) {
     return '发送失败，请稍后重试';
   }
 
+  // =========================================================================
+  // AUTH CALLBACK HELPERS — Phase 2.2
+  // Detects OAuth/magic-link callback parameters in URL, cleans them after
+  // processing, and guides users between browser and PWA contexts.
+  // =========================================================================
+
+  // detectAuthCallbackParams() — check URL for Supabase auth callback params.
+  // Returns { type: 'code'|'hash', value: string } | null.
+  // - 'code': query param ?code=... (PKCE magic link / OAuth)
+  // - 'hash': fragment #access_token=... (implicit grant, legacy)
+  function detectAuthCallbackParams() {
+    if (typeof window === 'undefined') return null;
+
+    // 1. PKCE code in query string (magic link, OAuth redirect)
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    if (code && code.trim()) {
+      return { type: 'code', value: code.trim() };
+    }
+
+    // 2. Token in hash fragment (implicit grant, legacy, or recovery)
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('access_token=') !== -1) {
+      return { type: 'hash', value: hash };
+    }
+
+    return null;
+  }
+
+  // cleanAuthCallbackUrl() — remove auth params from address bar.
+  // Preserves pathname and non-auth query params. Safe for GitHub Pages sub-paths.
+  function cleanAuthCallbackUrl() {
+    if (typeof window === 'undefined' || typeof history === 'undefined') return;
+
+    var url = new URL(window.location.href);
+
+    // Auth params to strip from query string
+    var stripQuery = ['code', 'state', 'error', 'error_description', 'error_code', 'access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type', 'type', 'provider_token', 'provider_refresh_token'];
+    for (var i = 0; i < stripQuery.length; i++) {
+      url.searchParams.delete(stripQuery[i]);
+    }
+
+    // Auth params to strip from hash
+    var hash = url.hash;
+    if (hash) {
+      // Remove leading # then parse
+      var hashContent = hash.replace(/^#/, '');
+      // If hash contains access_token, clear entire hash (auth-only hash)
+      if (hashContent.indexOf('access_token=') !== -1 ||
+          hashContent.indexOf('refresh_token=') !== -1) {
+        url.hash = '';
+      }
+    }
+
+    // Use replaceState to avoid adding a history entry
+    var cleaned = url.toString();
+    history.replaceState(null, '', cleaned);
+  }
+
+  // isStandalonePWA() — detect if page is running as installed PWA.
+  function isStandalonePWA() {
+    if (typeof window === 'undefined') return false;
+    return window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches;
+  }
+
+  // showAuthCallbackHint(isStandalone) — display hint after callback login.
+  // In browser: tell user they can return to installed PWA.
+  // In PWA: session is already active, just confirm.
+  // Only shows a brief status message; never blocks UI.
+  function showAuthCallbackHint(isPWA) {
+    if (isPWA) {
+      _authState.notice = '登录成功 — 已恢复会话';
+    } else {
+      // Running in a regular browser tab, not the installed PWA.
+      // User likely clicked the magic link in email → opened in browser.
+      _authState.notice = '已在当前浏览器登录，可返回已安装的 Mira App 继续使用';
+    }
+    _authState.error = null;
+    syncAuthUI();
+  }
+
   // syncAuthUI() — update auth section in settings drawer to reflect _authState.
   // Safe to call before DOM is ready (returns silently).
   function syncAuthUI() {
@@ -2157,8 +2244,16 @@ function getSceneBodyDetails(block) {
         logoutBtn.disabled = false;
       }
       if (statusEl) {
-        statusEl.textContent = _authState.error || '';
-        statusEl.className = _authState.error ? 'auth-status auth-status-error' : 'auth-status';
+        if (_authState.error) {
+          statusEl.textContent = _authState.error;
+          statusEl.className = 'auth-status auth-status-error';
+        } else if (_authState.notice) {
+          statusEl.textContent = _authState.notice;
+          statusEl.className = 'auth-status auth-status-success';
+        } else {
+          statusEl.textContent = '';
+          statusEl.className = 'auth-status';
+        }
       }
       return;
     }
@@ -6188,11 +6283,17 @@ function handleMessageAction(action, msgIndex) {
   // =========================================================================
 
   // initAuthState() — async, non-blocking. Called once after app load.
-  // Checks for existing Supabase session and listens for changes.
+  // Phase 2.2: detects auth callback params (?code=... / #access_token=...),
+  // exchanges code for session, cleans URL, and guides PWA/browser context.
   function initAuthState() {
     if (_authState.initialised) return;
 
     setAuthLoading(true);
+
+    // Capture callback info synchronously before async work starts.
+    // Must read URL immediately — other scripts might mutate it later.
+    var callback = detectAuthCallbackParams();
+    var pwaMode = isStandalonePWA();
 
     // Defer to next microtask so init() returns immediately.
     // Auth is never on the critical path for chat.
@@ -6204,14 +6305,43 @@ function handleMessageAction(action, msgIndex) {
           return;
         }
 
-        // 1. Restore existing session (survives refresh via Supabase cookies)
+        // 0. Handle auth callback params from magic link / OAuth redirect.
+        //    This is the critical path for mail-link login — without it the
+        //    ?code=... sits in the URL and is never exchanged.
+        if (callback) {
+          try {
+            if (callback.type === 'code') {
+              // PKCE: exchange authorization code for session
+              await client.auth.exchangeCodeForSession(callback.value);
+            }
+            // For hash tokens, the SDK's onAuthStateChange listener may
+            // already have processed them; getSession() below will confirm.
+          } catch (cbErr) {
+            console.warn('[OmniChat] Auth callback processing failed:', (cbErr && cbErr.message) || cbErr);
+          }
+        }
+
+        // 1. Restore session (survives refresh via Supabase cookies, also
+        //    picks up session created by exchangeCodeForSession above).
         var sessionResult = await client.auth.getSession();
         var session = sessionResult && sessionResult.data && sessionResult.data.session;
         if (session && session.user) {
           setAuthSession(session);
+
+          // If we processed a callback param and now have a session,
+          // show the appropriate context hint and clean the URL.
+          if (callback) {
+            showAuthCallbackHint(pwaMode);
+          }
         }
 
-        // 2. Listen for future auth changes (login, logout, token refresh)
+        // 2. Clean auth params from URL regardless of login success —
+        //    never leak tokens/codes in the address bar.
+        if (callback) {
+          cleanAuthCallbackUrl();
+        }
+
+        // 3. Listen for future auth changes (login, logout, token refresh)
         client.auth.onAuthStateChange(function(event, newSession) {
           if (event === 'SIGNED_IN' && newSession && newSession.user) {
             setAuthSession(newSession);

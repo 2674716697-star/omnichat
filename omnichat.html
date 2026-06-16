@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqgabort">
+  <meta name="build-version" content="mqgbpn2e">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <meta name="color-scheme" content="dark">
@@ -2441,6 +2441,7 @@ user: null,
 session: null,
 loading: true,
 error: null,
+notice: null,
 initialised: false
 };
 var _authCooldownUntil = 0;
@@ -2469,6 +2470,7 @@ function clearAuthSession() {
 _authState.session = null;
 _authState.user = null;
 _authState.error = null;
+_authState.notice = null;
 syncAuthUI();
 }
 function setAuthLoading(loading) {
@@ -2477,6 +2479,7 @@ syncAuthUI();
 }
 function setAuthError(message) {
 _authState.error = typeof message === 'string' ? message : null;
+_authState.notice = null;
 syncAuthUI();
 }
 function markAuthInitialised() {
@@ -2541,6 +2544,53 @@ if (typeof error === 'string') return error;
 if (error.message) return error.message;
 return '发送失败，请稍后重试';
 }
+function detectAuthCallbackParams() {
+if (typeof window === 'undefined') return null;
+var params = new URLSearchParams(window.location.search);
+var code = params.get('code');
+if (code && code.trim()) {
+return { type: 'code', value: code.trim() };
+}
+var hash = window.location.hash;
+if (hash && hash.indexOf('access_token=') !== -1) {
+return { type: 'hash', value: hash };
+}
+return null;
+}
+function cleanAuthCallbackUrl() {
+if (typeof window === 'undefined' || typeof history === 'undefined') return;
+var url = new URL(window.location.href);
+var stripQuery = ['code', 'state', 'error', 'error_description', 'error_code', 'access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type', 'type', 'provider_token', 'provider_refresh_token'];
+for (var i = 0; i < stripQuery.length; i++) {
+url.searchParams.delete(stripQuery[i]);
+}
+var hash = url.hash;
+if (hash) {
+var hashContent = hash.replace(/^#/, '');
+if (hashContent.indexOf('access_token=') !== -1 ||
+hashContent.indexOf('refresh_token=') !== -1) {
+url.hash = '';
+}
+}
+var cleaned = url.toString();
+history.replaceState(null, '', cleaned);
+}
+function isStandalonePWA() {
+if (typeof window === 'undefined') return false;
+return window.navigator.standalone === true ||
+window.matchMedia('(display-mode: standalone)').matches ||
+window.matchMedia('(display-mode: fullscreen)').matches ||
+window.matchMedia('(display-mode: minimal-ui)').matches;
+}
+function showAuthCallbackHint(isPWA) {
+if (isPWA) {
+_authState.notice = '登录成功 — 已恢复会话';
+} else {
+_authState.notice = '已在当前浏览器登录，可返回已安装的 Mira App 继续使用';
+}
+_authState.error = null;
+syncAuthUI();
+}
 function syncAuthUI() {
 if (typeof document === 'undefined') return;
 var emailInput = document.getElementById('inputAuthEmail');
@@ -2571,8 +2621,16 @@ logoutBtn.style.display = '';
 logoutBtn.disabled = false;
 }
 if (statusEl) {
-statusEl.textContent = _authState.error || '';
-statusEl.className = _authState.error ? 'auth-status auth-status-error' : 'auth-status';
+if (_authState.error) {
+statusEl.textContent = _authState.error;
+statusEl.className = 'auth-status auth-status-error';
+} else if (_authState.notice) {
+statusEl.textContent = _authState.notice;
+statusEl.className = 'auth-status auth-status-success';
+} else {
+statusEl.textContent = '';
+statusEl.className = 'auth-status';
+}
 }
 return;
 }
@@ -5908,6 +5966,8 @@ return headers;
 function initAuthState() {
 if (_authState.initialised) return;
 setAuthLoading(true);
+var callback = detectAuthCallbackParams();
+var pwaMode = isStandalonePWA();
 Promise.resolve().then(async function() {
 try {
 var client = getSupabaseClient();
@@ -5915,10 +5975,25 @@ if (!client) {
 markAuthInitialised();
 return;
 }
+if (callback) {
+try {
+if (callback.type === 'code') {
+await client.auth.exchangeCodeForSession(callback.value);
+}
+} catch (cbErr) {
+console.warn('[OmniChat] Auth callback processing failed:', (cbErr && cbErr.message) || cbErr);
+}
+}
 var sessionResult = await client.auth.getSession();
 var session = sessionResult && sessionResult.data && sessionResult.data.session;
 if (session && session.user) {
 setAuthSession(session);
+if (callback) {
+showAuthCallbackHint(pwaMode);
+}
+}
+if (callback) {
+cleanAuthCallbackUrl();
 }
 client.auth.onAuthStateChange(function(event, newSession) {
 if (event === 'SIGNED_IN' && newSession && newSession.user) {

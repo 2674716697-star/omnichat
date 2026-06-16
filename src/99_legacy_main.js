@@ -3992,11 +3992,17 @@ function handleMessageAction(action, msgIndex) {
   // =========================================================================
 
   // initAuthState() — async, non-blocking. Called once after app load.
-  // Checks for existing Supabase session and listens for changes.
+  // Phase 2.2: detects auth callback params (?code=... / #access_token=...),
+  // exchanges code for session, cleans URL, and guides PWA/browser context.
   function initAuthState() {
     if (_authState.initialised) return;
 
     setAuthLoading(true);
+
+    // Capture callback info synchronously before async work starts.
+    // Must read URL immediately — other scripts might mutate it later.
+    var callback = detectAuthCallbackParams();
+    var pwaMode = isStandalonePWA();
 
     // Defer to next microtask so init() returns immediately.
     // Auth is never on the critical path for chat.
@@ -4008,14 +4014,43 @@ function handleMessageAction(action, msgIndex) {
           return;
         }
 
-        // 1. Restore existing session (survives refresh via Supabase cookies)
+        // 0. Handle auth callback params from magic link / OAuth redirect.
+        //    This is the critical path for mail-link login — without it the
+        //    ?code=... sits in the URL and is never exchanged.
+        if (callback) {
+          try {
+            if (callback.type === 'code') {
+              // PKCE: exchange authorization code for session
+              await client.auth.exchangeCodeForSession(callback.value);
+            }
+            // For hash tokens, the SDK's onAuthStateChange listener may
+            // already have processed them; getSession() below will confirm.
+          } catch (cbErr) {
+            console.warn('[OmniChat] Auth callback processing failed:', (cbErr && cbErr.message) || cbErr);
+          }
+        }
+
+        // 1. Restore session (survives refresh via Supabase cookies, also
+        //    picks up session created by exchangeCodeForSession above).
         var sessionResult = await client.auth.getSession();
         var session = sessionResult && sessionResult.data && sessionResult.data.session;
         if (session && session.user) {
           setAuthSession(session);
+
+          // If we processed a callback param and now have a session,
+          // show the appropriate context hint and clean the URL.
+          if (callback) {
+            showAuthCallbackHint(pwaMode);
+          }
         }
 
-        // 2. Listen for future auth changes (login, logout, token refresh)
+        // 2. Clean auth params from URL regardless of login success —
+        //    never leak tokens/codes in the address bar.
+        if (callback) {
+          cleanAuthCallbackUrl();
+        }
+
+        // 3. Listen for future auth changes (login, logout, token refresh)
         client.auth.onAuthStateChange(function(event, newSession) {
           if (event === 'SIGNED_IN' && newSession && newSession.user) {
             setAuthSession(newSession);

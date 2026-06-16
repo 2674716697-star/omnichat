@@ -6,7 +6,7 @@
    NEVER caches sw.js.  NEVER intercepts API calls.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-mqgabort';
+const CACHE_NAME = 'omnichat-mqgbpn2e';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png|jpe?g|gif)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
