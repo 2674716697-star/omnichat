@@ -1262,6 +1262,8 @@ html:not(.is-splashing) .top-bar {
 }
 
 .setting-hint {
+  display: block;
+  font-weight: 400;
   font-size: 11px;
   color: var(--text-secondary);
   margin-top: 5px;
@@ -1315,13 +1317,41 @@ html:not(.is-splashing) .top-bar {
   overflow: hidden;
 }
 .settings-section-title {
-  padding: 9px 14px 5px;
+  padding: 9px 30px 5px 14px;
   font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-muted);
   border-bottom: 0.5px solid var(--hairline);
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: color 200ms var(--spring);
+}
+.settings-section-title:hover {
+  color: var(--text-secondary);
+}
+.settings-section-title::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 240ms var(--spring);
+}
+.settings-section-card.collapsed .settings-section-title {
+  border-bottom-color: transparent;
+}
+.settings-section-card.collapsed .settings-section-title::after {
+  transform: translateY(-30%) rotate(-135deg);
+}
+.settings-section-card.collapsed .settings-section-body {
+  display: none;
 }
 .settings-section-body { padding: 6px 14px 12px; }
 .settings-section-body .setting-group:last-child { margin-bottom: 0; }
@@ -1428,19 +1458,19 @@ html:not(.is-splashing) .top-bar {
 
 .range {
   width: 100%;
-  height: 5px;
+  height: 8px;
   -webkit-appearance: none;
   appearance: none;
   background: var(--bg-elevated);
-  border-radius: 3px;
+  border-radius: 4px;
   outline: none;
   cursor: pointer;
 }
 
 .range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
@@ -1460,8 +1490,8 @@ html:not(.is-splashing) .top-bar {
 .toggle {
   position: relative;
   display: inline-flex;
-  width: 46px;
-  height: 26px;
+  width: 48px;
+  height: 28px;
   cursor: pointer;
 }
 
@@ -1473,7 +1503,7 @@ html:not(.is-splashing) .top-bar {
   width: 100%;
   height: 100%;
   background: rgba(120, 120, 120, 0.28);
-  border-radius: 13px;
+  border-radius: 14px;
   transition: background 240ms var(--spring);
   position: relative;
 }
@@ -1481,8 +1511,8 @@ html:not(.is-splashing) .top-bar {
 .toggle-slider::after {
   content: '';
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #ffffff;
   top: 2px;
@@ -2677,10 +2707,19 @@ html.welcome-visible .welcome-security {
 .message {
   display: flex;
   flex-direction: column;
-  max-width: 90%;
+  max-width: 100%;
   margin-bottom: 16px;
   contain: layout style;
   will-change: transform, opacity;
+}
+
+.assistant .message-bubble {
+  max-width: 94%;
+}
+
+.user .message-bubble {
+  max-width: 82%;
+  margin-left: auto;
 }
 
 /* Message entrance handled by GSAP animateBubbleIn (expo.out, 280ms).
@@ -2720,7 +2759,20 @@ html.welcome-visible .welcome-security {
   word-break: break-word;
   overflow-wrap: break-word;
   letter-spacing: 0;
-  transition: border-color 0.18s var(--spring), opacity 120ms var(--spring);
+  transition:
+    opacity 300ms var(--spring),
+    background 300ms var(--spring),
+    transform 0.18s var(--spring),
+    box-shadow 0.18s var(--spring),
+    border-color 0.18s var(--spring);
+}
+
+/* Message bubble hover: subtle lift + edge highlight */
+@media (hover: hover) and (pointer: fine) {
+  .message-bubble:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
 }
 
 .message.user .message-bubble {
@@ -2939,7 +2991,7 @@ html.welcome-visible .welcome-security {
     inset 0 1px 0 rgba(255,255,255,0.035),
     0 0 0 1.5px rgba(200, 155, 156, 0.22),
     0 0 28px rgba(200, 155, 156, 0.06);
-  transform: translateX(-50%) translateY(-1px);
+  transform: translateX(-50%) translateY(calc(var(--keyboard-inset, 0px) * -1 - 1px));
 }
 
 html:not(.is-splashing) .bottom-bar {
@@ -4522,13 +4574,6 @@ html {
   }
 }
 
-/* --- Responsive --- */
-@media (min-width: 600px) {
-  .message {
-    max-width: 75%;
-  }
-}
-
 /* Top bar: shrink badges on mid-width screens */
 @media (max-width: 600px) {
   .top-bar {
@@ -4835,16 +4880,6 @@ html.is-standalone body {
   .btn-quick:hover { transform: translateY(-1px); }
 }
 
-/* --- Message bubble: smooth entry / glass transition --- */
-.message-bubble {
-  transition:
-    opacity 300ms var(--spring),
-    background 300ms var(--spring),
-    transform 0.18s var(--spring),
-    box-shadow 0.18s var(--spring),
-    border-color 0.18s var(--spring);
-}
-
 /* --- Input message: transition harmony --- */
 .input-message {
   transition:
@@ -5045,20 +5080,10 @@ html.is-standalone body {
 
 /* ---- Polish v2 - minimal overrides, consistent with base ---- */
 
-/* Message area: stable padding, bubble max-width */
+/* Message area: stable padding */
 .main-content {
   padding-left: 10px;
   padding-right: 10px;
-}
-.message {
-  max-width: 100%;
-}
-.assistant .message-bubble {
-  max-width: 94%;
-}
-.user .message-bubble {
-  max-width: 82%;
-  margin-left: auto;
 }
 /* Custom background image: cover + center + dark unified overlay for readability */
 html.has-custom-bg .chat-bg-overlay {
@@ -5337,8 +5362,11 @@ html.has-custom-bg .user .message-bubble {
 .story-editor-body .scene-chip { font-size: 12px; padding: 5px 12px; }
 .story-editor-body .scene-chips { gap: 6px; margin: 4px 0 8px; }
 
+/* Scene panel state: .scene-panel-active added by JS when story mode enabled */
+.scene-panel:not(.scene-panel-active) { display: none !important; }
+
 /* Scene panel inline: flex-based scrollable body with bottom clearance */
-.scene-panel:not(.collapsed):not([style*="display:none"]) .scene-panel-body {
+.scene-panel:not(.collapsed).scene-panel-active .scene-panel-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -5447,3 +5475,20 @@ html.welcome-visible .scene-immersive .scene-panel.collapsed {
     min-height: 42px;
   }
 }
+
+/* ============================================================
+   Utility classes
+   ============================================================ */
+.flex-1 { flex: 1; }
+.shrink-0 { flex-shrink: 0; }
+.w-full { width: 100%; }
+.text-11 { font-size: 11px; }
+.text-12 { font-size: 12px; }
+.ws-nowrap { white-space: nowrap; }
+.jc-center { justify-content: center; }
+.mt-8 { margin-top: 8px; }
+.flex-center-gap-4 { display: flex; align-items: center; gap: 4px; }
+.flex-col-gap-4 { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.flex-center-gap-8 { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.input-sm { font-size: 12px; padding: 6px 10px; }
+.setting-label-sm { font-size: 11px; }

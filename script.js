@@ -1989,6 +1989,12 @@ function getSceneBodyDetails(block) {
     initialised: false // true after first init attempt completes
   };
 
+  // Cooldown state for OTP send button — in-memory only, never persisted.
+  // Resets on page refresh so a user stuck in 429 can always recover.
+  var _authCooldownUntil = 0;     // Date.now() + cooldownMs while cooldown is active; 0 otherwise
+  var _authCooldownTimer = null;  // setInterval id for countdown tick — cleared when cooldown expires
+  var _authSending = false;       // true while a signInWithOtp request is in flight
+
   // getAuthState() — returns a shallow copy so callers can read but not mutate.
   function getAuthState() {
     return {
@@ -2049,6 +2055,71 @@ function getSceneBodyDetails(block) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
   }
 
+  // getAuthCooldownRemainingSeconds() — seconds left on the OTP cooldown.
+  function getAuthCooldownRemainingSeconds() {
+    if (!_authCooldownUntil) return 0;
+    var remaining = Math.ceil((_authCooldownUntil - Date.now()) / 1000);
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // startAuthCooldown(seconds) — begin a countdown; clears any existing timer first.
+  function startAuthCooldown(seconds) {
+    stopAuthCooldown();
+    _authCooldownUntil = Date.now() + seconds * 1000;
+    _authCooldownTimer = setInterval(function () {
+      if (getAuthCooldownRemainingSeconds() <= 0) {
+        stopAuthCooldown();
+      }
+      syncAuthUI();
+    }, 1000);
+  }
+
+  // stopAuthCooldown() — clear interval and reset cooldown state.
+  function stopAuthCooldown() {
+    if (_authCooldownTimer !== null) {
+      clearInterval(_authCooldownTimer);
+      _authCooldownTimer = null;
+    }
+    _authCooldownUntil = 0;
+  }
+
+  // getAuthRedirectUrl() — build the magic-link redirect URL.
+  // Always redirects to index.html on the current origin.  Works for local
+  // (http://127.0.0.1:4177/index.html), GitHub Pages, and custom deploys.
+  function getAuthRedirectUrl() {
+    var origin = window.location.origin;
+    var pathname = window.location.pathname;
+    // Replace the last path segment with index.html, preserving any subdirectory.
+    // e.g. /foo/bar.html → /foo/index.html;  /  → /index.html
+    var parts = pathname.split('/');
+    parts[parts.length - 1] = 'index.html';
+    return origin + parts.join('/');
+  }
+
+  // normalizeAuthError(error) — convert raw errors into Chinese-friendly messages.
+  function normalizeAuthError(error) {
+    if (!error) return '发送失败，请稍后重试';
+    var msg = '';
+    if (typeof error === 'string') {
+      msg = error.toLowerCase();
+    } else if (error.message) {
+      msg = String(error.message).toLowerCase();
+    } else if (error.error_description) {
+      msg = String(error.error_description).toLowerCase();
+    } else {
+      return '发送失败，请稍后重试';
+    }
+    if (msg.indexOf('429') !== -1 || msg.indexOf('rate limit') !== -1 || msg.indexOf('email rate limit exceeded') !== -1 || msg.indexOf('too many requests') !== -1) {
+      return '登录邮件发送太频繁，请等待 1 分钟后再试；也请检查邮箱垃圾箱';
+    }
+    if (msg.indexOf('network') !== -1 || msg.indexOf('fetch') !== -1 || msg.indexOf('timeout') !== -1) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    return '发送失败，请稍后重试';
+  }
+
   // syncAuthUI() — update auth section in settings drawer to reflect _authState.
   // Safe to call before DOM is ready (returns silently).
   function syncAuthUI() {
@@ -2096,8 +2167,17 @@ function getSceneBodyDetails(block) {
     if (emailInput) emailInput.style.display = '';
     if (loginBtn) {
       loginBtn.style.display = '';
-      loginBtn.disabled = false;
-      loginBtn.textContent = '发送登录链接';
+      var remaining = getAuthCooldownRemainingSeconds();
+      if (_authSending) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = '发送中…';
+      } else if (remaining > 0) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = remaining + '秒后可重发';
+      } else {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '发送登录链接';
+      }
     }
     if (userInfoEl) userInfoEl.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
@@ -2105,6 +2185,9 @@ function getSceneBodyDetails(block) {
       if (_authState.error) {
         statusEl.textContent = _authState.error;
         statusEl.className = 'auth-status auth-status-error';
+      } else if (getAuthCooldownRemainingSeconds() > 0) {
+        statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
+        statusEl.className = 'auth-status auth-status-success';
       } else {
         statusEl.textContent = '';
         statusEl.className = 'auth-status';
@@ -4586,14 +4669,14 @@ function getSceneBodyDetails(block) {
 function updateScenePanelUI() {
     const conv = getCurrentConv();
     if (!conv) {
-      dom.scenePanel.style.display = 'none';
+      dom.scenePanel.classList.remove('scene-panel-active');
       return;
     }
     var sm = conv.storyMode;
     var show = !!(sm && sm.enabled);
     // COMPAT: also check legacy per-conversation fields during transition
     if (!show) show = !!(conv.sceneMode || conv.worldMode);
-    dom.scenePanel.style.display = show ? '' : 'none';
+    dom.scenePanel.classList.toggle('scene-panel-active', show);
     if (show) {
       const ss = createSceneState(conv.sceneState);
       conv.sceneState = ss;
@@ -6081,6 +6164,12 @@ function handleMessageAction(action, msgIndex) {
 
   // handleAuthLogin() — read email from input, validate, send OTP.
   async function handleAuthLogin() {
+    // Guard: if already sending or cooldown active, refresh UI and return.
+    if (_authSending || getAuthCooldownRemainingSeconds() > 0) {
+      syncAuthUI();
+      return;
+    }
+
     var emailInput = document.getElementById('inputAuthEmail');
     var email = emailInput ? emailInput.value.trim() : '';
 
@@ -6090,12 +6179,8 @@ function handleMessageAction(action, msgIndex) {
     }
 
     setAuthError(null);
-
-    var statusEl = document.getElementById('authStatus');
-    if (statusEl) {
-      statusEl.textContent = '正在发送登录链接…';
-      statusEl.className = 'auth-status';
-    }
+    _authSending = true;
+    syncAuthUI();
 
     try {
       var client = getSupabaseClient();
@@ -6107,27 +6192,38 @@ function handleMessageAction(action, msgIndex) {
       var result = await client.auth.signInWithOtp({
         email: email,
         options: {
-          // Magic link: user clicks link → auto signed in via onAuthStateChange
+          emailRedirectTo: getAuthRedirectUrl()
         }
       });
 
       if (result && result.error) {
-        setAuthError(result.error.message || '发送失败，请稍后重试');
+        var normalized = normalizeAuthError(result.error);
+        setAuthError(normalized);
+        var statusCode = result.error.status;
+        var errMsg = (result.error.message || '').toLowerCase();
+        if (statusCode === 429 || errMsg.indexOf('429') !== -1 || errMsg.indexOf('rate limit') !== -1) {
+          startAuthCooldown(60);
+        }
         return;
       }
 
       // Success — user will receive email with magic link
-      if (statusEl) {
-        statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
-        statusEl.className = 'auth-status auth-status-success';
-      }
       _authState.error = null;
+      startAuthCooldown(60);
 
       // Clear the email input for privacy
       if (emailInput) emailInput.value = '';
 
     } catch (e) {
-      setAuthError((e && e.message) || '登录请求失败，请检查网络');
+      var normalized = normalizeAuthError(e);
+      setAuthError(normalized);
+      var errMsg = (e && (e.message || String(e)) || '').toLowerCase();
+      if (errMsg.indexOf('429') !== -1 || errMsg.indexOf('rate limit') !== -1) {
+        startAuthCooldown(60);
+      }
+    } finally {
+      _authSending = false;
+      syncAuthUI();
     }
   }
 
@@ -8072,6 +8168,34 @@ function handleMessageAction(action, msgIndex) {
     dom.btnCloseSettings?.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay?.addEventListener('click', () => closeDrawer('settings'));
 
+    // Settings accordion — collapsible sections
+    (function initSettingsAccordion() {
+      const STORAGE_KEY = 'omnichat_settings_sections';
+      var collapsed = {};
+      try {
+        collapsed = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      } catch (e) { /* ignore */ }
+
+      document.querySelectorAll('.settings-section-card').forEach(function (card) {
+        var title = card.querySelector('.settings-section-title');
+        if (!title) return;
+
+        // Use the title text as section key
+        var key = title.textContent.trim();
+        if (collapsed[key]) {
+          card.classList.add('collapsed');
+        }
+
+        title.addEventListener('click', function () {
+          card.classList.toggle('collapsed');
+          collapsed[key] = card.classList.contains('collapsed');
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsed));
+          } catch (e) { /* quota exceeded, ignore */ }
+        });
+      });
+    })();
+
     // Welcome actions
     if (dom.btnWelcomeSetup) {
       dom.btnWelcomeSetup?.addEventListener('click', () => openDrawer('settings'));
@@ -8876,6 +9000,13 @@ function handleMessageAction(action, msgIndex) {
 
     // Send / Stop
     dom.btnSend?.addEventListener('click', () => sendMessage());
+    // Send button haptic feedback pulse
+    dom.btnSend?.addEventListener('click', function () {
+      if (dom.btnSend.disabled) return;
+      if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.fromTo(dom.btnSend, { scale: 0.92 }, { scale: 1, duration: 0.3, ease: 'expo.out' });
+      }
+    });
     dom.btnStop?.addEventListener('click', () => stopCurrentRequest());
     dom.inputMessage?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
