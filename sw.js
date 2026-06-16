@@ -1,10 +1,12 @@
 /* ============================================================
    Mira — Service Worker
-   Cache-first with background refresh. Instant repeat loads,
-   picks up new deploys on the next navigation. NEVER caches sw.js.
+   HTML: network-first + cache fallback (prevents stale HTML + new JS/CSS mix).
+   Static assets (CSS/JS/images): cache-first + background refresh.
+   Wallpapers: network-first + cache fallback.
+   NEVER caches sw.js.  NEVER intercepts API calls.
    ============================================================ */
 
-const CACHE_NAME = 'omnichat-mqeqpgqs';
+const CACHE_NAME = 'omnichat-mqfytbcm';
 const CORE_ASSET_RE = /\.(?:html|css|js|json|svg|png|jpe?g|gif)$/i;
 
 // GitHub Pages serves the repo at /omnichat/; the app entry is index.html
@@ -69,15 +71,66 @@ self.addEventListener('fetch', (event) => {
   const isDocument = event.request.destination === 'document';
   const isIndex = INDEX_PATHS.has(url.pathname);
 
-  const isCoreAsset =
-    isDocument ||
-    isIndex ||
-    CORE_ASSET_RE.test(url.pathname);
+  // ==================================================================
+  // Document/HTML requests: NETWORK-FIRST with cache fallback.
+  // Prevents stale HTML from loading mismatched new JS/CSS after deploys.
+  // Cache is updated on every successful network fetch for offline fallback.
+  // ==================================================================
+  if (isDocument || isIndex) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
 
-  // Core app files: cache-first with background network refresh.
-  // Returns cached copy instantly (<100ms), then fetches network in
-  // the background to update cache for the NEXT navigation.
-  if (isCoreAsset) {
+        // 1. Try network first — always get fresh HTML
+        try {
+          const preload = event.preloadResponse;
+          const netResp = preload ? await preload : await fetch(event.request);
+          if (netResp.ok) {
+            // Cache for offline fallback (not for next navigation — we always go network)
+            cache.put(event.request, netResp.clone());
+            const indexUrl = new URL('/omnichat/index.html', self.location.origin);
+            cache.put(new Request(indexUrl, { method: 'GET' }), netResp.clone());
+          }
+          return netResp;
+        } catch (_err) {
+          // Network failed — fall back to cache
+        }
+
+        // 2. Cache fallback: try exact match first
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+
+        // 3. Try index.html variants from cache
+        const indexCached = await cache.match('/omnichat/index.html');
+        if (indexCached) return indexCached;
+        const rootCached = await cache.match('/omnichat/');
+        if (rootCached) return rootCached;
+
+        // 4. Last resort: inline offline page
+        return new Response(
+          '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<title>Mira — 离线</title>' +
+          '<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;' +
+          'justify-content:center;height:100vh;margin:0;background:#0f0f0f;color:#e0e0e0;' +
+          'flex-direction:column;gap:12px}' +
+          'h1{font-size:1.5rem;margin:0}.hint{font-size:.85rem;color:#888}' +
+          '.btn{margin-top:8px;padding:10px 24px;border:none;border-radius:8px;' +
+          'background:#4a9eff;color:#fff;font-size:.95rem;cursor:pointer}</style></head>' +
+          '<body><h1>📡 当前离线</h1><p class="hint">Mira 需要网络连接才能加载</p>' +
+          '<button class="btn" onclick="location.reload()">重试</button></body></html>',
+          { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      })()
+    );
+    return;
+  }
+
+  // ==================================================================
+  // Static assets (CSS, JS, images, etc.): CACHE-FIRST with background
+  // network refresh. Instant repeat loads, cache updates silently.
+  // ==================================================================
+  if (CORE_ASSET_RE.test(url.pathname)) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_NAME);
@@ -90,13 +143,7 @@ self.addEventListener('fetch', (event) => {
             (async () => {
               try {
                 const netResp = await fetch(event.request);
-                if (netResp.ok) {
-                  cache.put(event.request, netResp.clone());
-                  if (isDocument || isIndex) {
-                    const indexUrl = new URL('/omnichat/index.html', self.location.origin);
-                    cache.put(new Request(indexUrl, { method: 'GET' }), netResp.clone());
-                  }
-                }
+                if (netResp.ok) cache.put(event.request, netResp.clone());
               } catch (_) { /* network unavailable — cached version is fine */ }
             })()
           );
@@ -105,47 +152,12 @@ self.addEventListener('fetch', (event) => {
 
         // 2. No cache — go to network (first visit / cache cleared)
         try {
-          const preload = event.preloadResponse;
-          const netResp = preload ? await preload : await fetch(event.request);
-          if (netResp.ok) {
-            cache.put(event.request, netResp.clone());
-            if (isDocument || isIndex) {
-              const indexUrl = new URL('/omnichat/index.html', self.location.origin);
-              cache.put(new Request(indexUrl, { method: 'GET' }), netResp.clone());
-            }
-          }
+          const netResp = await fetch(event.request);
+          if (netResp.ok) cache.put(event.request, netResp.clone());
           return netResp;
         } catch (_err) {
-          // Network failed, no cache — try navigation fallback
+          return new Response('Offline', { status: 503 });
         }
-
-        // 3. Offline with no matching cache — try index.html variants
-        if (isDocument || isIndex) {
-          const indexCached = await cache.match('/omnichat/index.html');
-          if (indexCached) return indexCached;
-          const rootCached = await cache.match('/omnichat/');
-          if (rootCached) return rootCached;
-        }
-
-        // 4. Last resort: inline offline page
-        if (isDocument || isIndex) {
-          return new Response(
-            '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
-            '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-            '<title>Mira — 离线</title>' +
-            '<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;' +
-            'justify-content:center;height:100vh;margin:0;background:#0f0f0f;color:#e0e0e0;' +
-            'flex-direction:column;gap:12px}' +
-            'h1{font-size:1.5rem;margin:0}.hint{font-size:.85rem;color:#888}' +
-            '.btn{margin-top:8px;padding:10px 24px;border:none;border-radius:8px;' +
-            'background:#4a9eff;color:#fff;font-size:.95rem;cursor:pointer}</style></head>' +
-            '<body><h1>📡 当前离线</h1><p class="hint">Mira 需要网络连接才能加载</p>' +
-            '<button class="btn" onclick="location.reload()">重试</button></body></html>',
-            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-          );
-        }
-
-        return new Response('Offline', { status: 503 });
       })()
     );
     return;

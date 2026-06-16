@@ -3968,6 +3968,12 @@ function handleMessageAction(action, msgIndex) {
 
   // handleAuthLogin() — read email from input, validate, send OTP.
   async function handleAuthLogin() {
+    // Guard: if already sending or cooldown active, refresh UI and return.
+    if (_authSending || getAuthCooldownRemainingSeconds() > 0) {
+      syncAuthUI();
+      return;
+    }
+
     var emailInput = document.getElementById('inputAuthEmail');
     var email = emailInput ? emailInput.value.trim() : '';
 
@@ -3977,12 +3983,8 @@ function handleMessageAction(action, msgIndex) {
     }
 
     setAuthError(null);
-
-    var statusEl = document.getElementById('authStatus');
-    if (statusEl) {
-      statusEl.textContent = '正在发送登录链接…';
-      statusEl.className = 'auth-status';
-    }
+    _authSending = true;
+    syncAuthUI();
 
     try {
       var client = getSupabaseClient();
@@ -3994,27 +3996,38 @@ function handleMessageAction(action, msgIndex) {
       var result = await client.auth.signInWithOtp({
         email: email,
         options: {
-          // Magic link: user clicks link → auto signed in via onAuthStateChange
+          emailRedirectTo: getAuthRedirectUrl()
         }
       });
 
       if (result && result.error) {
-        setAuthError(result.error.message || '发送失败，请稍后重试');
+        var normalized = normalizeAuthError(result.error);
+        setAuthError(normalized);
+        var statusCode = result.error.status;
+        var errMsg = (result.error.message || '').toLowerCase();
+        if (statusCode === 429 || errMsg.indexOf('429') !== -1 || errMsg.indexOf('rate limit') !== -1) {
+          startAuthCooldown(60);
+        }
         return;
       }
 
       // Success — user will receive email with magic link
-      if (statusEl) {
-        statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
-        statusEl.className = 'auth-status auth-status-success';
-      }
       _authState.error = null;
+      startAuthCooldown(60);
 
       // Clear the email input for privacy
       if (emailInput) emailInput.value = '';
 
     } catch (e) {
-      setAuthError((e && e.message) || '登录请求失败，请检查网络');
+      var normalized = normalizeAuthError(e);
+      setAuthError(normalized);
+      var errMsg = (e && (e.message || String(e)) || '').toLowerCase();
+      if (errMsg.indexOf('429') !== -1 || errMsg.indexOf('rate limit') !== -1) {
+        startAuthCooldown(60);
+      }
+    } finally {
+      _authSending = false;
+      syncAuthUI();
     }
   }
 
@@ -7203,14 +7216,32 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     });
   }
 
-  // Preload the active theme wallpaper so it is decoded before the splash
-  // screen dismisses. Returns a Promise that resolves when the image is
-  // ready (or on error / 5s timeout — never blocks splash indefinitely).
+  // -------------------------------------------------------------------
+  // Mobile performance detection (conservative — desktop never degraded)
+  // Requires at least 2 of 3 signals: mobile UA, coarse pointer, small screen.
+  // -------------------------------------------------------------------
+  function isMobilePerf() {
+    var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    var isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+    var hasCoarsePointer = typeof window !== 'undefined' && window.matchMedia &&
+      window.matchMedia('(pointer: coarse)').matches;
+    var isSmallScreen = typeof window !== 'undefined' && window.matchMedia &&
+      window.matchMedia('(max-width: 640px)').matches;
+    return (isMobileUA ? 1 : 0) + (hasCoarsePointer ? 1 : 0) + (isSmallScreen ? 1 : 0) >= 2;
+  }
+
+  // Preload the active theme wallpaper. Returns a Promise that resolves when
+  // the image is ready (or on error / timeout). Never blocks splash.
+  // Mobile: 800ms timeout, GIFs skip decode() to avoid main-thread blocking.
+  // Desktop: 1800ms timeout, full decode pipeline.
   function preloadThemeWallpaper() {
     var key = state.activeTheme;
     if (!key) return Promise.resolve();
     var t = CHARACTER_THEMES[key];
     if (!t || !t.wallpaper) return Promise.resolve();
+    var mobile = isMobilePerf();
+    var isGif = /\.gif$/i.test(t.wallpaper);
+    var timeoutMs = mobile ? 800 : 1800;
     return new Promise(function(resolve) {
       var img = new Image();
       var done = false;
@@ -7220,13 +7251,16 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
         resolve();
       };
       img.onload = function() {
-        if (img.decode) { img.decode().then(finish, finish); }
-        else finish();
+        // Mobile or GIF: skip decode() — it blocks the main thread decoding frames
+        if (!mobile && !isGif && img.decode) {
+          img.decode().then(finish, finish);
+        } else {
+          finish();
+        }
       };
       img.onerror = finish;
       img.src = t.wallpaper;
-      // Safety timeout: never block splash longer than 5 s
-      setTimeout(finish, 5000);
+      setTimeout(finish, timeoutMs);
     });
   }
 
@@ -7238,8 +7272,18 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     cacheDom();
     loadFromStorage();
 
-    // Preload current theme wallpaper so it's decoded before splash dismisses.
-    // Splash dismissal is gated on this promise — see splash code below.
+    // -------------------------------------------------------------------
+    // Mobile performance marker — injected as early as possible so CSS
+    // can degrade heavy effects before first paint. Desktop never flagged.
+    // -------------------------------------------------------------------
+    var mobilePerf = isMobilePerf();
+    if (mobilePerf) {
+      document.documentElement.classList.add('mobile-perf');
+    }
+
+    // Preload current theme wallpaper (non-blocking on mobile).
+    // Desktop: still gates splash dismissal for orchestrated entrance.
+    // Mobile: wallpaper loads async; splash reveals immediately.
     var wallpaperReady = preloadThemeWallpaper();
 
     setupViewportInsets();
@@ -7312,8 +7356,10 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
     dom.splash.classList.add('dismissed');
 
-    // Orchestrated entrance — wallpaper fades in, then UI floats up
-    wallpaperReady.then(function() {
+    // Orchestrated entrance — wallpaper fades in, then UI floats up.
+    // Desktop: gates on wallpaperReady for seamless painted-in reveal.
+    // Mobile: reveals immediately; wallpaper async-fades when loaded.
+    function revealApp() {
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var hasGSAP = typeof gsap !== 'undefined' && gsap.timeline;
 
@@ -7324,18 +7370,29 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       // Remove dark lock — body gradient is now exposed behind the wallpaper overlay
       document.documentElement.classList.remove('is-splashing');
 
-      // Reduced-motion or GSAP unavailable: instant reveal (CSS @keyframes
-      // were disabled above, so we just clear inline styles)
-      if (prefersReduced || !hasGSAP) {
+      // Mobile or reduced-motion or GSAP unavailable: instant reveal with
+      // CSS keyframes disabled, then async wallpaper fade-in when ready.
+      if (mobilePerf || prefersReduced || !hasGSAP) {
         var overlay = document.getElementById('chatBgOverlay');
-        if (overlay) overlay.style.opacity = '';
+        // Mobile: reveal UI instantly; wallpaper overlay stays transparent until preloaded
+        if (mobilePerf && overlay) {
+          overlay.style.transition = 'opacity 600ms var(--glide)';
+          overlay.style.opacity = '0';
+        } else if (overlay) {
+          overlay.style.opacity = '';
+        }
         entranceEls.forEach(function(el) { el.style.opacity = ''; el.style.transform = ''; });
         updateBottomBarHeight();
+        // Async wallpaper fade-in for mobile — never blocks chat
+        if (mobilePerf) {
+          wallpaperReady.then(function() {
+            if (overlay) overlay.style.opacity = '';
+          });
+        }
         return;
       }
 
-      // GSAP timeline: wallpaper anchors the transition, UI elements stagger in.
-      // All tweens use power3.out — exponential deceleration, no bounce/elastic.
+      // Desktop: full GSAP-orchestrated entrance — wallpaper anchors, UI staggers in.
       var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       tl.fromTo('#chatBgOverlay',
@@ -7374,7 +7431,15 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       // Cleanup: restore CSS control after GSAP finishes
       tl.call(updateBottomBarHeight);
       tl.set(entranceEls, { clearProps: 'all' });
-    });
+    }
+
+    // Desktop: gate reveal on wallpaper decode for seamless transition.
+    // Mobile: reveal immediately; wallpaperReady used only for async fade-in.
+    if (mobilePerf) {
+      revealApp();
+    } else {
+      wallpaperReady.then(revealApp);
+    }
 
     // Expose build version for debug (from meta tag injected by _build.js)
     var buildMeta = document.querySelector('meta[name="build-version"]');

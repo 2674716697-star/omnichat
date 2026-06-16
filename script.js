@@ -4669,14 +4669,14 @@ function getSceneBodyDetails(block) {
 function updateScenePanelUI() {
     const conv = getCurrentConv();
     if (!conv) {
-      dom.scenePanel.classList.remove('scene-panel-active');
+      dom.scenePanel.style.display = 'none';
       return;
     }
     var sm = conv.storyMode;
     var show = !!(sm && sm.enabled);
     // COMPAT: also check legacy per-conversation fields during transition
     if (!show) show = !!(conv.sceneMode || conv.worldMode);
-    dom.scenePanel.classList.toggle('scene-panel-active', show);
+    dom.scenePanel.style.display = show ? '' : 'none';
     if (show) {
       const ss = createSceneState(conv.sceneState);
       conv.sceneState = ss;
@@ -8168,34 +8168,6 @@ function handleMessageAction(action, msgIndex) {
     dom.btnCloseSettings?.addEventListener('click', () => closeDrawer('settings'));
     dom.settingsOverlay?.addEventListener('click', () => closeDrawer('settings'));
 
-    // Settings accordion — collapsible sections
-    (function initSettingsAccordion() {
-      const STORAGE_KEY = 'omnichat_settings_sections';
-      var collapsed = {};
-      try {
-        collapsed = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-      } catch (e) { /* ignore */ }
-
-      document.querySelectorAll('.settings-section-card').forEach(function (card) {
-        var title = card.querySelector('.settings-section-title');
-        if (!title) return;
-
-        // Use the title text as section key
-        var key = title.textContent.trim();
-        if (collapsed[key]) {
-          card.classList.add('collapsed');
-        }
-
-        title.addEventListener('click', function () {
-          card.classList.toggle('collapsed');
-          collapsed[key] = card.classList.contains('collapsed');
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsed));
-          } catch (e) { /* quota exceeded, ignore */ }
-        });
-      });
-    })();
-
     // Welcome actions
     if (dom.btnWelcomeSetup) {
       dom.btnWelcomeSetup?.addEventListener('click', () => openDrawer('settings'));
@@ -9000,13 +8972,6 @@ function handleMessageAction(action, msgIndex) {
 
     // Send / Stop
     dom.btnSend?.addEventListener('click', () => sendMessage());
-    // Send button haptic feedback pulse
-    dom.btnSend?.addEventListener('click', function () {
-      if (dom.btnSend.disabled) return;
-      if (typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        gsap.fromTo(dom.btnSend, { scale: 0.92 }, { scale: 1, duration: 0.3, ease: 'expo.out' });
-      }
-    });
     dom.btnStop?.addEventListener('click', () => stopCurrentRequest());
     dom.inputMessage?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -9447,14 +9412,32 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     });
   }
 
-  // Preload the active theme wallpaper so it is decoded before the splash
-  // screen dismisses. Returns a Promise that resolves when the image is
-  // ready (or on error / 5s timeout — never blocks splash indefinitely).
+  // -------------------------------------------------------------------
+  // Mobile performance detection (conservative — desktop never degraded)
+  // Requires at least 2 of 3 signals: mobile UA, coarse pointer, small screen.
+  // -------------------------------------------------------------------
+  function isMobilePerf() {
+    var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    var isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+    var hasCoarsePointer = typeof window !== 'undefined' && window.matchMedia &&
+      window.matchMedia('(pointer: coarse)').matches;
+    var isSmallScreen = typeof window !== 'undefined' && window.matchMedia &&
+      window.matchMedia('(max-width: 640px)').matches;
+    return (isMobileUA ? 1 : 0) + (hasCoarsePointer ? 1 : 0) + (isSmallScreen ? 1 : 0) >= 2;
+  }
+
+  // Preload the active theme wallpaper. Returns a Promise that resolves when
+  // the image is ready (or on error / timeout). Never blocks splash.
+  // Mobile: 800ms timeout, GIFs skip decode() to avoid main-thread blocking.
+  // Desktop: 1800ms timeout, full decode pipeline.
   function preloadThemeWallpaper() {
     var key = state.activeTheme;
     if (!key) return Promise.resolve();
     var t = CHARACTER_THEMES[key];
     if (!t || !t.wallpaper) return Promise.resolve();
+    var mobile = isMobilePerf();
+    var isGif = /\.gif$/i.test(t.wallpaper);
+    var timeoutMs = mobile ? 800 : 1800;
     return new Promise(function(resolve) {
       var img = new Image();
       var done = false;
@@ -9464,13 +9447,16 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
         resolve();
       };
       img.onload = function() {
-        if (img.decode) { img.decode().then(finish, finish); }
-        else finish();
+        // Mobile or GIF: skip decode() — it blocks the main thread decoding frames
+        if (!mobile && !isGif && img.decode) {
+          img.decode().then(finish, finish);
+        } else {
+          finish();
+        }
       };
       img.onerror = finish;
       img.src = t.wallpaper;
-      // Safety timeout: never block splash longer than 5 s
-      setTimeout(finish, 5000);
+      setTimeout(finish, timeoutMs);
     });
   }
 
@@ -9482,8 +9468,18 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     cacheDom();
     loadFromStorage();
 
-    // Preload current theme wallpaper so it's decoded before splash dismisses.
-    // Splash dismissal is gated on this promise — see splash code below.
+    // -------------------------------------------------------------------
+    // Mobile performance marker — injected as early as possible so CSS
+    // can degrade heavy effects before first paint. Desktop never flagged.
+    // -------------------------------------------------------------------
+    var mobilePerf = isMobilePerf();
+    if (mobilePerf) {
+      document.documentElement.classList.add('mobile-perf');
+    }
+
+    // Preload current theme wallpaper (non-blocking on mobile).
+    // Desktop: still gates splash dismissal for orchestrated entrance.
+    // Mobile: wallpaper loads async; splash reveals immediately.
     var wallpaperReady = preloadThemeWallpaper();
 
     setupViewportInsets();
@@ -9556,8 +9552,10 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
     dom.splash.classList.add('dismissed');
 
-    // Orchestrated entrance — wallpaper fades in, then UI floats up
-    wallpaperReady.then(function() {
+    // Orchestrated entrance — wallpaper fades in, then UI floats up.
+    // Desktop: gates on wallpaperReady for seamless painted-in reveal.
+    // Mobile: reveals immediately; wallpaper async-fades when loaded.
+    function revealApp() {
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var hasGSAP = typeof gsap !== 'undefined' && gsap.timeline;
 
@@ -9568,18 +9566,29 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       // Remove dark lock — body gradient is now exposed behind the wallpaper overlay
       document.documentElement.classList.remove('is-splashing');
 
-      // Reduced-motion or GSAP unavailable: instant reveal (CSS @keyframes
-      // were disabled above, so we just clear inline styles)
-      if (prefersReduced || !hasGSAP) {
+      // Mobile or reduced-motion or GSAP unavailable: instant reveal with
+      // CSS keyframes disabled, then async wallpaper fade-in when ready.
+      if (mobilePerf || prefersReduced || !hasGSAP) {
         var overlay = document.getElementById('chatBgOverlay');
-        if (overlay) overlay.style.opacity = '';
+        // Mobile: reveal UI instantly; wallpaper overlay stays transparent until preloaded
+        if (mobilePerf && overlay) {
+          overlay.style.transition = 'opacity 600ms var(--glide)';
+          overlay.style.opacity = '0';
+        } else if (overlay) {
+          overlay.style.opacity = '';
+        }
         entranceEls.forEach(function(el) { el.style.opacity = ''; el.style.transform = ''; });
         updateBottomBarHeight();
+        // Async wallpaper fade-in for mobile — never blocks chat
+        if (mobilePerf) {
+          wallpaperReady.then(function() {
+            if (overlay) overlay.style.opacity = '';
+          });
+        }
         return;
       }
 
-      // GSAP timeline: wallpaper anchors the transition, UI elements stagger in.
-      // All tweens use power3.out — exponential deceleration, no bounce/elastic.
+      // Desktop: full GSAP-orchestrated entrance — wallpaper anchors, UI staggers in.
       var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       tl.fromTo('#chatBgOverlay',
@@ -9618,7 +9627,15 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       // Cleanup: restore CSS control after GSAP finishes
       tl.call(updateBottomBarHeight);
       tl.set(entranceEls, { clearProps: 'all' });
-    });
+    }
+
+    // Desktop: gate reveal on wallpaper decode for seamless transition.
+    // Mobile: reveal immediately; wallpaperReady used only for async fade-in.
+    if (mobilePerf) {
+      revealApp();
+    } else {
+      wallpaperReady.then(revealApp);
+    }
 
     // Expose build version for debug (from meta tag injected by _build.js)
     var buildMeta = document.querySelector('meta[name="build-version"]');

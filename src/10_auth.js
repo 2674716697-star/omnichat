@@ -21,6 +21,12 @@
     initialised: false // true after first init attempt completes
   };
 
+  // Cooldown state for OTP send button — in-memory only, never persisted.
+  // Resets on page refresh so a user stuck in 429 can always recover.
+  var _authCooldownUntil = 0;     // Date.now() + cooldownMs while cooldown is active; 0 otherwise
+  var _authCooldownTimer = null;  // setInterval id for countdown tick — cleared when cooldown expires
+  var _authSending = false;       // true while a signInWithOtp request is in flight
+
   // getAuthState() — returns a shallow copy so callers can read but not mutate.
   function getAuthState() {
     return {
@@ -81,6 +87,71 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
   }
 
+  // getAuthCooldownRemainingSeconds() — seconds left on the OTP cooldown.
+  function getAuthCooldownRemainingSeconds() {
+    if (!_authCooldownUntil) return 0;
+    var remaining = Math.ceil((_authCooldownUntil - Date.now()) / 1000);
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // startAuthCooldown(seconds) — begin a countdown; clears any existing timer first.
+  function startAuthCooldown(seconds) {
+    stopAuthCooldown();
+    _authCooldownUntil = Date.now() + seconds * 1000;
+    _authCooldownTimer = setInterval(function () {
+      if (getAuthCooldownRemainingSeconds() <= 0) {
+        stopAuthCooldown();
+      }
+      syncAuthUI();
+    }, 1000);
+  }
+
+  // stopAuthCooldown() — clear interval and reset cooldown state.
+  function stopAuthCooldown() {
+    if (_authCooldownTimer !== null) {
+      clearInterval(_authCooldownTimer);
+      _authCooldownTimer = null;
+    }
+    _authCooldownUntil = 0;
+  }
+
+  // getAuthRedirectUrl() — build the magic-link redirect URL.
+  // Always redirects to index.html on the current origin.  Works for local
+  // (http://127.0.0.1:4177/index.html), GitHub Pages, and custom deploys.
+  function getAuthRedirectUrl() {
+    var origin = window.location.origin;
+    var pathname = window.location.pathname;
+    // Replace the last path segment with index.html, preserving any subdirectory.
+    // e.g. /foo/bar.html → /foo/index.html;  /  → /index.html
+    var parts = pathname.split('/');
+    parts[parts.length - 1] = 'index.html';
+    return origin + parts.join('/');
+  }
+
+  // normalizeAuthError(error) — convert raw errors into Chinese-friendly messages.
+  function normalizeAuthError(error) {
+    if (!error) return '发送失败，请稍后重试';
+    var msg = '';
+    if (typeof error === 'string') {
+      msg = error.toLowerCase();
+    } else if (error.message) {
+      msg = String(error.message).toLowerCase();
+    } else if (error.error_description) {
+      msg = String(error.error_description).toLowerCase();
+    } else {
+      return '发送失败，请稍后重试';
+    }
+    if (msg.indexOf('429') !== -1 || msg.indexOf('rate limit') !== -1 || msg.indexOf('email rate limit exceeded') !== -1 || msg.indexOf('too many requests') !== -1) {
+      return '登录邮件发送太频繁，请等待 1 分钟后再试；也请检查邮箱垃圾箱';
+    }
+    if (msg.indexOf('network') !== -1 || msg.indexOf('fetch') !== -1 || msg.indexOf('timeout') !== -1) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    return '发送失败，请稍后重试';
+  }
+
   // syncAuthUI() — update auth section in settings drawer to reflect _authState.
   // Safe to call before DOM is ready (returns silently).
   function syncAuthUI() {
@@ -128,8 +199,17 @@
     if (emailInput) emailInput.style.display = '';
     if (loginBtn) {
       loginBtn.style.display = '';
-      loginBtn.disabled = false;
-      loginBtn.textContent = '发送登录链接';
+      var remaining = getAuthCooldownRemainingSeconds();
+      if (_authSending) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = '发送中…';
+      } else if (remaining > 0) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = remaining + '秒后可重发';
+      } else {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '发送登录链接';
+      }
     }
     if (userInfoEl) userInfoEl.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
@@ -137,6 +217,9 @@
       if (_authState.error) {
         statusEl.textContent = _authState.error;
         statusEl.className = 'auth-status auth-status-error';
+      } else if (getAuthCooldownRemainingSeconds() > 0) {
+        statusEl.textContent = '登录链接已发送，请查收邮件（检查垃圾箱）';
+        statusEl.className = 'auth-status auth-status-success';
       } else {
         statusEl.textContent = '';
         statusEl.className = 'auth-status';
