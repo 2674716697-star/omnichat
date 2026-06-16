@@ -2288,6 +2288,7 @@ function getSceneBodyDetails(block) {
     dom.inputPreciseMode = $('#inputPreciseMode');
     dom.selectToolCallLimit = $('#selectToolCallLimit');
     dom.chatBgOverlay = $('#chatBgOverlay');
+    dom.chatBgOverlayNext = $('#chatBgOverlayNext');
     dom.bgPresets = $('#bgPresets');
     dom.inputBgOpacity = $('#inputBgOpacity');
     dom.inputBgBrightness = $('#inputBgBrightness');
@@ -2872,6 +2873,18 @@ function getSceneBodyDetails(block) {
       if (dom.themeOverlay) dom.themeOverlay.classList.add('open');
       state.ui.isThemeOpen = true;
       document.documentElement.classList.add('is-theme-open');
+      // Lazy-load thumbnail images only when theme drawer first opens
+      if (!dom.bgPresets.dataset.thumbsLoaded) {
+        dom.bgPresets.dataset.thumbsLoaded = '1';
+        var btns = dom.bgPresets.querySelectorAll('.bg-preset[data-thumb]');
+        for (var i = 0; i < btns.length; i++) {
+          var thumb = btns[i].dataset.thumb;
+          if (thumb) {
+            btns[i].style.backgroundImage = 'url(' + thumb + ')';
+            btns[i].style.backgroundSize = 'cover';
+          }
+        }
+      }
     } else {
       dom.settingsDrawer.classList.add('open');
       dom.settingsOverlay.classList.add('open');
@@ -4227,43 +4240,100 @@ function getSceneBodyDetails(block) {
 
   /* ===== End Theme System ===== */
 
+  // 递增序号：每次 applyChatBackground() 递增，防止旧异步回调覆盖新背景
+  var bgTransitionSeq = 0;
+
   function applyChatBackground() {
-    const bg = state.chatBackground || { type: 'none', value: '', opacity: 35 };
-    const overlay = dom.chatBgOverlay;
+    var bg = state.chatBackground || { type: 'none', value: '', opacity: 35 };
+    var seq = ++bgTransitionSeq;
+    var overlay = dom.chatBgOverlay;
+    var nextOverlay = dom.chatBgOverlayNext;
+    var CROSSFADE_MS = 320;
 
     document.documentElement.style.setProperty('--bg-opacity', (bg.opacity / 100));
 
-    // Crossfade: fade out → swap background → fade in
+    // Compile target background styles onto a given element.
+    // Also applies document-level side effects (theme classes, CSS vars).
+    function compile(el) {
+      if (!el) return; // 安全降级：DOM 元素不存在
+      if (bg.type === 'none') {
+        el.style.backgroundImage = '';
+        el.style.backgroundSize = '';
+        el.style.backgroundPosition = '';
+        // Keep display visible during crossfade — just transparent.
+        // display: none is applied in finishCrossfade on the next overlay.
+        document.documentElement.classList.remove('has-custom-bg');
+        document.documentElement.style.removeProperty('--splash-accent');
+        document.documentElement.style.removeProperty('--splash-accent2');
+      } else if (bg.type === 'gradient') {
+        el.style.backgroundImage = bg.value;
+        el.style.display = '';
+        el.style.backgroundSize = '';
+        el.style.backgroundPosition = '';
+        document.documentElement.classList.remove('has-custom-bg');
+        applyBgSplashTheme(bg);
+        applyBgControls();
+      } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
+        el.style.backgroundImage = 'url(' + bg.value + ')';
+        el.style.backgroundSize = 'cover';
+        el.style.display = '';
+        document.documentElement.classList.add('has-custom-bg');
+        applyBgSplashTheme(bg);
+        applyBgControls();
+      }
+    }
+
+    // After crossfade: copy next → main, hide next
+    function finishCrossfade() {
+      // 陈旧请求守卫：如果 seq 已过期，不操作 DOM
+      if (seq !== bgTransitionSeq) return;
+      if (!nextOverlay) return; // 安全降级
+      compile(overlay);
+      // For 'none' type, hide the main overlay too (no background needed)
+      if (bg.type === 'none') overlay.style.display = 'none';
+      else overlay.style.display = '';
+      overlay.style.transition = '';
+      overlay.style.opacity = '';
+      nextOverlay.classList.remove('crossfading');
+      nextOverlay.style.backgroundImage = '';
+      nextOverlay.style.display = 'none';
+      nextOverlay.style.opacity = '0';
+    }
+
+    // 安全降级：如果 DOM 元素不存在，跳过
+    if (!overlay || !nextOverlay) return;
+
+    // For url/image: preload before swapping — never flash black/white.
+    if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
+      var img = new Image();
+      img.onload = function() {
+        if (seq !== bgTransitionSeq) return; // 陈旧请求守卫
+        if (!nextOverlay) return; // 安全降级
+        compile(nextOverlay);
+        nextOverlay.classList.add('crossfading');
+        overlay.style.transition = 'opacity ' + CROSSFADE_MS + 'ms var(--glide)';
+        overlay.style.opacity = '0';
+        setTimeout(finishCrossfade, CROSSFADE_MS + 50);
+      };
+      img.onerror = function() {
+        if (seq !== bgTransitionSeq) return; // 陈旧请求守卫
+        console.warn('[OmniChat] Background image failed to load, keeping current background.');
+      };
+      img.src = bg.value;
+      // Timeout safety: if loading stalls >15s, give up silently
+      setTimeout(function() {
+        if (seq !== bgTransitionSeq) return; // 陈旧请求守卫
+        if (!img.complete) { img.onerror = function() {}; }
+      }, 15000);
+      return;
+    }
+
+    // Gradient / none: instant crossfade (all data available locally)
+    compile(nextOverlay);
+    nextOverlay.classList.add('crossfading');
+    overlay.style.transition = 'opacity ' + CROSSFADE_MS + 'ms var(--glide)';
     overlay.style.opacity = '0';
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        if (bg.type === 'none') {
-          overlay.style.backgroundImage = '';
-          overlay.style.display = 'none';
-          overlay.style.backgroundSize = '';
-          overlay.style.backgroundPosition = '';
-          document.documentElement.classList.remove('has-custom-bg');
-          document.documentElement.style.removeProperty('--splash-accent');
-          document.documentElement.style.removeProperty('--splash-accent2');
-        } else if (bg.type === 'gradient') {
-          overlay.style.backgroundImage = bg.value;
-          overlay.style.display = '';
-          overlay.style.backgroundSize = '';
-          overlay.style.backgroundPosition = '';
-          document.documentElement.classList.remove('has-custom-bg');
-          applyBgSplashTheme(bg);
-          applyBgControls();
-        } else if ((bg.type === 'url' || bg.type === 'image') && bg.value) {
-          overlay.style.backgroundImage = 'url(' + bg.value + ')';
-          overlay.style.backgroundSize = 'cover';
-          overlay.style.display = '';
-          document.documentElement.classList.add('has-custom-bg');
-          applyBgSplashTheme(bg);
-          applyBgControls();
-        }
-        overlay.style.opacity = '';
-      });
-    });
+    setTimeout(finishCrossfade, CROSSFADE_MS + 50);
   }
 
   function applyBgSplashTheme(bg) {
@@ -8776,7 +8846,7 @@ function handleMessageAction(action, msgIndex) {
     dom.inputBgOpacity?.addEventListener('input', () => {
       const val = parseInt(dom.inputBgOpacity.value, 10);
       state.chatBackground.opacity = val;
-      applyChatBackground();
+      document.documentElement.style.setProperty('--bg-opacity', val / 100);
       saveToStorage();
     });
     // --- Background adjustment overlay ---
@@ -9544,13 +9614,35 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
 
     // Anti-flash: is-splashing is already set on <html> in the initial markup,
     // which locks background to #111115 as soon as CSS loads (prevents white
-    // flash). We keep it until the wallpaper is decoded, then reveal the app
-    // with an orchestrated GSAP timeline. No splash brand animation.
+    // flash). We keep it while the splash brand animation plays (Mira logo,
+    // ring glow, sweep), then crossfade into the app.
     document.documentElement.classList.add('is-splashing');
 
-    // Hide splash brand content immediately
-    dom.splash.style.transition = 'opacity 150ms ease, visibility 150ms ease';
-    dom.splash.classList.add('dismissed');
+    // Splash brand animation timing: CSS keyframes handle the one-shot entrances
+    // (ringEnter ~0.82s, ringTraceDraw ~0.96s, sweep ~0.72s, title ~0.62s after
+    // 1.08s delay, tagline ~0.52s after 1.32s delay).
+    // Mobile: keep splash min ~900ms — enough for logo + ring + light sweep.
+    // Desktop: keep splash min ~1300ms — enough for full orchestrated entrance.
+    // Max splash: prevents hanging if resources are slow.
+    var splashMinMs = mobilePerf ? 900 : 1300;
+    var splashMaxMs = mobilePerf ? 1600 : 2400;
+    var splashStartMs = performance.now();
+    var splashDismissed = false;
+
+    function dismissSplash() {
+      if (splashDismissed) return;
+      splashDismissed = true;
+
+      // Crossfade splash content out with a smooth transition
+      dom.splash.style.transition = 'opacity 350ms var(--glide), visibility 350ms ease';
+      dom.splash.classList.add('dismissed');
+
+      // After splash fade completes, remove dark lock and reveal the app
+      setTimeout(function() {
+        document.documentElement.classList.remove('is-splashing');
+        revealApp();
+      }, 350);
+    }
 
     // Orchestrated entrance — wallpaper fades in, then UI floats up.
     // Desktop: gates on wallpaperReady for seamless painted-in reveal.
@@ -9563,14 +9655,11 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       var entranceEls = document.querySelectorAll('.app-container, .top-bar, .bottom-bar, .welcome-screen, .welcome-step');
       entranceEls.forEach(function(el) { el.style.animation = 'none'; });
 
-      // Remove dark lock — body gradient is now exposed behind the wallpaper overlay
-      document.documentElement.classList.remove('is-splashing');
-
       // Mobile or reduced-motion or GSAP unavailable: instant reveal with
       // CSS keyframes disabled, then async wallpaper fade-in when ready.
       if (mobilePerf || prefersReduced || !hasGSAP) {
         var overlay = document.getElementById('chatBgOverlay');
-        // Mobile: reveal UI instantly; wallpaper overlay stays transparent until preloaded
+        // Mobile: reveal UI instantly; wallpaper overlay starts transparent, fades in when preloaded
         if (mobilePerf && overlay) {
           overlay.style.transition = 'opacity 600ms var(--glide)';
           overlay.style.opacity = '0';
@@ -9627,14 +9716,35 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       // Cleanup: restore CSS control after GSAP finishes
       tl.call(updateBottomBarHeight);
       tl.set(entranceEls, { clearProps: 'all' });
+      // Let CSS var(--bg-opacity) control overlay opacity (respects user settings)
+      tl.set('#chatBgOverlay', { clearProps: 'opacity' }, '+=0');
     }
 
-    // Desktop: gate reveal on wallpaper decode for seamless transition.
-    // Mobile: reveal immediately; wallpaperReady used only for async fade-in.
+    // Schedule splash dismissal — respects min/max timing constraints.
+    // Desktop: waits for wallpaper then enforces min splash time.
+    // Mobile: dismisses after min splash time; wallpaper loads async.
     if (mobilePerf) {
-      revealApp();
+      // Mobile: show splash brand animation for at least splashMinMs, then reveal.
+      // Wallpaper fades in async — does not delay entering chat.
+      setTimeout(function() {
+        dismissSplash();
+      }, splashMinMs);
     } else {
-      wallpaperReady.then(revealApp);
+      // Desktop: wait for wallpaper, but also enforce min splash time.
+      // If wallpaper loads fast, still show splash for minimum duration.
+      wallpaperReady.then(function() {
+        var elapsed = performance.now() - splashStartMs;
+        var wait = Math.max(0, splashMinMs - elapsed);
+        if (wait > 0) {
+          setTimeout(dismissSplash, wait);
+        } else {
+          dismissSplash();
+        }
+      });
+      // Failsafe: never hang beyond splashMaxMs
+      setTimeout(function() {
+        dismissSplash();
+      }, splashMaxMs);
     }
 
     // Expose build version for debug (from meta tag injected by _build.js)

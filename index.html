@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqfytbcm">
+  <meta name="build-version" content="mqgabort">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <meta name="color-scheme" content="dark">
@@ -79,8 +79,9 @@
     }, 1500);
   </script>
 
-  <!-- Chat Background Layer -->
+  <!-- Chat Background Layer (dual-layer crossfade) -->
   <div class="chat-bg-overlay" id="chatBgOverlay"></div>
+  <div class="chat-bg-overlay chat-bg-overlay-next" id="chatBgOverlayNext"></div>
 
   <div class="app-container" id="appContainer" role="main">
 
@@ -472,41 +473,41 @@
           <!-- 原神: 雷电将军 -->
           <button class="bg-preset" data-theme="raiden" data-border="raiden" style="--accent:#b870f0;--glow:rgba(184,112,240,0.35);background:linear-gradient(150deg,#1a1030 0%,#2d1560 30%,#1e1070 55%,#0d0a2a 85%,#0a0820 100%)" aria-label="雷电将军"></button>
           <!-- 原神: 优菈 -->
-          <button class="bg-preset" data-theme="eula" data-border="eula" style="--accent:#88c0e8;--glow:rgba(136,192,232,0.3);background-image:url(bg/thumb/eula.jpg);background-size:cover" aria-label="优菈"></button>
+          <button class="bg-preset" data-theme="eula" data-border="eula" style="--accent:#88c0e8;--glow:rgba(136,192,232,0.3)" data-thumb="bg/thumb/eula.jpg" aria-label="优菈"></button>
           <!-- 星穹铁道: 流萤 -->
-          <button class="bg-preset" data-theme="firefly" data-border="firefly" style="--accent:#70d0a8;--glow:rgba(112,208,168,0.35);background-image:url(bg/thumb/firefly.jpg);background-size:cover" aria-label="流萤"></button>
+          <button class="bg-preset" data-theme="firefly" data-border="firefly" style="--accent:#70d0a8;--glow:rgba(112,208,168,0.35)" data-thumb="bg/thumb/firefly.jpg" aria-label="流萤"></button>
           <!-- 星穹铁道: 黄泉 -->
-          <button class="bg-preset" data-theme="acheron" data-border="acheron" style="--accent:#c87080;--glow:rgba(200,112,128,0.35);background-image:url(bg/thumb/acheron.jpg);background-size:cover" aria-label="黄泉"></button>
+          <button class="bg-preset" data-theme="acheron" data-border="acheron" style="--accent:#c87080;--glow:rgba(200,112,128,0.35)" data-thumb="bg/thumb/acheron.jpg" aria-label="黄泉"></button>
           <!-- 星穹铁道: 镜流 -->
-          <button class="bg-preset" data-theme="jingliu" data-border="jingliu" style="--accent:#a0c8f0;--glow:rgba(160,200,240,0.3);background-image:url(bg/thumb/jingliu.jpg);background-size:cover" aria-label="镜流"></button>
+          <button class="bg-preset" data-theme="jingliu" data-border="jingliu" style="--accent:#a0c8f0;--glow:rgba(160,200,240,0.3)" data-thumb="bg/thumb/jingliu.jpg" aria-label="镜流"></button>
           <!-- 星穹铁道: 爻光 -->
-          <button class="bg-preset" data-theme="yaoguang" data-border="yaoguang" style="--accent:#e0b860;--glow:rgba(224,184,96,0.35);background-image:url(bg/thumb/yaoguang.jpg);background-size:cover" aria-label="爻光"></button>
+          <button class="bg-preset" data-theme="yaoguang" data-border="yaoguang" style="--accent:#e0b860;--glow:rgba(224,184,96,0.35)" data-thumb="bg/thumb/yaoguang.jpg" aria-label="爻光"></button>
           <!-- 星穹铁道: 昔涟 -->
-          <button class="bg-preset" data-theme="xilian" data-border="xilian" style="--accent:#80c0e0;--glow:rgba(128,192,224,0.3);background-image:url(bg/thumb/xilian.jpg);background-size:cover" aria-label="昔涟"></button>
+          <button class="bg-preset" data-theme="xilian" data-border="xilian" style="--accent:#80c0e0;--glow:rgba(128,192,224,0.3)" data-thumb="bg/thumb/xilian.jpg" aria-label="昔涟"></button>
           <!-- 星穹铁道: 大丽花 -->
-          <button class="bg-preset" data-theme="dahlia" data-border="dahlia" style="--accent:#e85070;--glow:rgba(232,80,112,0.4);background-image:url(bg/thumb/dahlia.jpg);background-size:cover" aria-label="大丽"></button>
+          <button class="bg-preset" data-theme="dahlia" data-border="dahlia" style="--accent:#e85070;--glow:rgba(232,80,112,0.4)" data-thumb="bg/thumb/dahlia.jpg" aria-label="大丽"></button>
           <!-- 星穹铁道: 卡芙卡 -->
-          <button class="bg-preset" data-theme="kafka" data-border="kafka" style="--accent:#e068a0;--glow:rgba(224,104,160,0.35);background-image:url(bg/thumb/kafka.jpg);background-size:cover" aria-label="卡芙"></button>
+          <button class="bg-preset" data-theme="kafka" data-border="kafka" style="--accent:#e068a0;--glow:rgba(224,104,160,0.35)" data-thumb="bg/thumb/kafka.jpg" aria-label="卡芙"></button>
           <!-- 绝区零: 仪玄 -->
-          <button class="bg-preset" data-theme="yixuan" data-border="yixuan" style="--accent:#40b8c8;--glow:rgba(64,184,200,0.3);background-image:url(bg/thumb/yixuan.jpg);background-size:cover" aria-label="仪玄"></button>
+          <button class="bg-preset" data-theme="yixuan" data-border="yixuan" style="--accent:#40b8c8;--glow:rgba(64,184,200,0.3)" data-thumb="bg/thumb/yixuan.jpg" aria-label="仪玄"></button>
           <!-- 绝区零: 星见雅 -->
-          <button class="bg-preset" data-theme="miyabi" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3);background-image:url(bg/thumb/miyabi.jpg);background-size:cover" aria-label="星见"></button>
+          <button class="bg-preset" data-theme="miyabi" data-border="miyabi" style="--accent:#8890d8;--glow:rgba(136,144,216,0.3)" data-thumb="bg/thumb/miyabi.jpg" aria-label="星见"></button>
           <!-- 绝区零: 叶舜光 -->
-          <button class="bg-preset" data-theme="yeshunguang" data-border="yeshunguang" style="--accent:#c8a850;--glow:rgba(200,168,80,0.3);background-image:url(bg/thumb/yeshunguang.jpg);background-size:cover" aria-label="叶舜"></button>
+          <button class="bg-preset" data-theme="yeshunguang" data-border="yeshunguang" style="--accent:#c8a850;--glow:rgba(200,168,80,0.3)" data-thumb="bg/thumb/yeshunguang.jpg" aria-label="叶舜"></button>
           <!-- 崩坏3: 爱莉希雅 -->
-          <button class="bg-preset" data-theme="elysia" data-border="elysia" style="--accent:#f0a0b8;--glow:rgba(240,160,184,0.3);background-image:url(bg/thumb/elysia.jpg);background-size:cover" aria-label="爱莉希雅"></button>
+          <button class="bg-preset" data-theme="elysia" data-border="elysia" style="--accent:#f0a0b8;--glow:rgba(240,160,184,0.3)" data-thumb="bg/thumb/elysia.jpg" aria-label="爱莉希雅"></button>
           <!-- 崩坏3: 丽塔 -->
-          <button class="bg-preset" data-theme="rita" data-border="rita" style="--accent:#e84868;--glow:rgba(232,72,104,0.4);background-image:url(bg/thumb/rita.jpg);background-size:cover" aria-label="丽塔"></button>
+          <button class="bg-preset" data-theme="rita" data-border="rita" style="--accent:#e84868;--glow:rgba(232,72,104,0.4)" data-thumb="bg/thumb/rita.jpg" aria-label="丽塔"></button>
           <!-- 崩坏3: 符华 -->
-          <button class="bg-preset" data-theme="fuhua" data-border="fuhua" style="--accent:#f0a060;--glow:rgba(240,160,96,0.35);background-image:url(bg/thumb/fuhua.jpg);background-size:cover" aria-label="符华"></button>
+          <button class="bg-preset" data-theme="fuhua" data-border="fuhua" style="--accent:#f0a060;--glow:rgba(240,160,96,0.35)" data-thumb="bg/thumb/fuhua.jpg" aria-label="符华"></button>
           <!-- 崩坏3: 八重樱 -->
-          <button class="bg-preset" data-theme="sakura-b3" data-border="sakura-b3" style="--accent:#f0a8b8;--glow:rgba(240,168,184,0.3);background-image:url(bg/thumb/sakura-b3.jpg);background-size:cover" aria-label="八重"></button>
+          <button class="bg-preset" data-theme="sakura-b3" data-border="sakura-b3" style="--accent:#f0a8b8;--glow:rgba(240,168,184,0.3)" data-thumb="bg/thumb/sakura-b3.jpg" aria-label="八重"></button>
           <!-- 崩坏3: 雷之律者 -->
-          <button class="bg-preset" data-theme="hot" data-border="hot" style="--accent:#a060e0;--glow:rgba(160,96,224,0.4);background-image:url(bg/thumb/hot.jpg);background-size:cover" aria-label="雷之律"></button>
+          <button class="bg-preset" data-theme="hot" data-border="hot" style="--accent:#a060e0;--glow:rgba(160,96,224,0.4)" data-thumb="bg/thumb/hot.jpg" aria-label="雷之律"></button>
           <!-- 崩坏3: 空之律者 -->
-          <button class="bg-preset" data-theme="hov" data-border="hov" style="--accent:#d8b8e8;--glow:rgba(216,184,232,0.3);background-image:url(bg/thumb/hov.jpg);background-size:cover" aria-label="空之律"></button>
+          <button class="bg-preset" data-theme="hov" data-border="hov" style="--accent:#d8b8e8;--glow:rgba(216,184,232,0.3)" data-thumb="bg/thumb/hov.jpg" aria-label="空之律"></button>
           <!-- 崩坏3: 李素裳 -->
-          <button class="bg-preset" data-theme="sushang" data-border="sushang" style="--accent:#80b8d8;--glow:rgba(128,184,216,0.3);background-image:url(bg/thumb/sushang.jpg);background-size:cover" aria-label="李素"></button>
+          <button class="bg-preset" data-theme="sushang" data-border="sushang" style="--accent:#80b8d8;--glow:rgba(128,184,216,0.3)" data-thumb="bg/thumb/sushang.jpg" aria-label="李素"></button>
 
         </div>
         <div class="bg-url-row">

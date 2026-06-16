@@ -581,10 +581,12 @@ html.mobile-perf .splash-ring-aura {
   opacity: 0.38;
 }
 
-html.mobile-perf .splash-sweep,
+/* Mobile: keep sweep and glint as lightweight one-shot — quality preserved */
+html.mobile-perf .splash-sweep {
+  animation: sweepTravel 0.48s cubic-bezier(0.33, 0, 0.2, 1) 0.48s forwards;
+}
 html.mobile-perf .splash-glint {
-  animation: none;
-  display: none;
+  animation: glintTravel 0.42s cubic-bezier(0.33, 0, 0.2, 1) 0.46s forwards;
 }
 
 /* Top bar: lighter glass bloom */
@@ -1765,7 +1767,18 @@ html:not(.is-splashing) .top-bar {
   background-repeat: no-repeat;
   transform: scale(var(--bg-scale, 1));
   filter: brightness(var(--bg-brightness, 1));
-  transition: opacity 400ms var(--spring), background-image 600ms var(--spring);
+  transition: opacity 400ms var(--spring);
+}
+
+/* Second background layer for crossfade transitions */
+.chat-bg-overlay-next {
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-bg-overlay-next.crossfading {
+  opacity: var(--bg-opacity, 0.35);
 }
 
 /* Theme-open: background becomes interactive for gestures */
