@@ -1,313 +1,27 @@
-  // =========================================================================
-  // STATE — runtime application state (persisted to localStorage)
-  // =========================================================================
-
-  const state = {
-    conversations: [],
-    currentConversationId: null,
-    apiKeys: {},
-    models: { xai: [], deepseek: [], openai: [], openrouter: [], groq: [], moonshot: [], zhipu: [], siliconflow: [] },
-    chatBackground: { type: 'none', value: '', opacity: 35 },
-    themeOverrides: {},
-    activeTheme: '',
-    actionPrompts: { regenerate: '', continue: '', summarize: '', elaborate: '' },
-    worldStarterEnabled: false,
-    schemaVersion: 0,
-    abortController: null,
-    isStreaming: false,
-    pendingRenameId: null,
-    pendingConfirmAction: null,
-    pendingHiddenRequest: null,
-    ui: {
-      isHistoryOpen: false,
-      isSettingsOpen: false,
-      isThemeOpen: false,
-      autoFollowStreaming: true,
-      userScrolling: false,
-      lastUserScrollAt: 0,
-      programmaticScroll: false,
-      detachedDuringStreaming: false,
-      pendingStreamRender: false,
-      detachedContentDirty: false,
-    },
-    _remoteMemoryPrefetchLocks: {},
-  };
-
-  // =========================================================================
-  // DOM REFS
-  // =========================================================================
-
-  const $ = (sel) => document.querySelector(sel);
-
-  const dom = {};
-  function cacheDom() {
-    dom.splash = $('#splash');
-    dom.appContainer = $('#appContainer');
-    dom.topBar = $('#topBar');
-    dom.btnToggleHistory = $('#btnToggleHistory');
-    dom.btnToggleSettings = $('#btnToggleSettings');
-    dom.btnToggleBg = $('#btnToggleBg');
-    dom.themeDrawer = $('#themeDrawer');
-    dom.themeOverlay = $('#themeOverlay');
-    dom.btnCloseTheme = $('#btnCloseTheme');
-    dom.topBarInfo = $('#topBarInfo');
-    dom.convTitle = $('#convTitle');
-    dom.badgeProvider = $('#badgeProvider');
-    dom.badgeModel = $('#badgeModel');
-    dom.contextStats = $('#contextStats');
-
-    dom.historyOverlay = $('#historyOverlay');
-    dom.historyDrawer = $('#historyDrawer');
-    dom.btnCloseHistory = $('#btnCloseHistory');
-    dom.btnToggleArchived = $('#btnToggleArchived');
-    dom.archivedCount = $('#archivedCount');
-    dom.searchInput = $('#searchInput');
-    dom.convList = $('#convList');
-    dom.btnExportAll = $('#btnExportAll');
-    dom.btnImport = $('#btnImport');
-    dom.btnClearAll = $('#btnClearAll');
-    dom.btnClearArchived = $('#btnClearArchived');
-    dom.importFileInput = $('#importFileInput');
-
-    dom.settingsOverlay = $('#settingsOverlay');
-    dom.settingsDrawer = $('#settingsDrawer');
-    dom.btnCloseSettings = $('#btnCloseSettings');
-    dom.selectProvider = $('#selectProvider');
-    dom.inputApiKey = $('#inputApiKey');
-    dom.labelApiKey = $('#labelApiKey');
-    dom.apiKeyHint = $('#apiKeyHint');
-    dom.selectModel = $('#selectModel');
-    dom.modelHint = $('#modelHint');
-    dom.btnRefreshModels = $('#btnRefreshModels');
-    dom.inputCustomModel = $('#inputCustomModel');
-    dom.inputSystemPrompt = $('#inputSystemPrompt');
-    dom.inputTemperature = $('#inputTemperature');
-    dom.tempVal = $('#tempVal');
-    dom.inputTopP = $('#inputTopP');
-    dom.topPVal = $('#topPVal');
-    dom.inputMaxTokens = $('#inputMaxTokens');
-    dom.inputReplyCharLimit = $('#inputReplyCharLimit');
-    dom.inputStream = $('#inputStream');
-    dom.inputCaching = $('#inputCaching');
-    dom.inputPreciseMode = $('#inputPreciseMode');
-    dom.selectToolCallLimit = $('#selectToolCallLimit');
-    dom.chatBgOverlay = $('#chatBgOverlay');
-    dom.chatBgOverlayNext = $('#chatBgOverlayNext');
-    dom.bgPresets = $('#bgPresets');
-    dom.inputBgOpacity = $('#inputBgOpacity');
-    dom.inputBgBrightness = $('#inputBgBrightness');
-    dom.inputUIOpacity = $('#inputUIOpacity');
-    dom.inputBubbleOpacity = $('#inputBubbleOpacity');
-    dom.btnAdjustBg = $('#btnAdjustBg');
-    dom.btnResetBg = $('#btnResetBg');
-    dom.bgAdjustOverlay = $('#bgAdjustOverlay');
-    dom.bgAdjustImage = $('#bgAdjustImage');
-    dom.bgAdjustViewport = $('#bgAdjustViewport');
-    dom.btnBgAdjustSave = $('#btnBgAdjustSave');
-    dom.btnBgAdjustClose = $('#btnBgAdjustClose');
-    dom.btnPickBgImage = $('#btnPickBgImage');
-    dom.btnRemoveBgImage = $('#btnRemoveBgImage');
-    dom.inputBgFile = $('#inputBgFile');
-    dom.inputBgUrl = $('#inputBgUrl');
-    dom.btnApplyBgUrl = $('#btnApplyBgUrl');
-    dom.inputActionRegenerate = $('#inputActionRegenerate');
-    dom.inputActionContinue = $('#inputActionContinue');
-    dom.inputActionSummarize = $('#inputActionSummarize');
-    dom.inputActionElaborate = $('#inputActionElaborate');
-    dom.inputStoryMode = $('#inputStoryMode');
-    dom.inputAutoCompress = $('#inputAutoCompress');
-    dom.inputKeepThinking = $('#inputKeepThinking');
-    dom.btnStartWorld = $('#btnStartWorld');
-    dom.inputSceneDetail = $('#inputSceneDetail');
-    dom.selectStoryAuxProvider = $('#selectStoryAuxProvider');
-    dom.selectStoryAuxModel = $('#selectStoryAuxModel');
-    dom.inputStoryAuxModel = $('#inputStoryAuxModel');
-    dom.inputStoryAuxMaxTokens = $('#inputStoryAuxMaxTokens');
-    dom.inputStoryAuxApiKey = $('#inputStoryAuxApiKey');
-    dom.scenePanel = $('#scenePanel');
-    dom.scenePanelToggle = $('#scenePanelToggle');
-    dom.scenePanelBody = $('#scenePanelBody');
-    dom.sceneMental = $('#sceneMental');
-    dom.sceneMentalScore = $('#sceneMentalScore');
-    dom.scenePhysical = $('#scenePhysical');
-    dom.scenePlot = $('#scenePlot');
-    dom.sceneDirections = $('#sceneDirections');
-    dom.sceneCapsule = $('#sceneCapsule');
-    // World opening card
-    dom.sceneWorldCard = $('#sceneWorldCard');
-    dom.sceneWorldToggle = $('#sceneWorldToggle');
-    dom.sceneWorldBody = $('#sceneWorldBody');
-    dom.sceneOpeningName = $('#sceneOpeningName');
-    dom.sceneSetting = $('#sceneSetting');
-    dom.sceneLocations = $('#sceneLocations');
-    dom.sceneRules = $('#sceneRules');
-    dom.sceneMood = $('#sceneMood');
-    dom.sceneWorldNotes = $('#sceneWorldNotes');
-    // Character card
-    dom.sceneCharCard = $('#sceneCharCard');
-    dom.sceneCharToggle = $('#sceneCharToggle');
-    dom.sceneCharBody = $('#sceneCharBody');
-    dom.sceneCharName = $('#sceneCharName');
-    dom.sceneCharAge = $('#sceneCharAge');
-    dom.sceneCharRole = $('#sceneCharRole');
-    dom.sceneCharSpecies = $('#sceneCharSpecies');
-    dom.sceneCharAppearance = $('#sceneCharAppearance');
-    dom.sceneCharTraits = $('#sceneCharTraits');
-    dom.sceneCharStats = $('#sceneCharStats');
-    dom.sceneCharGoal = $('#sceneCharGoal');
-    dom.btnCopyCharCard = $('#btnCopyCharCard');
-    dom.btnGenOpeningPrompt = $('#btnGenOpeningPrompt');
-    dom.sceneTabs = $('#sceneTabs');
-    dom.sceneNpcGrid = $('#sceneNpcGrid');
-    dom.moodChips = $('#moodChips');
-    dom.speciesChips = $('#speciesChips');
-    dom.btnGenHints = $('#btnGenHints');
-    dom.btnFinishSetup = $('#btnFinishSetup');
-    dom.npcImageInput = $('#npcImageInput');
-    // Status bar card
-    dom.sceneStatusCard = $('#sceneStatusCard');
-    dom.sceneStatusToggle = $('#sceneStatusToggle');
-    dom.sceneStatusBody = $('#sceneStatusBody');
-    dom.sceneHealth = $('#sceneHealth');
-    dom.sceneStamina = $('#sceneStamina');
-    dom.sceneComposure = $('#sceneComposure');
-    dom.sceneFocus = $('#sceneFocus');
-    dom.sceneObjective = $('#sceneObjective');
-    dom.sceneConstraints = $('#sceneConstraints');
-    // NPC card
-    dom.sceneNpcCard = $('#sceneNpcCard');
-    dom.sceneNpcToggle = $('#sceneNpcToggle');
-    dom.sceneNpcBody = $('#sceneNpcBody');
-    dom.sceneNpcList = $('#sceneNpcList');
-    dom.btnAddNpc = $('#btnAddNpc');
-    dom.toolWarning = $('#toolWarning');
-
-    dom.mainContent = $('#mainContent');
-    dom.messagesContainer = $('#messagesContainer');
-    dom.welcomeScreen = $('#welcomeScreen');
-    dom.welcomeStatus = $('#welcomeStatus');
-    dom.welcomeApiStep = $('#welcomeApiStep');
-    dom.welcomeModelStep = $('#welcomeModelStep');
-    dom.welcomeHint = $('#welcomeHint');
-    dom.btnWelcomeSetup = $('#btnWelcomeSetup');
-    dom.btnWelcomeHistory = $('#btnWelcomeHistory');
-
-    dom.bottomBar = $('#bottomBar');
-    dom.inputMessage = $('#inputMessage');
-    dom.btnSend = $('#btnSend');
-    dom.btnStop = $('#btnStop');
-    dom.btnQuickMemory = $('#btnQuickMemory');
-    dom.memoryPanel = $('#memoryPanel');
-    dom.memoryInput = $('#memoryInput');
-    dom.btnMemorySave = $('#btnMemorySave');
-    dom.btnMemoryClear = $('#btnMemoryClear');
-
-    dom.toastContainer = $('#toastContainer');
-    dom.dialogOverlay = $('#dialogOverlay');
-    dom.dialogBody = $('#dialogBody');
-    dom.dialogConfirm = $('#dialogConfirm');
-    dom.dialogCancel = $('#dialogCancel');
-    dom.renameDialogOverlay = $('#renameDialogOverlay');
-    dom.renameInput = $('#renameInput');
-    dom.renameConfirm = $('#renameConfirm');
-    dom.renameCancel = $('#renameCancel');
-  }
+import { state } from './state.js';
+import { dom, cacheDom } from './dom.js';
+import { STORAGE_KEY, DEFAULTS, PROVIDERS, PROVIDER_CAPS, ERR_MSGS, SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY, getRuntimeConfigValue, SCENE_MOODS, SCENE_SPECIES, REQUEST_CHAR_SOFT_LIMIT, REQUEST_RECENT_MSG_LIMIT, REQUEST_RECENT_CHAR_LIMIT, REQUEST_DIGEST_CHAR_LIMIT, REQUEST_DIGEST_LINE_LIMIT, SYSTEM_PROMPT_PRECISE, SYSTEM_PROMPT_DEFAULT } from './01_constants.js';
+import { generateId, nowISO, debounce, resolveStoryAuxProviderAndModel } from './02_utils.js';
+import { saveToStorage, loadFromStorage, debouncedSave, overrideDebouncedSave, restoreDebouncedSave, saveSecretsAndPrefs, loadSecretsAndPrefs } from './03_storage.js';
+import { createStoryMode, repairStoryModeFlags, migrateStoryMode, normalizeConversation, normalizeMessage, normalizeMemoryMode, syncStoryModeToLegacy, syncLegacyToStoryMode, isStoryEnabled, isStoryStarted, looksLikeWorldCharacterCard, createSceneState, createSceneWorld, createSceneCharacter, createSceneStatus, createSceneNpc, normalizeSceneNpcs, clipStr, clipStringArray, createStoryMemory, createStoryChapter, normalizeStoryChapters, normalizeStoryMemory, normalizeMentalScore } from './04_migration.js';
+import { getProviderConfig, getProviderCap, getApiKey, resolveModel, buildRequestHeaders, buildRequestBody, parseModelList, parseStreamDelta, parseNonStreamResponse, isAnthropicModel } from './05_providers.js';
+import { getSceneLine, getSceneLineAny, getSceneDirections, parseDirectionOptions, parseCharacterStatuses, getSceneBodyDetails, parseSceneChoiceInput, buildSceneFallbackDirections, buildHardFallbackDirections } from './06_story_parser.js';
+import { escapeHtml, escapeAttr, isSafeMarkdownUrl, renderContentFast, appendFastText, getVisibleAssistantContent, renderMarkdown } from './07_markdown.js';
+import { newConversation, switchConversation, clearCurrentConversation, deleteLastRound, copyLastAssistantReply, deleteConversation, renameConversation, exportAllJSON, importJSON, autoArchiveCheck, toggleConversationArchive, toggleShowArchived } from './08_conversation_actions.js';
+import { populateModelSelect, refreshModels, updateToolWarning } from './09_model_management.js';
+import { _authState, _authSending, setAuthSending, getAuthState, setAuthSession, clearAuthSession, syncAuthUI, setAuthLoading, setAuthError, markAuthInitialised, isValidEmail, getAuthCooldownRemainingSeconds, detectAuthCallbackParams, cleanAuthCallbackUrl, isStandalonePWA, showAuthCallbackHint } from './10_auth.js';
+import { showToast, showConfirm, hideConfirm, showRenameDialog, hideRenameDialog, showUpdateDialog } from './13_ui.js';
+import { setupViewportInsets, updateBottomBarHeight, ensureMessagesBottomSpacer, getScrollContainer, isNearBottom, scrollToBottomIfNeeded, scheduleFollowScroll, scrollToBottom, preserveScrollPosition, onUserScrollIntent, updateScrollToBottomButton, resetStreamFollowState } from './17_scroll.js';
+import { renderConvList, renderMessages, fullRenderMessages, renderBubbleHTML, createMessageElement, animateBubbleIn, updateLastBubble, updateTopBar, updateWelcomeUI, updateArchiveToggleUI, formatDate, getRenderableMessageEntries } from './14_render.js';
+import { syncFullBackup, restoreFromCloud, startCloudBackupScheduler, stopCloudBackupScheduler, updateCloudBackupUI } from './18_cloud.js';
 
 
-  // =========================================================================
-  // TOAST
-  // =========================================================================
-
-  function showToast(msg, type = 'info', duration = 3000) {
-    // Remove existing toasts — only the latest message should be visible
-    while (dom.toastContainer.firstChild) {
-      dom.toastContainer.firstChild.remove();
-    }
-    var toast = document.createElement('div');
-    toast.className = 'toast ' + type;
-    toast.textContent = msg;
-    dom.toastContainer.appendChild(toast);
-    // Force reflow so enter animation fires after append
-    toast.offsetHeight;
-    setTimeout(function() {
-      toast.classList.add('toast-exit');
-      toast.addEventListener('transitionend', function() { toast.remove(); }, { once: true });
-    }, duration);
-  }
-
-  // =========================================================================
-  // DIALOG
-  // =========================================================================
-
-  function showConfirm(msg, onConfirm) {
-    // Reset button state to defaults
-    dom.dialogConfirm.textContent = '确认';
-    dom.dialogConfirm.className = 'btn btn-danger';
-    dom.dialogCancel.textContent = '取消';
-    dom.dialogCancel.style.display = '';
-    state.pendingConfirmAction = onConfirm;
-    dom.dialogBody.innerHTML = msg;
-    dom.dialogOverlay.style.display = 'flex';
-  }
-
-  function hideConfirm() {
-    state.pendingConfirmAction = null;
-    dom.dialogCancel.style.display = '';
-    if (dom.dialogOverlay.style.display === 'none') return;
-    dom.dialogOverlay.classList.add('dialog-overlay-exit', 'dialog-exit');
-    dom.dialogOverlay.querySelector('.dialog').addEventListener('animationend', function() {
-      dom.dialogOverlay.style.display = 'none';
-      dom.dialogOverlay.classList.remove('dialog-overlay-exit', 'dialog-exit');
-    }, { once: true });
-  }
-
-  function showRenameDialog(id, currentTitle) {
-    state.pendingRenameId = id;
-    dom.renameInput.value = currentTitle || '';
-    dom.renameDialogOverlay.style.display = 'flex';
-    setTimeout(() => dom.renameInput.focus(), 100);
-  }
-
-  function hideRenameDialog() {
-    state.pendingRenameId = null;
-    if (dom.renameDialogOverlay.style.display === 'none') return;
-    dom.renameDialogOverlay.classList.add('dialog-overlay-exit', 'dialog-exit');
-    var dialog = dom.renameDialogOverlay.querySelector('.dialog');
-    if (dialog) {
-      dialog.addEventListener('animationend', function() {
-        dom.renameDialogOverlay.style.display = 'none';
-        dom.renameDialogOverlay.classList.remove('dialog-overlay-exit', 'dialog-exit');
-      }, { once: true });
-    } else {
-      dom.renameDialogOverlay.style.display = 'none';
-    }
-  }
-
-  function showUpdateDialog() {
-    dom.dialogBody.innerHTML = '发现新版本，已下载就绪。<br><br>是否立即重启应用？';
-    dom.dialogConfirm.textContent = '重启更新';
-    dom.dialogConfirm.className = 'btn btn-primary';
-    dom.dialogCancel.textContent = '稍后';
-    dom.dialogOverlay.style.display = 'flex';
-
-    state.pendingConfirmAction = function () {
-      hideConfirm();
-      if (window.__pendingWorker) {
-        window.__pendingWorker.postMessage({ type: 'SKIP_WAITING' });
-      } else if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-      }
-      setTimeout(function () {
-        window.location.reload();
-      }, 1500);
-    };
-  }
 
   // =========================================================================
   // CONVERSATION HELPERS
   // =========================================================================
 
-  function getCurrentConv() {
+  export function getCurrentConv() {
     return state.conversations.find((c) => c.id === state.currentConversationId) || null;
   }
 
@@ -515,7 +229,7 @@
     html += '</div>';
     return html;
   }
-  function createConversation(provider) {
+  export function createConversation(provider) {
     const p = provider || 'openai';
     return {
       id: generateId(),
@@ -563,7 +277,7 @@
     };
   }
 
-  function autoTitle(conv) {
+  export function autoTitle(conv) {
     const firstUser = conv.messages.find((m) => m.role === 'user');
     if (firstUser) {
       const text = String(firstUser.content || '').replace(/\s+/g, ' ').trim();
@@ -571,7 +285,7 @@
     }
   }
 
-  function updateTimestamp(conv) {
+  export function updateTimestamp(conv) {
     conv.updatedAt = nowISO();
   }
 
@@ -613,7 +327,7 @@
     return clipText(lines.join('\n'), REQUEST_DIGEST_CHAR_LIMIT);
   }
 
-  function buildConversationRequestMessages(conv, supportsCaching) {
+  export function buildConversationRequestMessages(conv, supportsCaching) {
     const rawMessages = conv.messages
       .filter((m) => (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
       .map(cloneRequestMessage);
@@ -765,7 +479,7 @@
 
     // Block all persistence during editing
     state.ui._originalDebouncedSave = debouncedSave;
-    debouncedSave = function() { /* no-op during story editing */ };
+    overrideDebouncedSave(function() { /* no-op during story editing */ });
 
     // Replace conv references with deep clones (→ all handlers write to draft)
     conv.sceneWorld = JSON.parse(JSON.stringify(conv.sceneWorld || {}));
@@ -861,7 +575,7 @@
 
     // Restore persistence
     if (state.ui._originalDebouncedSave) {
-      debouncedSave = state.ui._originalDebouncedSave;
+      overrideDebouncedSave(state.ui._originalDebouncedSave);
       state.ui._originalDebouncedSave = null;
     }
 
@@ -944,808 +658,6 @@
       inputs[i].removeEventListener('change', _storyEditorDirtyHandler);
       inputs[i].removeEventListener('focus', _storyEditorFocusHandler);
     }
-  }
-
-  // =========================================================================
-  // RENDER: CONVERSATION LIST
-  // =========================================================================
-
-  function renderConvList() {
-    const query = (dom.searchInput.value || '').toLowerCase().trim();
-    const showArchived = state.showArchived || query;
-    let list = state.conversations;
-
-    // Filter by archive status (unless searching); always show active conv
-    if (!query) {
-      list = list.filter((c) => c.id === state.currentConversationId || showArchived || !c.archived);
-    }
-
-    // Search filter
-    if (query) {
-      list = list.filter((c) => {
-        if (c.title.toLowerCase().includes(query)) return true;
-        return c.messages.some((m) => String(m.content || '').toLowerCase().includes(query));
-      });
-    }
-
-    list.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    if (list.length === 0) {
-      dom.convList.innerHTML = '<div class="empty-state">' + (query ? '无匹配会话' : '暂无历史会话') + '</div>';
-      updateArchiveToggleUI();
-      return;
-    }
-
-    // Split into active and archived
-    const activeList = list.filter((c) => !c.archived);
-    const archivedList = list.filter((c) => c.archived);
-
-    function getGroupKey(c) {
-      return c.provider + '|' + (resolveModel(c) || '');
-    }
-
-    function getGroupLabel(c) {
-      var pname = (PROVIDERS[c.provider] || PROVIDERS.openai).name;
-      var model = resolveModel(c) || '(未选模型)';
-      return pname + ' · ' + model;
-    }
-
-    function renderItem(c) {
-      const isActive = c.id === state.currentConversationId;
-      const msgCount = c.messages.length;
-      const dateStr = formatDate(c.updatedAt);
-      const archiveIcon = c.archived
-        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
-        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>';
-      return (
-        '<div class="conv-item' + (isActive ? ' active' : '') + (c.archived ? ' archived' : '') + '" data-id="' + c.id + '">' +
-        '<div class="conv-item-content">' +
-        '<div class="conv-item-title">' + escapeHtml(c.title) + (c.archived ? ' <span class="archive-badge">归档</span>' : '') + '</div>' +
-        '<div class="conv-item-meta">' +
-        '<span>' + msgCount + ' 条</span>' +
-        '<span>' + dateStr + '</span>' +
-        '</div></div>' +
-        '<div class="conv-item-actions">' +
-        '<button class="conv-item-btn" data-action="archive" data-id="' + c.id + '" aria-label="归档" title="归档/取消归档">' + archiveIcon + '</button>' +
-        '<button class="conv-item-btn" data-action="rename" data-id="' + c.id + '" aria-label="重命名" title="重命名会话">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>' +
-        '</button>' +
-        '<button class="conv-item-btn danger" data-action="delete" data-id="' + c.id + '" aria-label="删除" title="删除会话">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
-        '</button></div></div>'
-      );
-    }
-
-    function renderGroupedList(convs) {
-      var groups = new Map();
-      for (var i = 0; i < convs.length; i++) {
-        var c = convs[i];
-        var key = getGroupKey(c);
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(c);
-      }
-
-      // Sort groups by most recent conversation
-      var sortedGroups = [];
-      groups.forEach(function(convsInGroup, key) {
-        var latest = 0;
-        for (var j = 0; j < convsInGroup.length; j++) {
-          var t = new Date(convsInGroup[j].updatedAt).getTime();
-          if (t > latest) latest = t;
-        }
-        sortedGroups.push({ key: key, convs: convsInGroup, latest: latest });
-      });
-      sortedGroups.sort(function(a, b) { return b.latest - a.latest; });
-
-      var html = '';
-      for (var gi = 0; gi < sortedGroups.length; gi++) {
-        var group = sortedGroups[gi];
-        var first = group.convs[0];
-        var label = getGroupLabel(first);
-
-        // Sort convs within group by updatedAt desc
-        group.convs.sort(function(a, b) { return new Date(b.updatedAt) - new Date(a.updatedAt); });
-
-        html += '<div class="conv-group">';
-        html += '<div class="conv-group-header">';
-        html += '<span class="conv-group-label">' + escapeHtml(label) + '</span>';
-        html += '<span class="conv-group-count">' + group.convs.length + '</span>';
-        html += '<button class="conv-group-add" data-provider="' + escapeHtml(first.provider) + '" data-model="' + escapeHtml(first.model || '') + '" data-custom-model="' + escapeHtml(first.customModel || '') + '" aria-label="在此模型下新建对话" title="在此模型下新建对话">';
-        html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
-        html += '</button></div>';
-
-        for (var ci = 0; ci < group.convs.length; ci++) {
-          html += renderItem(group.convs[ci]);
-        }
-        html += '</div>';
-      }
-      return html;
-    }
-
-    var html = renderGroupedList(activeList);
-
-    if (archivedList.length > 0) {
-      html += '<div class="archive-section-header">归档 · ' + archivedList.length + ' 个会话</div>';
-      for (var ai = 0; ai < archivedList.length; ai++) {
-        html += renderItem(archivedList[ai]);
-      }
-    }
-
-    dom.convList.innerHTML = html;
-
-    updateArchiveToggleUI();
-  }
-
-  function updateArchiveToggleUI() {
-    var totalArchived = 0;
-    for (var i = 0; i < state.conversations.length; i++) {
-      if (state.conversations[i].archived) totalArchived++;
-    }
-    dom.archivedCount.textContent = totalArchived > 0 ? totalArchived : '';
-    dom.btnToggleArchived.classList.toggle('active', state.showArchived);
-    if (totalArchived === 0) {
-      dom.btnToggleArchived.style.opacity = '0.4';
-    } else {
-      dom.btnToggleArchived.style.opacity = '';
-    }
-  }
-
-  function formatDate(isoStr) {
-    const d = new Date(isoStr);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffMin = Math.floor(diffMs / 60000);
-
-    if (diffMin < 1) return '刚刚';
-    if (diffMin < 60) return `${diffMin} 分钟前`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr} 小时前`;
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 7) return `${diffDay} 天前`;
-
-    const m = d.getMonth() + 1;
-    const day = d.getDate();
-    return `${m}/${day}`;
-  }
-
-  // =========================================================================
-  // RENDER: MESSAGES
-  // =========================================================================
-
-  function getRenderableMessageEntries(messages) {
-    const entries = [];
-    for (let i = 0; i < messages.length; i++) {
-      if (messages[i].role !== 'system') {
-        entries.push({ msg: messages[i], index: i });
-      }
-    }
-    return entries;
-  }
-
-  function renderMessages() {
-    const conv = getCurrentConv();
-    if (!conv) {
-      document.documentElement.classList.add('welcome-visible');
-      dom.messagesContainer.innerHTML = '';
-      dom.welcomeScreen.classList.remove('hidden');
-      dom.messagesContainer.appendChild(dom.welcomeScreen);
-      return;
-    }
-
-    const messages = conv.messages;
-    const renderable = getRenderableMessageEntries(messages);
-    if (renderable.length === 0) {
-      document.documentElement.classList.add('welcome-visible');
-      dom.welcomeScreen.classList.remove('hidden');
-      dom.messagesContainer.innerHTML = '';
-      dom.messagesContainer.appendChild(dom.welcomeScreen);
-      return;
-    }
-
-    document.documentElement.classList.remove('welcome-visible');
-    dom.welcomeScreen.classList.add('hidden');
-
-    // Diff-based update: compare existing DOM with needed messages
-    const existingItems = dom.messagesContainer.querySelectorAll('.message');
-    const existingCount = existingItems.length;
-
-    // If counts differ dramatically, full render
-    if (Math.abs(existingCount - renderable.length) > 1) {
-      fullRenderMessages(messages);
-      return;
-    }
-
-    // If last message is/was streaming, update it (handles both adding and removing cursor)
-    const lastEntry = renderable[renderable.length - 1];
-    const lastMsg = lastEntry.msg;
-    const lastExisting = existingItems[existingItems.length - 1] || null;
-    const hasCursor = lastExisting && lastExisting.querySelector('.streaming-cursor');
-    if (lastMsg && (lastMsg._streaming || hasCursor) && existingCount === renderable.length) {
-      updateLastBubble(lastMsg);
-      return;
-    }
-
-    // Add new messages not yet rendered
-    if (renderable.length > existingCount) {
-      dom.welcomeScreen.classList.add('hidden');
-      for (let i = existingCount; i < renderable.length; i++) {
-        const entry = renderable[i];
-        const el = createMessageElement(entry.msg, entry.index);
-        dom.messagesContainer.appendChild(el);
-        animateBubbleIn(el);
-      }
-      ensureMessagesBottomSpacer();
-    }
-  }
-
-  function fullRenderMessages(messages) {
-    // Remove only message elements, keep welcome screen and spacer
-    dom.messagesContainer.querySelectorAll('.message').forEach((el) => el.remove());
-    dom.welcomeScreen.classList.add('hidden');
-    const renderable = getRenderableMessageEntries(messages);
-    for (let i = 0; i < renderable.length; i++) {
-      const entry = renderable[i];
-      const el = createMessageElement(entry.msg, entry.index);
-      dom.messagesContainer.appendChild(el);
-      animateBubbleIn(el);
-    }
-    ensureMessagesBottomSpacer();
-  }
-
-  function renderBubbleHTML(msg, msgIndex) {
-    // Build inner HTML for an assistant message bubble
-    let html = '';
-
-    // Thinking / reasoning section
-    const reasoning = msg.reasoning || '';
-    if (reasoning) {
-      const conv = getCurrentConv();
-      const isStreamingReasoning = msg._streaming && !!reasoning;
-      const keepOpen = msg._keepThinkingOpen !== undefined
-        ? msg._keepThinkingOpen
-        : conv && conv.keepThinkingOpen !== false;
-      const stayOpen = isStreamingReasoning || (keepOpen && !msg._streaming);
-      const openAttr = stayOpen ? ' open' : '';
-      const reasonHTML = msg._streaming ? renderContentFast(reasoning) : renderMarkdown(reasoning);
-      html += '<details class="thinking-section"' + openAttr + '>';
-      html += '<summary class="thinking-header">思考过程</summary>';
-      html += '<div class="thinking-content">' + reasonHTML + '</div>';
-      html += '</details>';
-    }
-
-    // Main content — displayParts for dual-part story, otherwise single content block
-    if (msg.displayParts && msg.displayParts.length > 0 && !msg._streaming) {
-      for (var pi = 0; pi < msg.displayParts.length; pi++) {
-        var part = msg.displayParts[pi];
-        if (part.content) {
-          html += '<div class="story-part' + (pi > 0 ? ' story-part-continuation' : '') + '">';
-          html += '<div class="message-content">' + renderMarkdown(part.content) + '</div>';
-          html += '</div>';
-        }
-      }
-    } else {
-      // Original single-content path (streaming or non-displayParts messages)
-      const visibleContent = getVisibleAssistantContent(msg.content || '', msg._streaming);
-      const contentHTML = msg._streaming
-        ? renderContentFast(visibleContent)
-        : renderMarkdown(visibleContent);
-      html += '<div class="message-content">' + contentHTML + '</div>';
-    }
-
-    if (msg._sceneFinalizing) {
-      html += '<div class="scene-finalizing-hint">整理剧情走向…</div>';
-    }
-
-    if (msg.sceneSnapshot && !msg._streaming) {
-      html += renderSceneStatusTable(msg, msgIndex);
-    }
-
-    // Token usage
-    if (msg.usage && !msg._streaming) {
-      const u = msg.usage;
-      html += '<div class="token-usage">';
-      html += 'Tokens: ' + (u.prompt_tokens || 0).toLocaleString() + ' 入';
-      html += ' + ' + (u.completion_tokens || 0).toLocaleString() + ' 出';
-      if (u.total_tokens) {
-        html += ' = ' + u.total_tokens.toLocaleString() + ' 总';
-      }
-      // Cache tokens (Anthropic)
-      if (u.cache_read_input_tokens) {
-        html += ' · <span class="cache-hit">缓存命中 ' + u.cache_read_input_tokens.toLocaleString() + '</span>';
-      }
-      if (u.cache_creation_input_tokens) {
-        html += ' · <span class="cache-new">新建缓存 ' + u.cache_creation_input_tokens.toLocaleString() + '</span>';
-      }
-      if (u.completion_tokens_details && u.completion_tokens_details.reasoning_tokens) {
-        html += ' (含 ' + u.completion_tokens_details.reasoning_tokens.toLocaleString() + ' 思考)';
-      }
-      html += '</div>';
-    }
-
-    // Truncated by output limit warning — show regardless of usage presence
-    if (!msg._streaming && msg.finishReason === 'length') {
-      html += '<div class="token-usage" style="color:var(--scene-gold, #e0b060)">⚠️ 回复被 Max Tokens 截断。建议 Max Tokens ≥ 2000。</div>';
-    }
-
-    // Post-response action buttons — always show for completed assistant messages
-    if (!msg._streaming) {
-      html += '<div class="msg-actions" data-msg-index="' + (msg._actionIndex || '') + '">';
-      html += '<button class="btn-msg-action" data-action="regenerate" title="重新生成">';
-      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
-      html += '重新生成</button>';
-      html += '<button class="btn-msg-action" data-action="continue" title="继续生成">';
-      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-      html += '继续生成</button>';
-      html += '<button class="btn-msg-action" data-action="summarize" title="生成摘要">';
-      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
-      html += '生成摘要</button>';
-      html += '<button class="btn-msg-action" data-action="elaborate" title="深入探讨">';
-      html += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>';
-      html += '深入探讨</button>';
-      html += '</div>';
-    }
-
-    return html;
-  }
-
-  function createMessageElement(msg, index) {
-    const div = document.createElement('div');
-    div.className = `message ${msg.role}`;
-    div.setAttribute('data-index', index);
-
-    if (msg.role === 'system-info') {
-      div.innerHTML = '<div class="message-bubble">' + escapeHtml(msg.content) + '</div>';
-    } else if (msg.role === 'assistant') {
-      // Repair broken assistant messages that have _showActions but no valid directions
-      if (msg._showActions && !msg._streaming && (!msg.sceneSnapshot || !msg.sceneSnapshot.directions || parseDirectionOptions(msg.sceneSnapshot.directions).length < 4)) {
-        var fallbackSS = findPreviousSceneSnapshotForRender(index);
-        if (fallbackSS && fallbackSS.directions && parseDirectionOptions(fallbackSS.directions).length >= 4) {
-          msg.sceneSnapshot = createSceneState(fallbackSS);
-        }
-      }
-      const roleLabel = 'AI';
-      const bubbleClass = msg._streaming ? 'message-bubble streaming-cursor' : 'message-bubble';
-      div.innerHTML = '<div class="message-role">' + roleLabel + '</div><div class="' + bubbleClass + '">' + renderBubbleHTML(msg, index) + '</div>';
-    } else {
-      const roleLabel = 'You';
-      div.innerHTML = '<div class="message-role">' + roleLabel + '</div><div class="message-bubble">' + renderMarkdown(String(msg.displayContent || msg.content || '')) + '</div>';
-    }
-
-    return div;
-  }
-
-  function animateBubbleIn(el) {
-    // GSAP entrance for new message bubbles — single source of truth.
-    // Degrades gracefully if GSAP isn't loaded.
-    // Respects user's reduced-motion preference.
-    if (typeof gsap === 'undefined' || !el) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var bubble = el.querySelector('.message-bubble');
-    if (!bubble) return;
-    var isUser = el.classList.contains('user');
-    gsap.from(bubble, {
-      opacity: 0,
-      y: isUser ? 8 : 12,
-      scale: 0.97,
-      duration: 0.28,
-      ease: 'expo.out',
-      overwrite: 'auto',
-      clearProps: 'transform,opacity'
-    });
-  }
-
-  function updateLastBubble(msg) {
-    // Walk backwards from last child to find the nearest .message element — O(1) near
-    var lastItem = dom.messagesContainer.lastElementChild;
-    while (lastItem && !lastItem.classList.contains('message')) {
-      lastItem = lastItem.previousElementSibling;
-    }
-    if (!lastItem) return;
-    var bubble = lastItem.querySelector('.message-bubble');
-    if (!bubble) return;
-
-    var conv = getCurrentConv();
-    var msgIndex = conv && Array.isArray(conv.messages)
-      ? conv.messages.indexOf(msg)
-      : parseInt(lastItem.dataset.index, 10);
-
-    if (msg._streaming) {
-      // ---- Content incremental render ----
-      var visibleText = getVisibleAssistantContent(msg.content || '', true);
-      var prevVisible = msg._lastRenderedVisibleText || '';
-
-      var contentDiv = bubble.querySelector('.message-content');
-      if (!contentDiv && visibleText) {
-        // First time content appears — need full rebuild
-        bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-        msg._lastRenderedVisibleText = visibleText;
-        msg._lastRenderedReasoningText = msg.reasoning || '';
-      } else if (contentDiv && visibleText !== prevVisible) {
-        if (visibleText.indexOf(prevVisible) === 0) {
-          // Normal streaming: append only the delta
-          appendFastText(contentDiv, visibleText.slice(prevVisible.length));
-        } else {
-          // Fallback: visible text diverged (e.g. SCENE tag stripped mid-stream)
-          contentDiv.innerHTML = renderContentFast(visibleText);
-        }
-        msg._lastRenderedVisibleText = visibleText;
-      }
-
-      // ---- Reasoning incremental render ----
-      var reasoning = msg.reasoning || '';
-      var prevReasoning = msg._lastRenderedReasoningText || '';
-
-      if (reasoning !== prevReasoning) {
-        var thinkDiv = bubble.querySelector('.thinking-content');
-        var details = bubble.querySelector('.thinking-section');
-
-        if (!thinkDiv && reasoning) {
-          // First reasoning chunk — need full rebuild to create thinking section
-          bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-          msg._lastRenderedVisibleText = visibleText;
-        } else if (thinkDiv && reasoning.indexOf(prevReasoning) === 0) {
-          // Normal streaming: append only the delta
-          appendFastText(thinkDiv, reasoning.slice(prevReasoning.length));
-        } else if (thinkDiv) {
-          // Fallback: reasoning diverged
-          thinkDiv.innerHTML = renderContentFast(reasoning);
-        }
-
-        if (details) details.open = true;
-        msg._lastRenderedReasoningText = reasoning;
-      }
-
-      bubble.classList.add('streaming-cursor');
-
-      // Scene finalizing hint — show/hide as needed
-      var hintDiv = bubble.querySelector('.scene-finalizing-hint');
-      if (msg._sceneFinalizing) {
-        if (!hintDiv) {
-          hintDiv = document.createElement('div');
-          hintDiv.className = 'scene-finalizing-hint';
-          hintDiv.textContent = '整理剧情走向…';
-          bubble.appendChild(hintDiv);
-        }
-      } else if (hintDiv) {
-        hintDiv.remove();
-      }
-    } else {
-      // Full render when streaming ends — proper markdown everywhere
-      bubble.innerHTML = renderBubbleHTML(msg, msgIndex);
-      var details = bubble.querySelector('.thinking-section');
-      var keepOpen = msg._keepThinkingOpen !== undefined
-        ? msg._keepThinkingOpen
-        : conv && conv.keepThinkingOpen !== false;
-      if (details) details.open = !!keepOpen;
-      bubble.classList.remove('streaming-cursor');
-    }
-  }
-
-  // =========================================================================
-  // RENDER: TOP BAR / CONTEXT
-  // =========================================================================
-
-  function updateTopBar() {
-    const conv = getCurrentConv();
-    if (!conv) {
-      dom.convTitle.textContent = '新对话';
-      dom.badgeProvider.textContent = '--';
-      dom.badgeProvider.removeAttribute('data-provider');
-      dom.badgeModel.textContent = '--';
-      dom.contextStats.textContent = '';
-      return;
-    }
-
-    dom.convTitle.textContent = conv.title;
-    const pConf = getProviderConfig(conv.provider);
-    dom.badgeProvider.textContent = pConf.name;
-    dom.badgeProvider.setAttribute('data-provider', conv.provider);
-    dom.badgeModel.textContent = resolveModel(conv) || '未选择';
-
-    const charCount = countApproxChars(conv);
-    const msgCount = conv.messages.length;
-    // Short format: "8条 · 10k". Full data in title tooltip.
-    var charLabel = charCount >= 1000 ? Math.round(charCount / 100) / 10 + 'k' : charCount;
-    dom.contextStats.textContent = msgCount + '条 · ' + charLabel;
-    dom.contextStats.title = msgCount + ' 条消息 · ~' + charCount.toLocaleString() + ' 字符';
-  }
-
-  function updateWelcomeUI() {
-    const conv = getCurrentConv();
-    if (!conv || !dom.welcomeStatus) return;
-
-    const hasApiKey = !!getApiKey(conv.provider);
-    const hasModel = !!resolveModel(conv);
-    const pConf = getProviderConfig(conv.provider);
-
-    dom.welcomeApiStep.classList.toggle('done', hasApiKey);
-    dom.welcomeModelStep.classList.toggle('done', hasModel);
-    dom.welcomeApiStep.textContent = hasApiKey
-      ? `1. ${pConf.name} API Key 已就绪`
-      : `1. 填写 ${pConf.name} API Key`;
-    dom.welcomeModelStep.textContent = hasModel
-      ? `2. 模型已选择：${resolveModel(conv)}`
-      : '2. 选择或输入模型';
-
-    if (hasApiKey && hasModel) {
-      dom.welcomeHint.textContent = '配置已完成，直接在下方输入消息开始对话';
-      dom.btnWelcomeSetup.textContent = '调整设置';
-      dom.inputMessage.placeholder = '输入消息...';
-    } else {
-      dom.welcomeHint.textContent = '完成配置后就可以直接输入消息开始对话';
-      dom.btnWelcomeSetup.textContent = hasApiKey ? '选择模型' : '开始配置';
-      dom.inputMessage.placeholder = '先完成模型配置，再输入消息...';
-    }
-  }
-
-  function setupViewportInsets() {
-    // Only track keyboard inset — let CSS 100dvh handle viewport height.
-    // Do NOT override --app-height with visualViewport.height:
-    // on devices with a home indicator, visualViewport.height excludes
-    // the safe-area (~34px on iPhone), which shrinks the app container
-    // and leaves a black bar at the bottom. CSS 100dvh correctly includes
-    // the safe-area, so removing the JS override fixes the black bar.
-
-    if (!window.visualViewport) return;
-    var updateInsets = function() {
-      var vv = window.visualViewport;
-      var keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // Only apply when keyboard is clearly visible (> 50px gap); otherwise let CSS safe-bottom handle it alone
-      if (keyboardInset < 50) keyboardInset = 0;
-      document.documentElement.style.setProperty('--keyboard-inset', Math.round(keyboardInset) + 'px');
-      updateBottomBarHeight();
-    };
-    window.visualViewport.addEventListener('resize', updateInsets);
-    window.visualViewport.addEventListener('scroll', updateInsets);
-    updateInsets();
-  }
-
-  // Measure actual bottom-bar height for accurate main-content reserve.
-  // Coalesced via rAF so ResizeObserver / visualViewport bursts produce at most one
-  // getBoundingClientRect + setProperty per frame, avoiding layout thrash.
-  var _bbhPending = false;
-  var _followScrollPending = false;
-  function _updateBottomBarHeightImpl() {
-    _bbhPending = false;
-    var bar = document.querySelector('.bottom-bar');
-    if (!bar) return;
-    var h = Math.ceil(bar.getBoundingClientRect().height);
-    var prev = document.documentElement.style.getPropertyValue('--bottom-bar-h');
-    if (prev === h + 'px') return;
-    document.documentElement.style.setProperty('--bottom-bar-h', h + 'px');
-    // Keep user at bottom if they were near it before height changed
-    if (prev && prev !== h + 'px' && state.ui.autoFollowStreaming) {
-      ensureMessagesBottomSpacer();
-      var sc = getScrollContainer();
-      if (sc && isNearBottom(sc, 60)) {
-        scheduleFollowScroll(60);
-      }
-    }
-  }
-  function updateBottomBarHeight() {
-    if (_bbhPending) return;
-    _bbhPending = true;
-    requestAnimationFrame(_updateBottomBarHeightImpl);
-  }
-
-  function ensureMessagesBottomSpacer() {
-    var spacer = document.getElementById('messagesBottomSpacer');
-    if (!spacer && dom.messagesContainer) {
-      spacer = document.createElement('div');
-      spacer.id = 'messagesBottomSpacer';
-      spacer.className = 'messages-bottom-spacer';
-      dom.messagesContainer.appendChild(spacer);
-    }
-    // Always ensure spacer is the last child of messagesContainer
-    if (spacer && dom.messagesContainer && spacer.parentNode === dom.messagesContainer) {
-      if (dom.messagesContainer.lastElementChild !== spacer) {
-        dom.messagesContainer.appendChild(spacer);
-      }
-    }
-    return spacer;
-  }
-  // Expose globally so other handlers can call it
-  window._updateBottomBarHeight = updateBottomBarHeight;
-
-  // =========================================================================
-  // RENDER: SCROLL
-  // =========================================================================
-
-  // =========================================================================
-  // SMART SCROLL — auto-follow bottom unless user manually scrolls away
-  // =========================================================================
-
-  function getScrollContainer() {
-    return dom.mainContent;
-  }
-
-  function isNearBottom(el, threshold) {
-    if (!el) return true;
-    var t = threshold || 80;
-    return el.scrollHeight - el.scrollTop - el.clientHeight <= t;
-  }
-
-  function scrollToBottomIfNeeded(opts) {
-    ensureMessagesBottomSpacer();
-    var el = getScrollContainer();
-    if (!el) return;
-    var smooth = opts && opts.smooth;
-    var force = opts && opts.force;
-
-    if (!force && !state.ui.autoFollowStreaming) return;
-    if (!force && !isNearBottom(el, 120)) return;
-
-    state.ui.programmaticScroll = true;
-    if (smooth) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-      // Use native scrollend event, with 500ms fallback for older browsers
-      var scrollEnded = false;
-      var clearFlag = function() {
-        if (scrollEnded) return;
-        scrollEnded = true;
-        state.ui.programmaticScroll = false;
-      };
-      if ('onscrollend' in el) {
-        el.addEventListener('scrollend', clearFlag, { once: true });
-      }
-      setTimeout(clearFlag, 500);
-    } else {
-      scheduleFollowScroll(force ? 0 : 120);
-    }
-  }
-
-  function scheduleFollowScroll(threshold) {
-    if (_followScrollPending) return;
-    _followScrollPending = true;
-    requestAnimationFrame(function() {
-      _followScrollPending = false;
-      var el = getScrollContainer();
-      if (!el) return;
-      if (threshold && !isNearBottom(el, threshold)) {
-        state.ui.programmaticScroll = false;
-        return;
-      }
-      el.scrollTop = el.scrollHeight;
-      requestAnimationFrame(function() { state.ui.programmaticScroll = false; });
-    });
-  }
-
-  function scrollToBottom(force) {
-    scrollToBottomIfNeeded({ force: !!force });
-  }
-
-  function preserveScrollPosition(fn) {
-    var el = getScrollContainer();
-    if (!el) { fn(); return; }
-    var beforeTop = el.scrollTop;
-    // Detect whether the user was following the bottom before we mutate the DOM.
-    // If they were, we keep them at the new bottom after the mutation so that
-    // the scroll event handler (onUserScrollIntent) does not falsely flag them
-    // as detached — which would suppress all streaming renders.
-    var wasNearBottom = isNearBottom(el, 80);
-    fn();
-    // Mark scroll as programmatic so onUserScrollIntent ignores scroll events
-    // triggered by our own scrollTop restoration. Without this, the preserved
-    // position may be far enough from the new bottom that the detector falsely
-    // enters detachedDuringStreaming mode, suppressing all streaming renders
-    // until the response completes.
-    state.ui.programmaticScroll = true;
-    if (wasNearBottom) {
-      // User was following the bottom — keep them at the new bottom so they
-      // don't get falsely flagged as detached when streaming begins.
-      el.scrollTop = el.scrollHeight;
-    } else {
-      el.scrollTop = beforeTop;
-    }
-    requestAnimationFrame(function() {
-      if (wasNearBottom) {
-        el.scrollTop = el.scrollHeight;
-      } else {
-        el.scrollTop = beforeTop;
-      }
-      // Clear the flag after the rAF-delayed restoration has also fired —
-      // the scroll event it triggers will be handled before the next rAF.
-      requestAnimationFrame(function() { state.ui.programmaticScroll = false; });
-    });
-  }
-
-  function checkUserScroll() {
-    // Handled by the scroll/wheel/touch listeners below
-  }
-
-  // User scroll detection: pause auto-follow when user scrolls away.
-  // Auto-follow is ONLY restored via explicit button click or new message send.
-  function onUserScrollIntent() {
-    if (state.ui.programmaticScroll) return;
-    var el = getScrollContainer();
-    if (!el) return;
-    var nearBottom = isNearBottom(el, 80);
-
-    if (!nearBottom) {
-      state.ui.autoFollowStreaming = false;
-      state.ui.userScrolling = true;
-      state.ui.lastUserScrollAt = Date.now();
-      // Enter detached mode: stop DOM updates during streaming
-      if (state.isStreaming) {
-        state.ui.detachedDuringStreaming = true;
-      }
-      updateScrollToBottomButton(true);
-    } else {
-      // User scrolled back near bottom — clear detached state so streaming
-      // resumes normal rendering with auto-follow.
-      if (state.isStreaming && state.ui.detachedDuringStreaming) {
-        state.ui.detachedDuringStreaming = false;
-        state.ui.autoFollowStreaming = true;
-      }
-      updateScrollToBottomButton(false);
-    }
-  }
-
-  function updateScrollToBottomButton(showIntent) {
-    var btn = document.getElementById('scrollToBottomBtn');
-    var el = getScrollContainer();
-
-    // Button is visible when explicit showIntent or user scrolled away
-    var shouldShow = showIntent ||
-      (!state.ui.autoFollowStreaming && !isNearBottom(el, 80));
-
-    if (!shouldShow) {
-      if (btn) {
-        btn.classList.remove('show');
-        btn.setAttribute('aria-hidden', 'true');
-      }
-      return;
-    }
-
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.id = 'scrollToBottomBtn';
-      btn.setAttribute('aria-label', '到达最新正文');
-      btn.setAttribute('title', '到达最新正文');
-      btn.setAttribute('aria-hidden', 'true');
-      btn.addEventListener('click', function() {
-        state.ui.detachedDuringStreaming = false;
-        state.ui.detachedContentDirty = false;
-        state.ui.autoFollowStreaming = true;
-        state.ui.userScrolling = false;
-        state.ui.programmaticScroll = true;
-
-        try {
-          var sc = getScrollContainer();
-          if (sc) {
-            // Use instant scrollTop instead of smooth scrollTo to avoid
-            // intermediate scroll events racing with programmaticScroll cleanup
-            sc.scrollTop = sc.scrollHeight;
-          }
-        } finally {
-          // Double-rAF lets scroll events from scrollTop settle before
-          // we clear programmaticScroll, preventing the flag from being
-          // prematurely cleared by the smooth-scroll race
-          requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-              state.ui.programmaticScroll = false;
-            });
-          });
-          updateScrollToBottomButton(false);
-        }
-      });
-      document.body.appendChild(btn);
-    }
-
-    btn.classList.add('show');
-    btn.removeAttribute('aria-hidden');
-  }
-
-  // Reset all scroll-follow / detached-streaming flags at the start of a new request.
-  // Prevents state leakage from a previous turn where the user scrolled away
-  // during streaming — without this reset, the next stream silently skips all
-  // updateLastBubble calls and the user sees nothing.
-  function resetStreamFollowState() {
-    state.ui.autoFollowStreaming = true;
-    state.ui.userScrolling = false;
-    state.ui.detachedDuringStreaming = false;
-    state.ui.detachedContentDirty = false;
-    updateScrollToBottomButton(false);
   }
 
   // =========================================================================
@@ -2901,7 +1813,8 @@ function handleMessageAction(action, msgIndex) {
         if (lastMsg) lastMsg._showActions = false;
         var actText = prompts[action];
         updateTimestamp(conv);
-        renderAll();
+        renderMessages();
+        updateTopBar();
         sendMessageContent(actText);
         break;
       }
@@ -3014,7 +1927,7 @@ function handleMessageAction(action, msgIndex) {
   // callChatModel — reusable Chat Completions API call
   // =========================================================================
 
-  async function callChatModel(conv, model, messages, opts) {
+  export async function callChatModel(conv, model, messages, opts) {
     opts = opts || {};
     var provider = opts.provider || conv.provider;
     var stream = opts.stream !== undefined ? opts.stream : (conv.stream !== false);
@@ -3055,7 +1968,7 @@ function handleMessageAction(action, msgIndex) {
   // STORY AUX MODEL — build messages and parse JSON response
   // =========================================================================
 
-  function buildAuxMessages(conv, storyContent) {
+  export function buildAuxMessages(conv, storyContent) {
     var prev = conv.sceneState || {};
     var prevState = {
       currentRole: prev.currentRole || '',
@@ -3212,7 +2125,7 @@ function handleMessageAction(action, msgIndex) {
     return statuses;
   }
 
-  function tryParseAuxResponse(text) {
+  export function tryParseAuxResponse(text) {
     if (!text || typeof text !== 'string') return null;
     var jsonMatch = text.match(/\{[\s\S]*\}/);
     var jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
@@ -3260,7 +2173,7 @@ function handleMessageAction(action, msgIndex) {
   // Initialize per-conversation locks for story memory updates
   if (!state._storyMemoryLocks) state._storyMemoryLocks = {};
 
-  function buildStoryMemoryAuxPrompt(conv, storyContent) {
+  export function buildStoryMemoryAuxPrompt(conv, storyContent) {
     // Build a compact summary of existing storyMemory for the aux model
     var existingSummary = '';
     if (conv.storyMemory) {
@@ -3350,7 +2263,7 @@ function handleMessageAction(action, msgIndex) {
     ];
   }
 
-  function tryParseStoryMemoryResponse(text) {
+  export function tryParseStoryMemoryResponse(text) {
     if (!text || typeof text !== 'string') return null;
     var jsonMatch = text.match(/\{[\s\S]*\}/);
     var jsonStr = jsonMatch ? jsonMatch[0] : text.trim();
@@ -3365,7 +2278,7 @@ function handleMessageAction(action, msgIndex) {
     } catch (_) { return null; }
   }
 
-  function applyStoryMemoryUpdate(conv, result) {
+  export function applyStoryMemoryUpdate(conv, result) {
     if (!conv || !result) return;
     if (!conv.storyMemory) conv.storyMemory = createStoryMemory();
     var sm = conv.storyMemory;
@@ -3434,7 +2347,7 @@ function handleMessageAction(action, msgIndex) {
     conv.storyMemory = sm;
   }
 
-  function scheduleLocalStoryMemoryUpdate(convId, fullContent) {
+  export function scheduleLocalStoryMemoryUpdate(convId, fullContent) {
     if (!convId || !fullContent) return;
     var conv = null;
     for (var ci = 0; ci < state.conversations.length; ci++) {
@@ -3569,7 +2482,7 @@ function handleMessageAction(action, msgIndex) {
   // =========================================================================
 
   // hasRemoteMemoryConfig — true when conv has a remote endpoint AND memoryMode is 'remote'.
-  function hasRemoteMemoryConfig(conv) {
+  export function hasRemoteMemoryConfig(conv) {
     if (!conv) return false;
     if (conv.memoryMode !== 'remote') return false;
     return normalizeMemoryEndpoint(conv.memoryRemoteEndpoint).length > 0;
@@ -3685,7 +2598,7 @@ function handleMessageAction(action, msgIndex) {
     }
   };
 
-  function getMemoryAdapter(conv) {
+  export function getMemoryAdapter(conv) {
     // Select adapter based on conv.memoryMode.
     // 'remote' -> RemoteMemoryAdapter (falls back to local if unconfigured)
     // 'mock-remote' -> MockRemoteMemoryAdapter
@@ -3699,14 +2612,14 @@ function handleMessageAction(action, msgIndex) {
     return LocalMemoryAdapter;
   }
 
-  function retrieveStoryMemoryText(conv, userText, budget) {
+  export function retrieveStoryMemoryText(conv, userText, budget) {
     return getMemoryAdapter(conv).retrieveText(conv, userText, budget);
   }
 
   // getRemoteMemoryCacheText — combine local memory text with cached remote memory.
   // Returns the combined text clipped to budget. Falls back to local-only if the
   // cache is missing or too small to fit.
-  function getRemoteMemoryCacheText(conv, budget) {
+  export function getRemoteMemoryCacheText(conv, budget) {
     budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
     var localText = LocalMemoryAdapter.retrieveText(conv, '', budget);
     var cache = conv && conv.remoteMemoryCache;
@@ -3753,7 +2666,7 @@ function handleMessageAction(action, msgIndex) {
 
   // scheduleStoryMemoryUpdate — public entry point, delegates to the active adapter.
   // Replaces the old direct implementation (now renamed to scheduleLocalStoryMemoryUpdate).
-  function scheduleStoryMemoryUpdate(convId, fullContent) {
+  export function scheduleStoryMemoryUpdate(convId, fullContent) {
     if (!convId || !fullContent) return;
     var conv = null;
     for (var ci = 0; ci < state.conversations.length; ci++) {
@@ -3770,7 +2683,7 @@ function handleMessageAction(action, msgIndex) {
 
   // buildMemoryRetrievePayload — construct the request body for POST /api/memory/retrieve.
   // Returns a plain JSON object. No API keys or provider secrets included.
-  function buildMemoryRetrievePayload(conv, userText, budget) {
+  export function buildMemoryRetrievePayload(conv, userText, budget) {
     budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
     var recentMessages = [];
     if (conv && conv.messages && conv.messages.length > 0) {
@@ -3798,7 +2711,7 @@ function handleMessageAction(action, msgIndex) {
 
   // buildMemoryUpdatePayload — construct the request body for POST /api/memory/update.
   // Returns a plain JSON object. No API keys included.
-  function buildMemoryUpdatePayload(conv, storyContent) {
+  export function buildMemoryUpdatePayload(conv, storyContent) {
     var recentMessages = [];
     if (conv && conv.messages && conv.messages.length > 0) {
       var slice = conv.messages.slice(Math.max(0, conv.messages.length - 8));
@@ -3829,7 +2742,7 @@ function handleMessageAction(action, msgIndex) {
 
   // normalizeMemoryRetrieveResult — defensive normalize of a remote /api/memory/retrieve response.
   // Ensures memoryText is a string truncated to budget, and ID arrays are arrays.
-  function normalizeMemoryRetrieveResult(result, budget) {
+  export function normalizeMemoryRetrieveResult(result, budget) {
     budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
     var memoryText = typeof (result && result.memoryText) === 'string' ? result.memoryText : '';
     if (memoryText.length > budget) {
@@ -3844,7 +2757,7 @@ function handleMessageAction(action, msgIndex) {
 
   // normalizeMemoryUpdateResult — defensive normalize of a remote /api/memory/update response.
   // Returns a clean object with chapters/pinnedFacts/unresolvedThreads. Does not mutate input.
-  function normalizeMemoryUpdateResult(result) {
+  export function normalizeMemoryUpdateResult(result) {
     result = result || {};
     return {
       chapters: normalizeStoryChapters(result.chapters),
@@ -3923,7 +2836,7 @@ function handleMessageAction(action, msgIndex) {
   // Phase 1.2: reads supabaseProjectUrl / supabasePublishableKey from runtime
   // config first (window.__MIRA_CONFIG__ or meta tags), falls back to constants.
   let _supabaseClient = undefined;     // undefined = not yet attempted
-  function getSupabaseClient() {
+  export function getSupabaseClient() {
     if (_supabaseClient !== undefined) return _supabaseClient;
     try {
       var projectUrl = getRuntimeConfigValue('supabaseProjectUrl', SUPABASE_PROJECT_URL);
@@ -3945,7 +2858,7 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // Get Supabase session access token, or null if not signed in.
-  async function getSupabaseAccessToken() {
+  export async function getSupabaseAccessToken() {
     try {
       var client = getSupabaseClient();
       if (!client) return null;
@@ -3964,7 +2877,7 @@ function handleMessageAction(action, msgIndex) {
   // Access-Control-Allow-Headers only lists Content-Type.
   // Authenticated mode (valid access_token from Supabase Auth session):
   // additionally attaches Authorization: Bearer <token> and apikey.
-  async function buildRemoteMemoryHeaders() {
+  export async function buildRemoteMemoryHeaders() {
     var headers = { 'Content-Type': 'application/json' };
     try {
       var token = await getSupabaseAccessToken();
@@ -3994,7 +2907,7 @@ function handleMessageAction(action, msgIndex) {
   // initAuthState() — async, non-blocking. Called once after app load.
   // Phase 2.2: detects auth callback params (?code=... / #access_token=...),
   // exchanges code for session, cleans URL, and guides PWA/browser context.
-  function initAuthState() {
+  export function initAuthState() {
     if (_authState.initialised) return;
 
     setAuthLoading(true);
@@ -4036,6 +2949,9 @@ function handleMessageAction(action, msgIndex) {
         var session = sessionResult && sessionResult.data && sessionResult.data.session;
         if (session && session.user) {
           setAuthSession(session);
+          // Start cloud backup scheduler for restored session
+          startCloudBackupScheduler();
+          updateCloudBackupUI();
 
           // If we processed a callback param and now have a session,
           // show the appropriate context hint and clean the URL.
@@ -4054,7 +2970,10 @@ function handleMessageAction(action, msgIndex) {
         client.auth.onAuthStateChange(function(event, newSession) {
           if (event === 'SIGNED_IN' && newSession && newSession.user) {
             setAuthSession(newSession);
+            startCloudBackupScheduler();
+            updateCloudBackupUI();
           } else if (event === 'SIGNED_OUT') {
+            stopCloudBackupScheduler();
             clearAuthSession();
           } else if (event === 'TOKEN_REFRESHED' && newSession) {
             setAuthSession(newSession);
@@ -4072,7 +2991,7 @@ function handleMessageAction(action, msgIndex) {
   }
 
   // handleAuthLogin() — read email from input, validate, send OTP.
-  async function handleAuthLogin() {
+  export async function handleAuthLogin() {
     // Guard: if already sending or cooldown active, refresh UI and return.
     if (_authSending || getAuthCooldownRemainingSeconds() > 0) {
       syncAuthUI();
@@ -4088,7 +3007,7 @@ function handleMessageAction(action, msgIndex) {
     }
 
     setAuthError(null);
-    _authSending = true;
+    setAuthSending(true);
     syncAuthUI();
 
     try {
@@ -4131,13 +3050,13 @@ function handleMessageAction(action, msgIndex) {
         startAuthCooldown(60);
       }
     } finally {
-      _authSending = false;
+      setAuthSending(false);
       syncAuthUI();
     }
   }
 
   // handleAuthLogout() — sign out, clear auth state, preserve local data.
-  async function handleAuthLogout() {
+  export async function handleAuthLogout() {
     try {
       var client = getSupabaseClient();
       if (client) {
@@ -4146,6 +3065,9 @@ function handleMessageAction(action, msgIndex) {
     } catch (e) {
       console.warn('[OmniChat] Sign out error:', (e && e.message) || e);
     }
+
+    // Stop cloud backup scheduler before clearing auth state
+    stopCloudBackupScheduler();
 
     // Always clear local auth state regardless of remote success.
     // local chats, settings, and API keys are NEVER touched.
@@ -4161,7 +3083,7 @@ function handleMessageAction(action, msgIndex) {
   // postRemoteMemoryUpdate — POST memory update payload to the remote endpoint.
   // Fire-and-forget: failures are logged via console.warn only; never throw to UI.
   // Returns true on successful POST + JSON parse, false otherwise.
-  async function postRemoteMemoryUpdate(conv, fullContent) {
+  export async function postRemoteMemoryUpdate(conv, fullContent) {
     if (!hasRemoteMemoryConfig(conv)) return false;
     try {
       var payload = buildMemoryUpdatePayload(conv, fullContent);
@@ -4215,7 +3137,7 @@ function handleMessageAction(action, msgIndex) {
   // =========================================================================
 
   // Outer fire-and-forget wrapper — detaches fully from the call stack.
-  function prefetchRemoteMemory(conv, userText, budget) {
+  export function prefetchRemoteMemory(conv, userText, budget) {
     if (!conv || !hasRemoteMemoryConfig(conv)) return;
     budget = typeof budget === 'number' && budget > 0 ? budget : 4000;
 
@@ -4417,7 +3339,7 @@ function handleMessageAction(action, msgIndex) {
   // Returns the content generated by this part (delta from initial msg length).
   // =========================================================================
 
-  async function streamStoryPart(conv, model, messages, assistantMsg, opts) {
+  export async function streamStoryPart(conv, model, messages, assistantMsg, opts) {
     opts = opts || {};
     var startLen = (assistantMsg.content || '').length;
     var turnConvId = conv.id;
@@ -4444,19 +3366,23 @@ function handleMessageAction(action, msgIndex) {
       if (!isCurrentTurn()) return;
       if (_renderPending) return;
       _renderPending = true;
+      // Read phase: cache scroll state BEFORE any DOM writes (avoid layout thrash)
+      var sc = getScrollContainer();
+      var wasNearBottom = sc && isNearBottom(sc, 120);
       requestAnimationFrame(function () {
         _renderPending = false;
         if (!isCurrentTurn()) return;
         var now = performance.now();
-        if (now - lastRenderAt < minRenderGap) {
-          // Too soon — skip, next chunk will retry
-          return;
-        }
+        if (now - lastRenderAt < minRenderGap) return;
+        // Write phase: update bubble, then decide scroll based on cached read
         updateLastBubble(assistantMsg);
-        if (!state.ui.detachedDuringStreaming) {
-          scrollToBottomIfNeeded({ smooth: false });
-        } else {
+        if (state.ui.detachedDuringStreaming) {
+          state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
+        } else if (state.ui.autoFollowStreaming) {
+          if (wasNearBottom) { scheduleFollowScroll(120); }
+        } else {
+          updateScrollToBottomButton(false);
         }
         lastRenderAt = performance.now();
       });
@@ -4501,7 +3427,7 @@ function handleMessageAction(action, msgIndex) {
         }
       }
 
-      // Process remaining buffer — split into lines, reuse same logic
+      // Process remaining buffer
       buffer += decoder.decode();
       if (buffer.trim()) {
         var finalLines = buffer.split('\n');
@@ -4598,7 +3524,7 @@ function handleMessageAction(action, msgIndex) {
   // Uses streamStoryPart for continuous streaming display.
   // =========================================================================
 
-  async function sendStoryTurn(text, conv) {
+  export async function sendStoryTurn(text, conv) {
     // --- Regenerate guard ---
     var regenFlags = state._regenerateFlags || null;
     state._regenerateFlags = null;
@@ -4926,7 +3852,7 @@ function handleMessageAction(action, msgIndex) {
   // buildStoryMemorySystemText — format storyMemory as short system text (~4000 chars max)
   // =========================================================================
 
-  function buildStoryMemorySystemText(conv) {
+  export function buildStoryMemorySystemText(conv) {
     if (!conv || !conv.storyMemory) return '';
     var sm = conv.storyMemory;
     var hasChapters = sm.chapters && sm.chapters.length > 0;
@@ -5234,7 +4160,14 @@ function handleMessageAction(action, msgIndex) {
   // SEND MESSAGE — core send flow, scene extraction, completeness checks
   // =========================================================================
 
-  async function sendMessage() {
+  function _rollbackOptimistic(conv, optimisticMsg) {
+    if (!optimisticMsg || !conv) return;
+    var idx = conv.messages.lastIndexOf(optimisticMsg);
+    if (idx !== -1) conv.messages.splice(idx, 1);
+    renderMessages();
+  }
+
+  export async function sendMessage() {
     const text = dom.inputMessage.value.trim();
     if (!text) return;
 
@@ -5245,9 +4178,32 @@ function handleMessageAction(action, msgIndex) {
       state.currentConversationId = conv.id;
     }
 
+    // --- Optimistic update: show user bubble immediately ---
+    // Push user message and render BEFORE validation so the UI responds
+    // instantly. Roll back on validation failure below.
+    syncLegacyToStoryMode(conv);
+    repairStoryModeFlags(conv);
+    var optimisticMsg = null;
+    if (!isStoryEnabled(conv)) {
+      var regenFlags = state._regenerateFlags || null;
+      var isRegenerate = regenFlags && regenFlags.appendUserMessage === false;
+      if (!isRegenerate) {
+        optimisticMsg = { role: 'user', content: text };
+        if (state.pendingHiddenRequest) {
+          optimisticMsg._requestContent = state.pendingHiddenRequest;
+        }
+        conv.messages.push(optimisticMsg);
+        updateTimestamp(conv);
+        autoTitle(conv);
+        renderMessages();
+        scrollToBottom(true);
+      }
+    }
+
     // Validate
     const apiKey = getApiKey(conv.provider);
     if (!apiKey) {
+      _rollbackOptimistic(conv, optimisticMsg);
       showToast(ERR_MSGS.noApiKey, 'error');
       openDrawer('settings');
       return;
@@ -5255,23 +4211,25 @@ function handleMessageAction(action, msgIndex) {
 
     const model = resolveModel(conv);
     if (!model) {
+      _rollbackOptimistic(conv, optimisticMsg);
       showToast(ERR_MSGS.noModel, 'error');
       openDrawer('settings');
       return;
     }
 
-    // Validate params
     if (conv.temperature < 0 || conv.temperature > 2) {
+      _rollbackOptimistic(conv, optimisticMsg);
       showToast('Temperature 必须在 0 到 2 之间。', 'error');
       return;
     }
     if (conv.topP < 0 || conv.topP > 1) {
+      _rollbackOptimistic(conv, optimisticMsg);
       showToast('Top P 必须在 0 到 1 之间。', 'error');
       return;
     }
-    // Validate maxTokens against provider cap
     var maxTokValid = validateMaxTokensForProvider(conv.provider, conv.maxTokens);
     if (!maxTokValid.valid) {
+      _rollbackOptimistic(conv, optimisticMsg);
       showToast(maxTokValid.message, 'error');
       if (maxTokValid.cap && conv.maxTokens > maxTokValid.cap) {
         openDrawer('settings');
@@ -5280,24 +4238,20 @@ function handleMessageAction(action, msgIndex) {
     }
 
     // --- Route story mode to dual-part engine ---
-    // Must happen BEFORE regenFlags consumption so sendStoryTurn sees them,
-    // and BEFORE userMsg push to avoid duplicate messages.
-    syncLegacyToStoryMode(conv);
-    repairStoryModeFlags(conv);
     if (isStoryEnabled(conv)) {
+      if (optimisticMsg) _rollbackOptimistic(conv, optimisticMsg);
       await sendStoryTurn(text, conv);
       return;
     }
 
-    // Regenerate flag: when true, reuse existing last user message;
-    // do NOT push a duplicate user message into conv.messages.
+    // Restore regen flags (consumed after validation passed)
     var regenFlags = state._regenerateFlags || null;
     state._regenerateFlags = null;
     var isRegenerate = regenFlags && regenFlags.appendUserMessage === false;
     var extraSystemMessages = (regenFlags && regenFlags.extraSystemMessages) || [];
 
-    // Add user message (with optional hidden request content)
-    if (!isRegenerate) {
+    // If not already added optimistically, add user message now
+    if (!optimisticMsg && !isRegenerate) {
       var userMsg = { role: 'user', content: text };
       if (state.pendingHiddenRequest) {
         userMsg._requestContent = state.pendingHiddenRequest;
@@ -5854,7 +4808,7 @@ function handleMessageAction(action, msgIndex) {
   // STREAM — SSE parsing, delta accumulation, render scheduling
   // =========================================================================
 
-  async function processStream(resp, assistantMsg, conv) {
+  export async function processStream(resp, assistantMsg, conv) {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -5903,6 +4857,7 @@ function handleMessageAction(action, msgIndex) {
         // Write phase: update bubble, then decide scroll based on cached read
         updateLastBubble(assistantMsg);
         if (state.ui.detachedDuringStreaming) {
+          state.ui.detachedContentDirty = true;
           updateScrollToBottomButton(true);
         } else if (state.ui.autoFollowStreaming) {
           if (wasNearBottom) { scheduleFollowScroll(120); }
@@ -5946,6 +4901,7 @@ function handleMessageAction(action, msgIndex) {
             if (isCurrentTurn()) {
               state.ui.detachedDuringStreaming = false;
               state.ui.detachedContentDirty = false;
+              state.ui.detachedMessageCount = 0;
               updateScrollToBottomButton(false);
             }
             return;
@@ -5985,6 +4941,7 @@ function handleMessageAction(action, msgIndex) {
       state.isStreaming = false;
       state.ui.detachedDuringStreaming = false;
       state.ui.detachedContentDirty = false;
+      state.ui.detachedMessageCount = 0;
       updateScrollToBottomButton(false);
       updateSendUI();
     }
@@ -6039,7 +4996,7 @@ function handleMessageAction(action, msgIndex) {
     updateInputPlaceholder();
   }
 
-  function renderAll() {
+  export function renderAll() {
     // If hints panel belongs to a different conversation, clear it
     var hp = document.querySelector('.hints-panel');
     if (hp && hp.dataset.convId) {
@@ -6062,7 +5019,7 @@ function handleMessageAction(action, msgIndex) {
   // EVENTS — user interaction bindings, click delegation, keyboard
   // =========================================================================
 
-  function setupEvents() {
+  export function setupEvents() {
     // History drawer
     dom.btnToggleHistory?.addEventListener('click', () => openDrawer('history'));
     dom.btnCloseHistory?.addEventListener('click', () => closeDrawer('history'));
@@ -6118,8 +5075,8 @@ function handleMessageAction(action, msgIndex) {
       }
     });
 
-    // Search
-    dom.searchInput?.addEventListener('input', () => renderConvList());
+    // Search — debounced to avoid O(n*m) scan on every keystroke
+    dom.searchInput?.addEventListener('input', debounce(function() { renderConvList(); }, 200));
 
     // Settings changes - auto save
     dom.selectProvider?.addEventListener('change', () => { syncSettingsFromUI(); updateMaxTokensCap(); });
@@ -7278,6 +6235,21 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
       btnAuthLogout.addEventListener('click', function() { handleAuthLogout(); });
     }
 
+    // Cloud backup buttons
+    var btnBackupNow = $('#btnBackupNow');
+    if (btnBackupNow) {
+      btnBackupNow.addEventListener('click', function() {
+        syncFullBackup().then(function(result) {
+          if (result && result.ok) showToast('备份完成', 'success');
+          else showToast('备份失败，请检查网络或登录状态', 'error');
+        });
+      });
+    }
+    var btnRestoreFromCloud = $('#btnRestoreFromCloud');
+    if (btnRestoreFromCloud) {
+      btnRestoreFromCloud.addEventListener('click', function() { restoreFromCloud(); });
+    }
+
     dom.btnExportAll?.addEventListener('click', () => exportAllJSON());
     dom.btnImport?.addEventListener('click', () => dom.importFileInput.click());
     dom.btnClearAll?.addEventListener('click', () => clearAllConversations());
@@ -7373,7 +6345,22 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
   // INIT
   // =========================================================================
 
-  function init() {
+  export function init() {
+    // --- Global error boundary ---
+    window.onerror = function(msg, url, line, col, err) {
+      console.error('[Mira] Uncaught error:', msg, 'at', url, ':' + line + ':' + col, err);
+      try { showToast('出了点问题，已自动恢复', 'error', 4000); } catch (_) {}
+      return false; // let browser also log to console
+    };
+    window.onunhandledrejection = function(evt) {
+      console.error('[Mira] Unhandled rejection:', evt.reason);
+      try {
+        if (evt.reason && evt.reason.name !== 'AbortError') {
+          showToast('网络请求异常，请检查连接后重试', 'error', 4000);
+        }
+      } catch (_) {}
+    };
+
     cacheDom();
     loadFromStorage();
 
@@ -7710,7 +6697,23 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     // Init auth state — non-blocking, async, never delays chat
     initAuthState();
 
-    saveToStorage();
+    // 请求持久存储 — 减少浏览器/系统自动清理 localStorage 的概率。
+    // 对 iOS PWA 尤其重要：iOS 可能在存储压力下清除 Web 应用数据。
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(function(granted) {
+        if (granted) {
+          console.log('[OmniChat] 持久存储已授权');
+        }
+      }).catch(function() {});
+    }
+
+    // 仅在新安装或发生数据迁移时才保存，避免用空状态覆盖已有备份。
+    // 如果 loadFromStorage() 未能恢复数据（如 iOS PWA 存储隔离），
+    // 无条件 saveToStorage() 会用空 state 覆盖 omnichat_secrets_v1 等稳定键，
+    // 导致 API Key 和设置永久丢失。
+    if (window.__freshInstall || window.__migrated) {
+      saveToStorage();
+    }
   }
 
   // Boot
@@ -7725,15 +6728,12 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
   // Expose for debugging / external use
   window.__omnichat = {
     state,
-    getToolCallSettings: typeof getToolCallSettings !== 'undefined' ? getToolCallSettings : null,
-    runToolLoop: typeof runToolLoop !== 'undefined' ? runToolLoop : null,
-    stopCurrentRequest,
-    isAbortRequested,
+    stopCurrentRequest: typeof stopCurrentRequest !== 'undefined' ? stopCurrentRequest : null,
+    isAbortRequested: typeof isAbortRequested !== 'undefined' ? isAbortRequested : null,
     showToast,
     refreshModels,
     newConversation,
-    exportConversationMarkdown,
     exportAllJSON,
     importJSON,
   };
-})();
+

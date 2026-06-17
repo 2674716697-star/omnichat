@@ -1,11 +1,22 @@
-  // =========================================================================
+import { state } from './state.js';
+import { dom } from './dom.js';
+import { saveToStorage, debouncedSave } from './03_storage.js';
+import { generateId } from './02_utils.js';
+import { normalizeConversation } from './04_migration.js';
+import { escapeHtml, renderMarkdown, getVisibleAssistantContent } from './07_markdown.js';
+import { ERR_MSGS, DEFAULTS, STORAGE_KEY } from './01_constants.js';
+import { showToast } from './13_ui.js';
+import { getCurrentConv, createConversation, updateTimestamp, renderAll } from './99_legacy_main.js';
+import { renderConvList } from './14_render.js';
+
+// =========================================================================
   // CONVERSATION ACTIONS — archive, new, switch, clear, delete, rename,
   // export, import.  All mutations to state.conversations[] live here.
   // =========================================================================
 
   // -- Archive -----------------------------------------------------------------
 
-  function autoArchiveCheck() {
+export function autoArchiveCheck() {
     const now = Date.now();
     const threshold = 60 * 60 * 1000; // 1 hour idle
     const minMessages = 2; // ≤ 2 messages = barely used
@@ -28,7 +39,7 @@
     }
   }
 
-  function toggleConversationArchive(id) {
+export function toggleConversationArchive(id) {
     const conv = state.conversations.find((c) => c.id === id);
     if (!conv) return;
     conv.archived = !conv.archived;
@@ -39,14 +50,14 @@
     showToast(label, 'info');
   }
 
-  function toggleShowArchived() {
+export function toggleShowArchived() {
     state.showArchived = !state.showArchived;
     renderConvList();
   }
 
   // -- Conversation lifecycle --------------------------------------------------
 
-  function resetRuntimeForNewConversation() {
+export function resetRuntimeForNewConversation() {
     if (state.abortController) {
       try { state.abortController.abort(); } catch (_) {}
     }
@@ -61,12 +72,13 @@
     state.ui.detachedDuringStreaming = false;
     state.ui.pendingStreamRender = false;
     state.ui.detachedContentDirty = false;
+    state.ui.detachedMessageCount = 0;
 
     if (typeof updateScrollToBottomButton === 'function') updateScrollToBottomButton(false);
     if (typeof updateSendUI === 'function') updateSendUI();
   }
 
-  function newConversation(overrides) {
+export function newConversation(overrides) {
     resetRuntimeForNewConversation();
 
     var current = getCurrentConv();
@@ -91,7 +103,7 @@
     saveToStorage();
   }
 
-  function switchConversation(id) {
+export function switchConversation(id) {
     const conv = state.conversations.find((c) => c.id === id);
     if (!conv) return;
     // Safety: ensure switched-to conversation is normalized to current schema
@@ -103,7 +115,7 @@
     debouncedSave();
   }
 
-  function clearCurrentConversation() {
+export function clearCurrentConversation() {
     const conv = getCurrentConv();
     if (!conv) return;
     showConfirm('确认清空当前会话的所有消息？（会话参数保留）', () => {
@@ -117,7 +129,7 @@
     });
   }
 
-  function deleteLastRound() {
+export function deleteLastRound() {
     const conv = getCurrentConv();
     if (!conv || conv.messages.length === 0) return;
 
@@ -140,7 +152,7 @@
     showToast('已删除最后一轮问答', 'success');
   }
 
-  function copyLastAssistantReply() {
+export function copyLastAssistantReply() {
     const conv = getCurrentConv();
     if (!conv) return;
     for (let i = conv.messages.length - 1; i >= 0; i--) {
@@ -155,7 +167,7 @@
     showToast('没有可复制的 AI 回复', 'warning');
   }
 
-  function togglePreciseMode() {
+export function togglePreciseMode() {
     const conv = getCurrentConv();
     if (!conv) return;
     conv.preciseMode = !conv.preciseMode;
@@ -179,7 +191,7 @@
     updateTopBar();
   }
 
-  function deleteConversation(id) {
+export function deleteConversation(id) {
     showConfirm('确认删除该会话？此操作不可恢复。', () => {
       state.conversations = state.conversations.filter((c) => c.id !== id);
       if (state.currentConversationId === id) {
@@ -192,7 +204,7 @@
     });
   }
 
-  function clearAllConversations() {
+export function clearAllConversations() {
     if (state.conversations.length === 0) return;
     showConfirm(`确认删除全部 ${state.conversations.length} 个会话？<br><br>此操作不可恢复。建议先导出全部 JSON 备份。`, () => {
       state.conversations = [];
@@ -204,7 +216,7 @@
     });
   }
 
-  function clearArchivedConversations() {
+export function clearArchivedConversations() {
     const archived = state.conversations.filter((c) => c.archived);
     if (archived.length === 0) {
       showToast('没有已归档的会话', 'info');
@@ -219,13 +231,13 @@
     });
   }
 
-  function renameConversation(id) {
+export function renameConversation(id) {
     const conv = state.conversations.find((c) => c.id === id);
     if (!conv) return;
     showRenameDialog(id, conv.title);
   }
 
-  function doRename() {
+export function doRename() {
     const id = state.pendingRenameId;
     const newTitle = dom.renameInput.value.trim();
     if (!id || !newTitle) {
@@ -236,7 +248,7 @@
     if (conv) {
       conv.title = newTitle;
       updateTimestamp(conv);
-      renderAll();
+      renderConvList();
       saveToStorage();
     }
     hideRenameDialog();
@@ -246,7 +258,7 @@
   // IMPORT / EXPORT
   // =========================================================================
 
-  function exportConversationMarkdown() {
+export function exportConversationMarkdown() {
     const conv = getCurrentConv();
     if (!conv) {
       showToast('无当前会话可导出', 'warning');
@@ -273,7 +285,7 @@
     showToast('Markdown 导出成功', 'success');
   }
 
-  function exportAllJSON() {
+export function exportAllJSON() {
     if (state.conversations.length === 0) {
       showToast('无会话可导出', 'warning');
       return;
@@ -303,7 +315,7 @@
     showToast('全部会话 JSON 导出成功', 'success');
   }
 
-  function importJSON(file) {
+export function importJSON(file) {
     const reader = new FileReader();
     reader.onload = function (e) {
       try {
@@ -388,7 +400,7 @@
     reader.readAsText(file);
   }
 
-  function downloadFile(filename, content, mimeType) {
+export function downloadFile(filename, content, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -400,7 +412,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function copyTextToClipboard(text, successMessage) {
+export function copyTextToClipboard(text, successMessage) {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
         .then(function () { showToast(successMessage, 'success'); })

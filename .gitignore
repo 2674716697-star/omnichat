@@ -1,6 +1,12 @@
 node_modules/
+dist/
 _build.js
 _inline_js_check.js
 _temp_check.js
 supabase/.temp/
+.temp/
+.vite/
 .DS_Store
+.env*
+*.local
+query

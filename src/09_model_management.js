@@ -1,14 +1,23 @@
-  // =========================================================================
+import { state } from './state.js';
+import { dom } from './dom.js';
+import { getCurrentConv } from './99_legacy_main.js';
+import { escapeHtml } from './07_markdown.js';
+import { getApiKey, getProviderConfig, buildRequestHeaders, parseModelList } from './05_providers.js';
+import { ERR_MSGS } from './01_constants.js';
+import { saveToStorage } from './03_storage.js';
+import { showToast } from './13_ui.js';
+
+// =========================================================================
   // MODEL MANAGEMENT — tool warnings, model list populate, model refresh
   // =========================================================================
 
-  function updateToolWarning() {
+export function updateToolWarning() {
     dom.selectToolCallLimit.value = '0';
     dom.selectToolCallLimit.disabled = true;
     dom.toolWarning.style.display = '';
   }
 
-  function populateModelSelect() {
+export function populateModelSelect() {
     const conv = getCurrentConv();
     const provider = conv ? conv.provider : 'xai';
     const models = state.models[provider] || [];
@@ -33,7 +42,7 @@
     dom.modelHint.textContent = `共 ${models.length} 个可用模型，最后更新：${new Date().toLocaleTimeString()}`;
   }
 
-  async function refreshModels() {
+export async function refreshModels() {
     const provider = dom.selectProvider.value;
     const apiKey = getApiKey(provider);
 

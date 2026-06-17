@@ -1,4 +1,9 @@
-  // =========================================================================
+import { state } from './state.js';
+import { dom } from './dom.js';
+import { SUPABASE_PROJECT_URL, SUPABASE_PUBLISHABLE_KEY } from './01_constants.js';
+import { debouncedSave } from './03_storage.js';
+
+// =========================================================================
   // AUTH STATE MANAGEMENT — Phase 2.1
   // Minimal Supabase Auth state + UI helpers.
   //
@@ -13,7 +18,7 @@
   // =========================================================================
 
   // Shared auth state — mutable only through the set/clear helpers below.
-  var _authState = {
+export var _authState = {
     user: null,        // { id: string, email: string } | null
     session: null,     // Supabase session object | null
     loading: true,     // true while initial session check is in flight
@@ -26,10 +31,11 @@
   // Resets on page refresh so a user stuck in 429 can always recover.
   var _authCooldownUntil = 0;     // Date.now() + cooldownMs while cooldown is active; 0 otherwise
   var _authCooldownTimer = null;  // setInterval id for countdown tick — cleared when cooldown expires
-  var _authSending = false;       // true while a signInWithOtp request is in flight
+export var _authSending = false;       // true while a signInWithOtp request is in flight
+export function setAuthSending(val) { _authSending = val; }
 
   // getAuthState() — returns a shallow copy so callers can read but not mutate.
-  function getAuthState() {
+export function getAuthState() {
     return {
       user: _authState.user,
       loading: _authState.loading,
@@ -39,7 +45,7 @@
   }
 
   // setAuthSession(session) — update auth state from a valid Supabase session.
-  function setAuthSession(session) {
+export function setAuthSession(session) {
     if (session && session.user) {
       _authState.session = session;
       _authState.user = {
@@ -53,7 +59,7 @@
 
   // clearAuthSession() — clear auth state (sign out).
   // Preserves all local chats, settings, and API keys.
-  function clearAuthSession() {
+export function clearAuthSession() {
     _authState.session = null;
     _authState.user = null;
     _authState.error = null;
@@ -62,27 +68,27 @@
   }
 
   // setAuthLoading(loading) — update loading state.
-  function setAuthLoading(loading) {
+export function setAuthLoading(loading) {
     _authState.loading = !!loading;
     syncAuthUI();
   }
 
   // setAuthError(message) — set a user-visible error message.
-  function setAuthError(message) {
+export function setAuthError(message) {
     _authState.error = typeof message === 'string' ? message : null;
     _authState.notice = null;
     syncAuthUI();
   }
 
   // markAuthInitialised() — mark first init attempt as complete.
-  function markAuthInitialised() {
+export function markAuthInitialised() {
     _authState.loading = false;
     _authState.initialised = true;
     syncAuthUI();
   }
 
   // isValidEmail(email) — basic email format check for OTP input.
-  function isValidEmail(email) {
+export function isValidEmail(email) {
     if (typeof email !== 'string') return false;
     var trimmed = email.trim();
     if (trimmed.length === 0) return false;
@@ -91,14 +97,14 @@
   }
 
   // getAuthCooldownRemainingSeconds() — seconds left on the OTP cooldown.
-  function getAuthCooldownRemainingSeconds() {
+export function getAuthCooldownRemainingSeconds() {
     if (!_authCooldownUntil) return 0;
     var remaining = Math.ceil((_authCooldownUntil - Date.now()) / 1000);
     return remaining > 0 ? remaining : 0;
   }
 
   // startAuthCooldown(seconds) — begin a countdown; clears any existing timer first.
-  function startAuthCooldown(seconds) {
+export function startAuthCooldown(seconds) {
     stopAuthCooldown();
     _authCooldownUntil = Date.now() + seconds * 1000;
     _authCooldownTimer = setInterval(function () {
@@ -110,7 +116,7 @@
   }
 
   // stopAuthCooldown() — clear interval and reset cooldown state.
-  function stopAuthCooldown() {
+export function stopAuthCooldown() {
     if (_authCooldownTimer !== null) {
       clearInterval(_authCooldownTimer);
       _authCooldownTimer = null;
@@ -121,7 +127,7 @@
   // getAuthRedirectUrl() — build the magic-link redirect URL.
   // Always redirects to index.html on the current origin.  Works for local
   // (http://127.0.0.1:4177/index.html), GitHub Pages, and custom deploys.
-  function getAuthRedirectUrl() {
+export function getAuthRedirectUrl() {
     var origin = window.location.origin;
     var pathname = window.location.pathname;
     // Replace the last path segment with index.html, preserving any subdirectory.
@@ -132,7 +138,7 @@
   }
 
   // normalizeAuthError(error) — convert raw errors into Chinese-friendly messages.
-  function normalizeAuthError(error) {
+export function normalizeAuthError(error) {
     if (!error) return '发送失败，请稍后重试';
     var msg = '';
     if (typeof error === 'string') {
@@ -165,7 +171,7 @@
   // Returns { type: 'code'|'hash', value: string } | null.
   // - 'code': query param ?code=... (PKCE magic link / OAuth)
   // - 'hash': fragment #access_token=... (implicit grant, legacy)
-  function detectAuthCallbackParams() {
+export function detectAuthCallbackParams() {
     if (typeof window === 'undefined') return null;
 
     // 1. PKCE code in query string (magic link, OAuth redirect)
@@ -186,7 +192,7 @@
 
   // cleanAuthCallbackUrl() — remove auth params from address bar.
   // Preserves pathname and non-auth query params. Safe for GitHub Pages sub-paths.
-  function cleanAuthCallbackUrl() {
+export function cleanAuthCallbackUrl() {
     if (typeof window === 'undefined' || typeof history === 'undefined') return;
 
     var url = new URL(window.location.href);
@@ -215,7 +221,7 @@
   }
 
   // isStandalonePWA() — detect if page is running as installed PWA.
-  function isStandalonePWA() {
+export function isStandalonePWA() {
     if (typeof window === 'undefined') return false;
     return window.navigator.standalone === true ||
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -227,7 +233,7 @@
   // In browser: tell user they can return to installed PWA.
   // In PWA: session is already active, just confirm.
   // Only shows a brief status message; never blocks UI.
-  function showAuthCallbackHint(isPWA) {
+export function showAuthCallbackHint(isPWA) {
     if (isPWA) {
       _authState.notice = '登录成功 — 已恢复会话';
     } else {
@@ -241,7 +247,7 @@
 
   // syncAuthUI() — update auth section in settings drawer to reflect _authState.
   // Safe to call before DOM is ready (returns silently).
-  function syncAuthUI() {
+export function syncAuthUI() {
     if (typeof document === 'undefined') return;
 
     var emailInput = document.getElementById('inputAuthEmail');

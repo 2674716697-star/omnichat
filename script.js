@@ -301,19 +301,50 @@
   // Persist apiKeys to a stable independent key so they survive build-version
   // changes, PWA updates, cache clearing, and main-data migration failures.
   function saveSecretsAndPrefs() {
-    try {
-      localStorage.setItem(SECRETS_STORAGE_KEY, JSON.stringify(state.apiKeys));
-    } catch(e) {}
-    try {
-      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({
-        models: state.models,
-        activeTheme: state.activeTheme || '',
-        chatBackground: state.chatBackground,
-        themeOverrides: state.themeOverrides,
-        worldStarterEnabled: state.worldStarterEnabled,
-        actionPrompts: state.actionPrompts,
-      }));
-    } catch(e) {}
+    // 防护：如果当前 state 无有效数据，永不覆盖已有的稳定备份。
+    // 这防止了"空状态启动 → saveToStorage → 覆盖所有备份"的致命数据丢失链路。
+    var hasKeys = Object.keys(state.apiKeys).length > 0;
+    if (!hasKeys) {
+      try {
+        var existingSecrets = localStorage.getItem(SECRETS_STORAGE_KEY);
+        if (existingSecrets && existingSecrets !== '{}') {
+          // 已有有效 API key 备份，拒绝用空 state 覆盖
+          return;
+        }
+      } catch(e) {}
+    }
+    if (hasKeys) {
+      try {
+        localStorage.setItem(SECRETS_STORAGE_KEY, JSON.stringify(state.apiKeys));
+      } catch(e) {}
+    }
+
+    // Prefs：同样保护 — 如果当前无有效偏好但备份已有数据，拒绝覆盖
+    var hasModels = state.models && Object.keys(state.models).some(function(k) {
+      return Array.isArray(state.models[k]) && state.models[k].length > 0;
+    });
+    var hasPrefs = hasModels || state.activeTheme || (state.chatBackground && state.chatBackground.type !== 'none');
+    if (!hasPrefs) {
+      try {
+        var existingPrefs = localStorage.getItem(PREFS_STORAGE_KEY);
+        if (existingPrefs && existingPrefs !== '{}') {
+          // 已有有效偏好备份，拒绝用空 state 覆盖
+          return;
+        }
+      } catch(e) {}
+    }
+    if (hasPrefs) {
+      try {
+        localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({
+          models: state.models,
+          activeTheme: state.activeTheme || '',
+          chatBackground: state.chatBackground,
+          themeOverrides: state.themeOverrides,
+          worldStarterEnabled: state.worldStarterEnabled,
+          actionPrompts: state.actionPrompts,
+        }));
+      } catch(e) {}
+    }
   }
 
   // Restore apiKeys and user prefs from stable independent keys.
@@ -479,6 +510,30 @@
     if (Object.keys(state.apiKeys).length > 0 && !mainOk) {
       setTimeout(function() { saveToStorage(); }, 0);
     }
+
+    // Step 5: Detect fresh install (both main data and stable keys empty).
+    // This flag prevents init() from blindly saving empty state and overwriting
+    // any data that may exist in a different origin/path (e.g. PWA vs browser).
+    var hasMainData = raw && raw !== '{}';
+    var hasSecrets = Object.keys(state.apiKeys).length > 0;
+    window.__freshInstall = !hasMainData && !hasSecrets;
+
+    // 诊断日志：记录存储加载状态，便于排查数据丢失问题
+    var modelProviders = 0;
+    if (state.models) {
+      for (var mk in state.models) {
+        if (state.models.hasOwnProperty(mk) && Array.isArray(state.models[mk]) && state.models[mk].length > 0) {
+          modelProviders++;
+        }
+      }
+    }
+    console.log('[OmniChat] 存储加载完成:', {
+      conversations: state.conversations.length,
+      apiKeys: Object.keys(state.apiKeys).length + ' providers',
+      models: modelProviders + ' providers with models',
+      mainOk: mainOk,
+      freshInstall: window.__freshInstall
+    });
 
     return mainOk;
   }
@@ -10001,7 +10056,23 @@ if (dom.btnGenHints) dom.btnGenHints?.addEventListener('click', () => generateSc
     // Init auth state — non-blocking, async, never delays chat
     initAuthState();
 
-    saveToStorage();
+    // 请求持久存储 — 减少浏览器/系统自动清理 localStorage 的概率。
+    // 对 iOS PWA 尤其重要：iOS 可能在存储压力下清除 Web 应用数据。
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(function(granted) {
+        if (granted) {
+          console.log('[OmniChat] 持久存储已授权');
+        }
+      }).catch(function() {});
+    }
+
+    // 仅在新安装或发生数据迁移时才保存，避免用空状态覆盖已有备份。
+    // 如果 loadFromStorage() 未能恢复数据（如 iOS PWA 存储隔离），
+    // 无条件 saveToStorage() 会用空 state 覆盖 omnichat_secrets_v1 等稳定键，
+    // 导致 API Key 和设置永久丢失。
+    if (window.__freshInstall || window.__migrated) {
+      saveToStorage();
+    }
   }
 
   // Boot

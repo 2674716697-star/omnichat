@@ -14,7 +14,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon.png?v=mira-icon-20260609">
   <link rel="mask-icon" href="icons/icon-192.svg?v=mira-icon-20260609" color="#111115">
   <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
-  <meta name="build-version" content="mqgbpn2e">
+  <meta name="build-version" content="mqi65c3h">
   <meta name="build-commit" content="precommit">
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
   <meta name="color-scheme" content="dark">
@@ -454,6 +454,40 @@
           </div>
         </div>
 
+        <!-- 云备份 -->
+        <div class="settings-section-card" id="cloudBackupCard">
+          <div class="settings-section-title">云备份</div>
+          <div class="settings-section-body">
+            <!-- 未登录状态 -->
+            <div id="cloudBackupLoginPrompt" class="setting-hint">
+              登录后可自动备份会话到云端，换设备或清缓存后恢复。
+            </div>
+            <!-- 已登录状态 -->
+            <div id="cloudBackupStatus" style="display:none">
+              <div class="setting-row">
+                <span>上次备份</span>
+                <span id="lastBackupTime" style="color:var(--text-secondary);font-size:13px">--</span>
+              </div>
+              <div class="setting-row">
+                <span>云端会话</span>
+                <span id="cloudConvCount" style="color:var(--text-secondary);font-size:13px">--</span>
+              </div>
+              <div class="setting-row">
+                <span>本地存储用量</span>
+                <span id="storageUsageText" style="color:var(--text-secondary);font-size:13px">--</span>
+              </div>
+              <div class="storage-usage" id="storageUsage" style="margin-top:6px">
+                <div class="storage-usage-bar" id="storageUsageBar"></div>
+              </div>
+              <div class="flex-center-gap-8" style="margin-top:10px">
+                <button class="btn btn-secondary btn-sm" id="btnBackupNow">立即备份</button>
+                <button class="btn btn-secondary btn-sm" id="btnRestoreFromCloud">从云端恢复</button>
+              </div>
+              <div id="cloudBackupError" style="display:none;margin-top:8px;font-size:12px;color:var(--danger, #e74c3c)"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </aside>
 
@@ -748,7 +782,25 @@
   <!-- Phase 1 Supabase Auth: lazy optional, CDN load failure does not block app -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer
     onerror="console.warn('[OmniChat] Supabase CDN failed to load — auth skipped, chat unaffected')"></script>
-  <script src="script.js" defer></script>
-  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')</script>
+  <script type="module" src="src/main.js"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+      // 监听 SW 更新 — 当新版本安装完毕且有活跃 SW 时通知用户
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.__updateReady = true;
+            window.__pendingWorker = newWorker;
+          }
+        });
+      });
+    }).catch(function(err) {
+      console.warn('[OmniChat] SW 注册失败:', err);
+    });
+  }
+  </script>
 </body>
 </html>

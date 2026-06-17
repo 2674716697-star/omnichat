@@ -3582,6 +3582,7 @@ html {
 .message-content {
   min-height: 1px;
   will-change: opacity;
+  transition: opacity 150ms ease;
 }
 
 .message-content:first-child {
@@ -5160,6 +5161,24 @@ html.is-standalone body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* 未读计数标记 — 红色小圆点，定位在按钮右上角 */
+.scroll-btn-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
 @media (prefers-reduced-motion: reduce) {
   #scrollToBottomBtn {
     transition: opacity 0.1s ease;
@@ -5607,3 +5626,25 @@ html.welcome-visible .scene-immersive .scene-panel.collapsed {
 .flex-center-gap-8 { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .input-sm { font-size: 12px; padding: 6px 10px; }
 .setting-label-sm { font-size: 11px; }
+
+/* --- 存储用量进度条 --- */
+.storage-usage {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-elevated, rgba(255,255,255,0.06));
+  overflow: hidden;
+}
+.storage-usage-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent, #4a9eff);
+  transition: width 0.4s var(--spring, ease), background 0.4s ease;
+  min-width: 2px;
+}
+.storage-usage-bar.warning {
+  background: #f0ad4e;
+}
+.storage-usage-bar.danger {
+  background: #e74c3c;
+}
